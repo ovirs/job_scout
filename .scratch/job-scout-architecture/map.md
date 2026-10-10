@@ -13,7 +13,7 @@ This effort will specify how the app ingests Job Postings, evaluates them agains
   - Web Application form factor.
   - Mix of automated ATS pipelines and manual entry.
   - LLM-based matching evaluation and cover letter generation.
-  - Build order: the webapp with manual entry first, then LLM evaluation, then the ETL (Watchlist, Pipelines, screening). Decisions the first two need come before decisions only the ETL needs.
+  - Build order: the webapp with manual entry first, then LLM evaluation, then Application tracking, then the ETL (Watchlist, Pipelines, screening). Decisions the first three need come before decisions only the ETL needs.
 - **Glossary**: [GLOSSARY.md](../../GLOSSARY.md)
 
 ## Decisions so far
@@ -28,7 +28,6 @@ This effort will specify how the app ingests Job Postings, evaluates them agains
 - How does the system facilitate updating the Career Profile continuously based on user context/feedback from new applications?
 - How do we orchestrate custom cover letter generation with the LLM?
 - How are Screening Rules expressed and tuned (wording of target titles and acceptable locations, the threshold, reviewing screened-out postings)? Hangs on what Jev's API really offers.
-- Should an Application keep a copy of the Job Posting text as it was when the user applied? Postings are overwritten on edit, with no version history.
 - A source of Watchlist suggestions from LinkedIn job-alert emails: needs inbox access and email parsing, and yields company names the user confirms by supplying a board URL. Deferred until company discovery proves to be the bottleneck.
 
 ## Out of scope
