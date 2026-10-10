@@ -13,6 +13,7 @@ This effort will specify how the app ingests Job Postings, evaluates them agains
   - Web Application form factor.
   - Mix of automated ATS pipelines and manual entry.
   - LLM-based matching evaluation and cover letter generation.
+  - Build order: the webapp with manual entry first, then LLM evaluation, then the ETL (Watchlist, Pipelines, screening). Decisions the first two need come before decisions only the ETL needs.
 - **Glossary**: [GLOSSARY.md](../../GLOSSARY.md)
 
 ## Decisions so far
