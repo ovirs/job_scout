@@ -1,13 +1,13 @@
-# Job Tracker Architecture and Spec
+# Job Scout Architecture and Spec
 
 ## Destination
 
-Job Tracker Web Application: System Architecture and Data Model.
+Job Scout Web Application: System Architecture and Data Model.
 This effort will specify how the app ingests Job Postings, evaluates them against the user's Career Profile and Deal Breakers via an LLM, tracks Applications, and generates Cover Letters, along with the core tech stack.
 
 ## Notes
 
-- **Domain**: Job Tracking, Applicant Tracking Systems (ATS), LLM Integration.
+- **Domain**: Job search, Applicant Tracking Systems (ATS), LLM Integration.
 - **Skills**: domain-modeling, wayfinder
 - **Preferences**:
   - Web Application form factor.

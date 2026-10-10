@@ -5,7 +5,7 @@ Status: resolved (2026-10-09)
 
 ## Question
 
-We need to decide the core framework, backend (if separate), and database for the Job Tracker Web Application. This foundation will dictate how we build the ingestion pipelines and integrate with LLMs.
+We need to decide the core framework, backend (if separate), and database for the Job Scout Web Application. This foundation will dictate how we build the ingestion pipelines and integrate with LLMs.
 
 Options to consider:
 - Next.js (React) + TypeScript (Full-stack)

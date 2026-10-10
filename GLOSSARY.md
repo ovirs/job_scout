@@ -1,6 +1,6 @@
-# Job Tracker
+# Job Scout
 
-The job tracker helps track job postings, evaluate them against deal breakers, and generate custom cover letters.
+Job Scout surfaces the Job Postings that match the user's Career Profile, evaluates them against Deal Breakers, and helps the user apply, including custom cover letters and tracking each Application.
 
 ## Language
 
