@@ -1,6 +1,6 @@
 # Does Jev's actual API, pricing and limits support screening on title and location?
 
-Labels: `wayfinder:research`
+Type: research
 
 ## Question
 
@@ -11,6 +11,3 @@ The ingestion strategy chose Jev (TypeSafe AI's hosted classifier, early access 
 - What are the current price and rate limits? (One blog reported $0.042 per million input tokens with output free.)
 - How well calibrated are the scores on short inputs like a job title, and is there guidance on thresholds?
 - What are the data retention terms?
-
-Blocks: None
-Blocked by: None

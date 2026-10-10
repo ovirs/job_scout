@@ -1,6 +1,6 @@
 # What do the Greenhouse, Lever and Ashby job board APIs actually return?
 
-Labels: `wayfinder:research`
+Type: research
 
 ## Question
 
@@ -13,6 +13,3 @@ The ingestion strategy picked Greenhouse, Lever and Ashby as the first adapters 
 - What does a board URL look like, so the webapp can recognise the ATS and extract the board identifier from a pasted URL?
 
 Also needed, and it takes the user's company list: a tally of which ATS each company the user cares about is on, to decide whether a fourth adapter (Workday or another) is needed early.
-
-Blocks: None
-Blocked by: None

@@ -1,8 +1,7 @@
 # What tech stack should we use for the web application?
 
-Labels: `wayfinder:grilling`
-Status: closed (resolved 2026-10-09)
-Assignee: ovirs
+Type: grilling
+Status: resolved (2026-10-09)
 
 ## Question
 
@@ -15,15 +14,14 @@ Options to consider:
 - Go backend + React frontend
 
 What is the preferred stack considering the user's ETL background and the heavy LLM/pipeline requirements?
-Blocks: None\nBlocked by: None
 
-## Resolution
+## Answer
 
 Two separate subsystems in one repository, both Python on the server side, joined only by the webapp's HTTP API.
 
 - **Webapp**: FastAPI backend (Pydantic, SQLAlchemy 2, Alembic) and a React + TypeScript single-page frontend (Vite, TanStack Query, API client generated from the OpenAPI schema). No Next.js: the app sits behind a login and needs no server rendering.
 - **ETL**: Airflow, with `httpx` and Pydantic and one adapter per ATS. Airflow is chosen partly as a learning goal. Pipelines poll the companies on the Watchlist; there is no cross-market search source, so keyword search is built over locally ingested Job Postings.
-- **Boundary**: the ETL reads the Watchlist and bulk-upserts Job Postings through the webapp's API and never touches the application database. The webapp is the only writer. The upsert is idempotent; the ETL uses a service credential. See [ADR 0001](../docs/adr/0001-etl-and-webapp-as-separate-subsystems-joined-by-the-api.md).
+- **Boundary**: the ETL reads the Watchlist and bulk-upserts Job Postings through the webapp's API and never touches the application database. The webapp is the only writer. The upsert is idempotent; the ETL uses a service credential. See [ADR 0001](../../../docs/adr/0001-etl-and-webapp-as-separate-subsystems-joined-by-the-api.md).
 - **Database**: PostgreSQL, one instance, with one database for the webapp and one for Airflow's metadata.
 - **LLM**: all calls are made by the webapp, in a background worker fed by a Postgres-backed queue (Procrastinate), never in a request handler. Anthropic Python SDK behind a thin internal interface. Model choice is left to the LLM evaluation ticket.
 - **Watchlist**: maintained through the webapp UI.

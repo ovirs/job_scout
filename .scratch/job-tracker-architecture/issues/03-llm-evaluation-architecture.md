@@ -1,6 +1,6 @@
 # What is the architecture for the LLM Deal Breaker matching?
 
-Labels: `wayfinder:grilling`
+Type: grilling
 
 ## Question
 
@@ -9,7 +9,6 @@ How should this matching system operate?
 - Will it run automatically on every ingested Job Posting?
 - Do we store the raw LLM responses or just a boolean `is_match` with a `reasoning` text?
 - Which LLM provider/model is best suited for this structured extraction and reasoning task?
-Blocks: None\nBlocked by: None
 
 ## Raised elsewhere, to discuss here
 

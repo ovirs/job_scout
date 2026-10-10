@@ -1,7 +1,5 @@
 # Job Tracker Architecture and Spec
 
-Labels: `wayfinder:map`
-
 ## Destination
 
 Job Tracker Web Application: System Architecture and Data Model.
@@ -15,12 +13,12 @@ This effort will specify how the app ingests Job Postings, evaluates them agains
   - Web Application form factor.
   - Mix of automated ATS pipelines and manual entry.
   - LLM-based matching evaluation and cover letter generation.
-- **Glossary**: [GLOSSARY.md](../GLOSSARY.md)
+- **Glossary**: [GLOSSARY.md](../../GLOSSARY.md)
 
 ## Decisions so far
 
-- [What tech stack should we use for the web application?](002-tech-stack.md): FastAPI + React webapp and a separate Airflow ETL, both Python, joined only by the webapp's API; Postgres; all LLM calls in a webapp background worker; local Docker Compose first.
-- [How will we architect the ATS ingestion pipelines and manual entry flow?](003-data-ingestion-strategy.md): every posting's envelope is stored via full board snapshots; Screening Rules (title and location, scored by Jev) gate LLM extraction in the webapp; manual entry is paste-only with confirmation; duplicates are detected and confirmed; Greenhouse, Lever and Ashby first.
+- [What tech stack should we use for the web application?](issues/01-tech-stack.md): FastAPI + React webapp and a separate Airflow ETL, both Python, joined only by the webapp's API; Postgres; all LLM calls in a webapp background worker; local Docker Compose first.
+- [How will we architect the ATS ingestion pipelines and manual entry flow?](issues/02-data-ingestion-strategy.md): every posting's envelope is stored via full board snapshots; Screening Rules (title and location, scored by Jev) gate LLM extraction in the webapp; manual entry is paste-only with confirmation; duplicates are detected and confirmed; Greenhouse, Lever and Ashby first.
 
 ## Not yet specified
 
