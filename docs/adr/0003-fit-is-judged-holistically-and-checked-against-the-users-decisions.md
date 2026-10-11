@@ -5,7 +5,7 @@ An Evaluation's recommendation and score come from the LLM reading the whole Job
 ## Consequences
 
 - The recommendation is given directly by the LLM. The 1 to 10 score is only for ordering and is never turned into a recommendation by thresholds.
-- Deal Breakers are the exception: each gets its own verdict, and a violated one sets the lowest recommendation in code.
+- Deal Breakers are the exception: each gets its own verdict, and a violated one sets the lowest recommendation in code. The LLM's own recommendation is kept, and a posting it recommended despite a violated Deal Breaker is surfaced for manual review.
 - Any change to the prompt, the model or the wording of the Preferences is judged by re-running the test set and reading the agreement, so the test set is part of the system and not an optional extra.
 - Tuning costs LLM calls. Each Evaluation records the model, prompt version and input versions so runs can be compared.
 - Extracted fields are facts for filtering and display and do not feed the Evaluation.
