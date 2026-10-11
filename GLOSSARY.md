@@ -18,7 +18,15 @@ _Avoid_: Resume, CV, Experience
 
 **Deal Breaker**:
 A strict user-defined criterion that, if unmet, disqualifies a Job Posting.
-_Avoid_: Preference, Requirement
+_Avoid_: Requirement, Preferences (which never disqualify)
+
+**Preferences**:
+The user's own description of what they are looking for and how to weigh it: target roles, level, what appeals and what they would rather avoid. Preferences shape an Evaluation but never disqualify a Job Posting on their own.
+_Avoid_: Deal Breaker (which disqualifies), Search criteria, Screening Rule
+
+**Evaluation**:
+A judgement of one Job Posting against the Career Profile, Deal Breakers and Preferences, made to help the user decide whether applying is worth it. It holds a verdict per Deal Breaker, red and green flags, a score used only for ordering, and a recommendation.
+_Avoid_: Match, Matching, Assessment
 
 **Screening Rule**:
 A cheap user-defined criterion on a Job Posting's title or location that decides whether the posting is worth evaluating at all. A screened-out Job Posting is kept, not discarded.
