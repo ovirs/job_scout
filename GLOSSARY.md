@@ -8,8 +8,12 @@ Job Scout surfaces the Job Postings that match the user's Career Profile, evalua
 The actual job description and details available on the market, whether scraped via ATS or entered manually.
 _Avoid_: Job, Listing, Opportunity
 
+**Triage**:
+The user's own sorting of a Job Posting into Interested, Maybe or Ignored. It overrides the Evaluation's recommendation. A Job Posting the user has not sorted is untriaged.
+_Avoid_: Mark, Decision, Rating, Screening (which is done by Screening Rules)
+
 **Application**:
-The user's tracked progress in applying for a specific Job Posting (e.g., applied, interviewing, rejected).
+The user's tracked progress in applying for a specific Job Posting, from preparing it through to its outcome (e.g., applied, interview loop, rejected). It exists only once the user starts applying; Triage comes before it.
 _Avoid_: Job
 
 **Career Profile**:

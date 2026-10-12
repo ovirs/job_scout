@@ -14,4 +14,6 @@ The ingestion strategy picked Greenhouse, Lever and Ashby as the first adapters 
 
 - Which dates does each posting carry (first published, last updated, closing date), and how does a repost appear: the same posting id with a new date, or a new posting id with the same text?
 
+- Does the description each API returns include company-wide boilerplate (an "About us", benefits or legal paragraph repeated on every posting), or is that in a separate field? Raised by the Application workflow ticket: a boilerplate edit changes the text hash of every posting on a board at once and would re-run the Evaluation of each untriaged one. A separate field could be left out of the hash.
+
 Also needed, and it takes the user's company list: a tally of which ATS each company the user cares about is on, to decide whether a fourth adapter (Workday or another) is needed early.
