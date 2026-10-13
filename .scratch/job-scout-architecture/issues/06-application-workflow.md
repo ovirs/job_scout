@@ -40,3 +40,7 @@ The user's own call on a Job Posting and the progress of applying to it are two 
 - **Closed postings**: closing on the ATS changes neither Triage nor Application. An Interested posting with no Application stays on the shortlist with a "closed on" badge until re-triaged.
 
 Rejected: triage as an early state of an Application (ignored postings would get Applications, and test labels would be tangled with states like Interview loop); the terms Mark (unclear as a noun), Decision ("undecided" reads as Maybe) and Rating (suggests the score); a single Interviewing state; pre-Applied states beyond Preparing; enforced state transitions; counting untriaged skips as Ignored labels; a separate manual review screen.
+
+## Comments
+
+- 2026-10-13, from the [Cover Letter generation ticket](08-cover-letter-generation.md): nothing the user creates is physically deleted. Deleting an Application while Preparing marks it with a deletion date and hides it; "at most one Application per posting" means at most one that is not deleted; on deletion the Triage stays Interested and becomes changeable again.

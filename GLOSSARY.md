@@ -16,6 +16,14 @@ _Avoid_: Mark, Decision, Rating, Screening (which is done by Screening Rules)
 The user's tracked progress in applying for a specific Job Posting, from preparing it through to its outcome (e.g., applied, interview loop, rejected). It exists only once the user starts applying; Triage comes before it.
 _Avoid_: Job
 
+**Cover Letter**:
+The letter the user sends with one Application, written from the Career Profile and the Job Posting and finished by the user. An Application has at most one, and its successive texts are drafts of that one letter.
+_Avoid_: Motivation letter, Letter (alone), Draft (which is one text of a Cover Letter)
+
+**Writing Guide**:
+The user's own description of how their Cover Letters should read: tone, length, structure, phrases to avoid, and sample letters they are happy with.
+_Avoid_: Style guide, Template, Writing sample
+
 **Career Profile**:
 A living, comprehensive document encompassing all of the user's professional experience, projects, and skills. It evolves with each application and serves as the master knowledge base for the LLM, bypassing the constraints of a traditional 2-page resume.
 _Avoid_: Resume, CV, Experience
