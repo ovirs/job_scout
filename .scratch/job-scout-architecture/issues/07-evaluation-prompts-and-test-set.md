@@ -1,6 +1,7 @@
 # What do the evaluation and extraction prompts say, and when is the test set trusted?
 
 Type: prototype
+Status: claimed
 
 ## Question
 
