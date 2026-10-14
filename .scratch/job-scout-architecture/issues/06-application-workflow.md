@@ -44,3 +44,4 @@ Rejected: triage as an early state of an Application (ignored postings would get
 ## Comments
 
 - 2026-10-13, from the [Cover Letter generation ticket](08-cover-letter-generation.md): nothing the user creates is physically deleted. Deleting an Application while Preparing marks it with a deletion date and hides it; "at most one Application per posting" means at most one that is not deleted; on deletion the Triage stays Interested and becomes changeable again.
+- 2026-10-14, from the [evaluation prompts and test set ticket](07-evaluation-prompts-and-test-set.md): the prompt tells the LLM that a violated Deal Breaker means skip, so a disqualified posting reaches the inbox with the badge only when an Evaluation contradicts itself. The badge stays as a safety net; a Deal Breaker that is too strict is found by rewording it and by the test set's gate figures.
