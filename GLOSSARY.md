@@ -29,7 +29,7 @@ A living, comprehensive document encompassing all of the user's professional exp
 _Avoid_: Resume, CV, Experience
 
 **Deal Breaker**:
-A strict user-defined criterion that, if unmet, disqualifies a Job Posting.
+A line the user will not cross, written in their own words. A Job Posting whose text shows it crosses the line is disqualified; one that is silent on it is not.
 _Avoid_: Requirement, Preferences (which never disqualify)
 
 **Preferences**:

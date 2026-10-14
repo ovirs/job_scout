@@ -39,3 +39,7 @@ An Evaluation is the LLM's holistic judgement of whether a Job Posting is worth 
 See [ADR 0003](../../../docs/adr/0003-fit-is-judged-holistically-and-checked-against-the-users-decisions.md).
 
 Rejected: typed Deal Breaker rules over extracted fields (most real Deal Breakers have no field); a per-Deal-Breaker setting for what silence means (one rule plus wording covers it); a score computed in code from per-requirement matches (treats every requirement alike and misses emphasis and day-to-day framing); deriving the recommendation from score thresholds (postings near a threshold would flip between runs); half-point scores (false precision); automatic re-evaluation when the Career Profile, Deal Breakers or Preferences are edited; posting age as an input.
+
+## Comments
+
+- 2026-10-14, from the [evaluation prompts and test set ticket](07-evaluation-prompts-and-test-set.md): the verdict "met" is renamed "clear", since "met" reads backwards for a Deal Breaker worded as what disqualifies ("The role expects Spark experience"). A Deal Breaker is written however reads naturally and names the signals that count as evidence; a violated verdict always forces skip, with no exception in the LLM's own recommendation.
