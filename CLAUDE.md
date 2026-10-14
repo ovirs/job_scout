@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues and specs live as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+Tickets are GitHub issues (use `gh`); specs and the finished architecture map stay as markdown under `.scratch/`. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
