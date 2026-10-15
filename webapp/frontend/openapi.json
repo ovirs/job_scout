@@ -1,0 +1,460 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Job Scout",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/job-postings": {
+      "get": {
+        "summary": "List Job Postings",
+        "operationId": "list_job_postings",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/JobPostingRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Job Postings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create Job Posting",
+        "operationId": "create_job_posting",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JobPostingCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ExtractedFields": {
+        "properties": {
+          "salary_ranges": {
+            "items": {
+              "$ref": "#/components/schemas/SalaryRange"
+            },
+            "type": "array",
+            "title": "Salary Ranges"
+          },
+          "seniority": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "intern",
+                "junior",
+                "mid",
+                "senior",
+                "staff",
+                "principal",
+                "lead",
+                "manager",
+                "director",
+                "executive"
+              ]
+            },
+            "type": "array",
+            "title": "Seniority"
+          },
+          "employment_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "full_time",
+                  "part_time",
+                  "contract",
+                  "internship",
+                  "temporary"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Employment Type"
+          },
+          "workplace_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "remote",
+                  "hybrid",
+                  "onsite"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workplace Type"
+          },
+          "location_restriction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Restriction"
+          },
+          "required_technologies": {
+            "items": {
+              "$ref": "#/components/schemas/Technology"
+            },
+            "type": "array",
+            "title": "Required Technologies"
+          },
+          "nice_to_have_technologies": {
+            "items": {
+              "$ref": "#/components/schemas/Technology"
+            },
+            "type": "array",
+            "title": "Nice To Have Technologies"
+          }
+        },
+        "type": "object",
+        "required": [
+          "salary_ranges",
+          "seniority",
+          "employment_type",
+          "workplace_type",
+          "location_restriction",
+          "required_technologies",
+          "nice_to_have_technologies"
+        ],
+        "title": "ExtractedFields"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "JobPostingCreate": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Company"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Text"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "description"
+        ],
+        "title": "JobPostingCreate"
+      },
+      "JobPostingRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "title": "Source"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Text"
+          },
+          "workplace_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "remote",
+                  "hybrid",
+                  "onsite"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workplace Type"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "extracted_fields": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractedFields"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "processing_status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "processed"
+            ],
+            "title": "Processing Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "title",
+          "company",
+          "location_text",
+          "workplace_type",
+          "description",
+          "url",
+          "created_at",
+          "closed_at",
+          "extracted_fields",
+          "processing_status"
+        ],
+        "title": "JobPostingRead"
+      },
+      "SalaryRange": {
+        "properties": {
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "period": {
+            "type": "string",
+            "enum": [
+              "year",
+              "month",
+              "day",
+              "hour"
+            ],
+            "title": "Period"
+          },
+          "applies_to": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applies To"
+          }
+        },
+        "type": "object",
+        "required": [
+          "minimum",
+          "maximum",
+          "currency",
+          "period",
+          "applies_to"
+        ],
+        "title": "SalaryRange"
+      },
+      "Technology": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "alternative_group": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Alternative Group"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "alternative_group"
+        ],
+        "title": "Technology"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

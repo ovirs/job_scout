@@ -1,0 +1,54 @@
+# The whole app, locally: `docker compose up --build`, then open http://localhost:5173.
+# Every setting has a default; override any of them in the environment or a .env file.
+
+x-backend: &backend
+  build: ./webapp/backend
+  environment:
+    DATABASE_URL: postgresql://${POSTGRES_USER:-job_scout}:${POSTGRES_PASSWORD:-job_scout}@db:5432/${POSTGRES_DB:-job_scout}
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-job_scout}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-job_scout}
+      POSTGRES_DB: ${POSTGRES_DB:-job_scout}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 5s
+      retries: 15
+
+  # Applies the database migrations, then exits; the API and the worker wait for it.
+  migrate:
+    <<: *backend
+    command: ["python", "-m", "job_scout.migrations"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    <<: *backend
+    ports:
+      - ${API_PORT:-8000}:8000
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "job_scout.worker"]
+
+  frontend:
+    build: ./webapp/frontend
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - ${FRONTEND_PORT:-5173}:5173
+    depends_on:
+      - api
+
+volumes:
+  db-data:

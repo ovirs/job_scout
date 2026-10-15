@@ -1,0 +1,1 @@
+"""Job Scout webapp backend."""
