@@ -1,3 +1,6 @@
 # Skills are symlinked from outside the repo
 .claude/skills
 .github/skills
+
+# Local Claude Code settings
+.claude/settings.json

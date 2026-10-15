@@ -36,6 +36,14 @@ _Avoid_: Requirement, Preferences (which never disqualify)
 The user's own description of what they are looking for and how to weigh it: target roles, level, what appeals and what they would rather avoid. Preferences shape an Evaluation but never disqualify a Job Posting on their own.
 _Avoid_: Deal Breaker (which disqualifies), Search criteria, Screening Rule
 
+**User Input**:
+What the user writes and maintains for the LLM to work from: the Career Profile, Preferences, Writing Guide and Deal Breakers. Every saved change creates a new version, so each Evaluation and Cover Letter draft records exactly which versions produced it.
+_Avoid_: Settings, Config, Profile data
+
+**Document**:
+A User Input written as one piece of free text: the Career Profile, Preferences or Writing Guide. Deal Breakers are not a Document, since they are a list of separate one-sentence items.
+_Avoid_: File, Note (which belongs to an Application)
+
 **Evaluation**:
 A judgement of one Job Posting against the Career Profile, Deal Breakers and Preferences, made to help the user decide whether applying is worth it. It holds a verdict per Deal Breaker, red and green flags, a score used only for ordering, and a recommendation.
 _Avoid_: Match, Matching, Assessment

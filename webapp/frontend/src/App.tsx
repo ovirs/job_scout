@@ -1,19 +1,69 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, useState } from 'react'
+import { type FormEvent, Fragment, useEffect, useState } from 'react'
+import { age } from './age'
 import {
   createJobPostingMutation,
   listJobPostingsOptions,
   listJobPostingsQueryKey,
 } from './api/@tanstack/react-query.gen'
+import { DealBreakersPage } from './DealBreakersPage'
+import { DOCUMENTS, type DocumentKind, DocumentPage } from './DocumentPage'
+
+const JOB_POSTINGS = {
+  hash: '#/',
+  label: 'Job Postings',
+  page: (
+    <>
+      <NewJobPostingForm />
+      <JobPostingList />
+    </>
+  ),
+}
+
+const PAGES = [
+  JOB_POSTINGS,
+  documentPage('career-profile'),
+  documentPage('preferences'),
+  { hash: '#/deal-breakers', label: 'Deal Breakers', page: <DealBreakersPage /> },
+  documentPage('writing-guide'),
+]
+
+function documentPage(kind: DocumentKind) {
+  return { hash: `#/${kind}`, label: DOCUMENTS[kind].title, page: <DocumentPage kind={kind} /> }
+}
 
 export default function App() {
+  const hash = useHash()
+  const current = PAGES.find((page) => page.hash === hash) ?? JOB_POSTINGS
+
   return (
     <main>
       <h1>Job Scout</h1>
-      <NewJobPostingForm />
-      <JobPostingList />
+      <nav>
+        {PAGES.map((page) => (
+          <a
+            key={page.hash}
+            href={page.hash}
+            aria-current={page === current ? 'page' : undefined}
+          >
+            {page.label}
+          </a>
+        ))}
+      </nav>
+      {/* Keyed so that moving between pages never carries one page's state into another */}
+      <Fragment key={current.hash}>{current.page}</Fragment>
     </main>
   )
+}
+
+function useHash(): string {
+  const [hash, setHash] = useState(window.location.hash || '#/')
+  useEffect(() => {
+    const update = () => setHash(window.location.hash || '#/')
+    window.addEventListener('hashchange', update)
+    return () => window.removeEventListener('hashchange', update)
+  }, [])
+  return hash
 }
 
 const EMPTY_FORM = { title: '', company: '', location_text: '', description: '' }
@@ -108,19 +158,4 @@ function JobPostingList() {
       )}
     </section>
   )
-}
-
-const AGE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
-  ['day', 24 * 60 * 60],
-  ['hour', 60 * 60],
-  ['minute', 60],
-]
-const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
-
-function age(createdAt: string): string {
-  const seconds = (Date.now() - Date.parse(createdAt)) / 1000
-  for (const [unit, size] of AGE_UNITS) {
-    if (seconds >= size) return relativeTime.format(-Math.floor(seconds / size), unit)
-  }
-  return 'just now'
 }

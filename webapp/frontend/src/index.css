@@ -36,3 +36,25 @@ td {
   padding: 0.25rem 0.5rem;
   border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
 }
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+nav a[aria-current='page'] {
+  font-weight: bold;
+  text-decoration: none;
+}
+
+li {
+  margin-bottom: 0.5rem;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+}

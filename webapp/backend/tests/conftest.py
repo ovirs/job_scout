@@ -13,7 +13,7 @@ import pytest
 from asgi_lifespan import LifespanManager
 from testcontainers.community.postgres import PostgresContainer
 
-from job_scout import migrations, worker
+from job_scout import migrations, queue, worker
 from job_scout.api import create_app
 from job_scout.config import Settings
 
@@ -57,6 +57,19 @@ def run_queued_tasks(settings: Settings) -> Callable[[], Awaitable[None]]:
         await worker.run(settings, wait=False)
 
     return run
+
+
+@pytest.fixture
+def queued_tasks(settings: Settings) -> Callable[[], Awaitable[list[str]]]:
+    """The names of the tasks waiting in the queue."""
+
+    async def list_queued() -> list[str]:
+        task_queue = queue.build(settings)
+        async with task_queue.open_async():
+            jobs = await task_queue.job_manager.list_jobs_async(status="todo")
+        return [job.task_name for job in jobs]
+
+    return list_queued
 
 
 def _database_url(server: PostgresContainer, database: str) -> str:

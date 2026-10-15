@@ -5,6 +5,88 @@ export type ClientOptions = {
 };
 
 /**
+ * DealBreakerRead
+ */
+export type DealBreakerRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * DealBreakerSave
+ */
+export type DealBreakerSave = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * DealBreakerSetVersionRead
+ */
+export type DealBreakerSetVersionRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Deal Breakers
+     */
+    deal_breakers: Array<DealBreakerRead>;
+};
+
+/**
+ * DocumentSave
+ */
+export type DocumentSave = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * DocumentVersionRead
+ */
+export type DocumentVersionRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Kind
+     */
+    kind: 'career-profile' | 'preferences' | 'writing-guide';
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * ExtractedFields
  */
 export type ExtractedFields = {
@@ -231,3 +313,232 @@ export type CreateJobPostingResponses = {
 };
 
 export type CreateJobPostingResponse = CreateJobPostingResponses[keyof CreateJobPostingResponses];
+
+export type GetCurrentDocumentData = {
+    body?: never;
+    path: {
+        /**
+         * Kind
+         */
+        kind: 'career-profile' | 'preferences' | 'writing-guide';
+    };
+    query?: never;
+    url: '/api/documents/{kind}';
+};
+
+export type GetCurrentDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCurrentDocumentError = GetCurrentDocumentErrors[keyof GetCurrentDocumentErrors];
+
+export type GetCurrentDocumentResponses = {
+    /**
+     * Response Get Current Document
+     *
+     * Successful Response
+     */
+    200: DocumentVersionRead | null;
+};
+
+export type GetCurrentDocumentResponse = GetCurrentDocumentResponses[keyof GetCurrentDocumentResponses];
+
+export type SaveDocumentData = {
+    body: DocumentSave;
+    path: {
+        /**
+         * Kind
+         */
+        kind: 'career-profile' | 'preferences' | 'writing-guide';
+    };
+    query?: never;
+    url: '/api/documents/{kind}/versions';
+};
+
+export type SaveDocumentErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveDocumentError = SaveDocumentErrors[keyof SaveDocumentErrors];
+
+export type SaveDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    201: DocumentVersionRead;
+};
+
+export type SaveDocumentResponse = SaveDocumentResponses[keyof SaveDocumentResponses];
+
+export type GetDocumentVersionData = {
+    body?: never;
+    path: {
+        /**
+         * Kind
+         */
+        kind: 'career-profile' | 'preferences' | 'writing-guide';
+        /**
+         * Version Id
+         */
+        version_id: number;
+    };
+    query?: never;
+    url: '/api/documents/{kind}/versions/{version_id}';
+};
+
+export type GetDocumentVersionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetDocumentVersionError = GetDocumentVersionErrors[keyof GetDocumentVersionErrors];
+
+export type GetDocumentVersionResponses = {
+    /**
+     * Successful Response
+     */
+    200: DocumentVersionRead;
+};
+
+export type GetDocumentVersionResponse = GetDocumentVersionResponses[keyof GetDocumentVersionResponses];
+
+export type GetCurrentDealBreakersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/deal-breakers';
+};
+
+export type GetCurrentDealBreakersResponses = {
+    /**
+     * Response Get Current Deal Breakers
+     *
+     * Successful Response
+     */
+    200: DealBreakerSetVersionRead | null;
+};
+
+export type GetCurrentDealBreakersResponse = GetCurrentDealBreakersResponses[keyof GetCurrentDealBreakersResponses];
+
+export type AddDealBreakerData = {
+    body: DealBreakerSave;
+    path?: never;
+    query?: never;
+    url: '/api/deal-breakers';
+};
+
+export type AddDealBreakerErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddDealBreakerError = AddDealBreakerErrors[keyof AddDealBreakerErrors];
+
+export type AddDealBreakerResponses = {
+    /**
+     * Successful Response
+     */
+    201: DealBreakerSetVersionRead;
+};
+
+export type AddDealBreakerResponse = AddDealBreakerResponses[keyof AddDealBreakerResponses];
+
+export type DeleteDealBreakerData = {
+    body?: never;
+    path: {
+        /**
+         * Deal Breaker Id
+         */
+        deal_breaker_id: number;
+    };
+    query?: never;
+    url: '/api/deal-breakers/{deal_breaker_id}';
+};
+
+export type DeleteDealBreakerErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteDealBreakerError = DeleteDealBreakerErrors[keyof DeleteDealBreakerErrors];
+
+export type DeleteDealBreakerResponses = {
+    /**
+     * Successful Response
+     */
+    200: DealBreakerSetVersionRead;
+};
+
+export type DeleteDealBreakerResponse = DeleteDealBreakerResponses[keyof DeleteDealBreakerResponses];
+
+export type EditDealBreakerData = {
+    body: DealBreakerSave;
+    path: {
+        /**
+         * Deal Breaker Id
+         */
+        deal_breaker_id: number;
+    };
+    query?: never;
+    url: '/api/deal-breakers/{deal_breaker_id}';
+};
+
+export type EditDealBreakerErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EditDealBreakerError = EditDealBreakerErrors[keyof EditDealBreakerErrors];
+
+export type EditDealBreakerResponses = {
+    /**
+     * Successful Response
+     */
+    200: DealBreakerSetVersionRead;
+};
+
+export type EditDealBreakerResponse = EditDealBreakerResponses[keyof EditDealBreakerResponses];
+
+export type GetDealBreakerSetVersionData = {
+    body?: never;
+    path: {
+        /**
+         * Version Id
+         */
+        version_id: number;
+    };
+    query?: never;
+    url: '/api/deal-breakers/versions/{version_id}';
+};
+
+export type GetDealBreakerSetVersionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetDealBreakerSetVersionError = GetDealBreakerSetVersionErrors[keyof GetDealBreakerSetVersionErrors];
+
+export type GetDealBreakerSetVersionResponses = {
+    /**
+     * Successful Response
+     */
+    200: DealBreakerSetVersionRead;
+};
+
+export type GetDealBreakerSetVersionResponse = GetDealBreakerSetVersionResponses[keyof GetDealBreakerSetVersionResponses];

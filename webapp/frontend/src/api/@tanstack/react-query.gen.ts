@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { createJobPosting, listJobPostings, type Options } from '../sdk.gen';
-import type { CreateJobPostingData, CreateJobPostingError, CreateJobPostingResponse, ListJobPostingsData, ListJobPostingsResponse } from '../types.gen';
+import { addDealBreaker, createJobPosting, deleteDealBreaker, editDealBreaker, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, listJobPostings, type Options, saveDocument } from '../sdk.gen';
+import type { AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CreateJobPostingData, CreateJobPostingError, CreateJobPostingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, ListJobPostingsData, ListJobPostingsResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -73,3 +73,153 @@ export const createJobPostingMutation = (options?: Partial<Options<CreateJobPost
     };
     return mutationOptions;
 };
+
+export const getCurrentDocumentQueryKey = (options: Options<GetCurrentDocumentData>) => createQueryKey('getCurrentDocument', options);
+
+/**
+ * Get Current Document
+ *
+ * The current version of a document, or null while the user has not written it.
+ */
+export const getCurrentDocumentOptions = (options: Options<GetCurrentDocumentData>) => queryOptions<GetCurrentDocumentResponse, GetCurrentDocumentError, GetCurrentDocumentResponse, ReturnType<typeof getCurrentDocumentQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getCurrentDocument({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCurrentDocumentQueryKey(options)
+});
+
+/**
+ * Save Document
+ */
+export const saveDocumentMutation = (options?: Partial<Options<SaveDocumentData>>): UseMutationOptions<SaveDocumentResponse, SaveDocumentError, Options<SaveDocumentData>> => {
+    const mutationOptions: UseMutationOptions<SaveDocumentResponse, SaveDocumentError, Options<SaveDocumentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveDocument({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getDocumentVersionQueryKey = (options: Options<GetDocumentVersionData>) => createQueryKey('getDocumentVersion', options);
+
+/**
+ * Get Document Version
+ */
+export const getDocumentVersionOptions = (options: Options<GetDocumentVersionData>) => queryOptions<GetDocumentVersionResponse, GetDocumentVersionError, GetDocumentVersionResponse, ReturnType<typeof getDocumentVersionQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getDocumentVersion({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getDocumentVersionQueryKey(options)
+});
+
+export const getCurrentDealBreakersQueryKey = (options?: Options<GetCurrentDealBreakersData>) => createQueryKey('getCurrentDealBreakers', options);
+
+/**
+ * Get Current Deal Breakers
+ *
+ * The current set of Deal Breakers, or null while the user has added none.
+ */
+export const getCurrentDealBreakersOptions = (options?: Options<GetCurrentDealBreakersData>) => queryOptions<GetCurrentDealBreakersResponse, DefaultError, GetCurrentDealBreakersResponse, ReturnType<typeof getCurrentDealBreakersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getCurrentDealBreakers({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCurrentDealBreakersQueryKey(options)
+});
+
+/**
+ * Add Deal Breaker
+ *
+ * Add a Deal Breaker; returns the new version of the set.
+ */
+export const addDealBreakerMutation = (options?: Partial<Options<AddDealBreakerData>>): UseMutationOptions<AddDealBreakerResponse, AddDealBreakerError, Options<AddDealBreakerData>> => {
+    const mutationOptions: UseMutationOptions<AddDealBreakerResponse, AddDealBreakerError, Options<AddDealBreakerData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addDealBreaker({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Delete Deal Breaker
+ *
+ * Delete a Deal Breaker; returns the new version of the set, without it.
+ */
+export const deleteDealBreakerMutation = (options?: Partial<Options<DeleteDealBreakerData>>): UseMutationOptions<DeleteDealBreakerResponse, DeleteDealBreakerError, Options<DeleteDealBreakerData>> => {
+    const mutationOptions: UseMutationOptions<DeleteDealBreakerResponse, DeleteDealBreakerError, Options<DeleteDealBreakerData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteDealBreaker({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Edit Deal Breaker
+ *
+ * Change a Deal Breaker's text, keeping its id; returns the new version of the set.
+ */
+export const editDealBreakerMutation = (options?: Partial<Options<EditDealBreakerData>>): UseMutationOptions<EditDealBreakerResponse, EditDealBreakerError, Options<EditDealBreakerData>> => {
+    const mutationOptions: UseMutationOptions<EditDealBreakerResponse, EditDealBreakerError, Options<EditDealBreakerData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await editDealBreaker({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getDealBreakerSetVersionQueryKey = (options: Options<GetDealBreakerSetVersionData>) => createQueryKey('getDealBreakerSetVersion', options);
+
+/**
+ * Get Deal Breaker Set Version
+ */
+export const getDealBreakerSetVersionOptions = (options: Options<GetDealBreakerSetVersionData>) => queryOptions<GetDealBreakerSetVersionResponse, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, ReturnType<typeof getDealBreakerSetVersionQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getDealBreakerSetVersion({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getDealBreakerSetVersionQueryKey(options)
+});

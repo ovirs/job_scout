@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CreateJobPostingData, CreateJobPostingErrors, CreateJobPostingResponses, ListJobPostingsData, ListJobPostingsResponses } from './types.gen';
+import type { AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CreateJobPostingData, CreateJobPostingErrors, CreateJobPostingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, ListJobPostingsData, ListJobPostingsResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -34,3 +34,74 @@ export const createJobPosting = <ThrowOnError extends boolean = false>(options: 
         ...options.headers
     }
 });
+
+/**
+ * Get Current Document
+ *
+ * The current version of a document, or null while the user has not written it.
+ */
+export const getCurrentDocument = <ThrowOnError extends boolean = false>(options: Options<GetCurrentDocumentData, ThrowOnError>): RequestResult<GetCurrentDocumentResponses, GetCurrentDocumentErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentDocumentResponses, GetCurrentDocumentErrors, ThrowOnError>({ url: '/api/documents/{kind}', ...options });
+
+/**
+ * Save Document
+ */
+export const saveDocument = <ThrowOnError extends boolean = false>(options: Options<SaveDocumentData, ThrowOnError>): RequestResult<SaveDocumentResponses, SaveDocumentErrors, ThrowOnError> => (options.client ?? client).post<SaveDocumentResponses, SaveDocumentErrors, ThrowOnError>({
+    url: '/api/documents/{kind}/versions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Document Version
+ */
+export const getDocumentVersion = <ThrowOnError extends boolean = false>(options: Options<GetDocumentVersionData, ThrowOnError>): RequestResult<GetDocumentVersionResponses, GetDocumentVersionErrors, ThrowOnError> => (options.client ?? client).get<GetDocumentVersionResponses, GetDocumentVersionErrors, ThrowOnError>({ url: '/api/documents/{kind}/versions/{version_id}', ...options });
+
+/**
+ * Get Current Deal Breakers
+ *
+ * The current set of Deal Breakers, or null while the user has added none.
+ */
+export const getCurrentDealBreakers = <ThrowOnError extends boolean = false>(options?: Options<GetCurrentDealBreakersData, ThrowOnError>): RequestResult<GetCurrentDealBreakersResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetCurrentDealBreakersResponses, unknown, ThrowOnError>({ url: '/api/deal-breakers', ...options });
+
+/**
+ * Add Deal Breaker
+ *
+ * Add a Deal Breaker; returns the new version of the set.
+ */
+export const addDealBreaker = <ThrowOnError extends boolean = false>(options: Options<AddDealBreakerData, ThrowOnError>): RequestResult<AddDealBreakerResponses, AddDealBreakerErrors, ThrowOnError> => (options.client ?? client).post<AddDealBreakerResponses, AddDealBreakerErrors, ThrowOnError>({
+    url: '/api/deal-breakers',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Deal Breaker
+ *
+ * Delete a Deal Breaker; returns the new version of the set, without it.
+ */
+export const deleteDealBreaker = <ThrowOnError extends boolean = false>(options: Options<DeleteDealBreakerData, ThrowOnError>): RequestResult<DeleteDealBreakerResponses, DeleteDealBreakerErrors, ThrowOnError> => (options.client ?? client).delete<DeleteDealBreakerResponses, DeleteDealBreakerErrors, ThrowOnError>({ url: '/api/deal-breakers/{deal_breaker_id}', ...options });
+
+/**
+ * Edit Deal Breaker
+ *
+ * Change a Deal Breaker's text, keeping its id; returns the new version of the set.
+ */
+export const editDealBreaker = <ThrowOnError extends boolean = false>(options: Options<EditDealBreakerData, ThrowOnError>): RequestResult<EditDealBreakerResponses, EditDealBreakerErrors, ThrowOnError> => (options.client ?? client).put<EditDealBreakerResponses, EditDealBreakerErrors, ThrowOnError>({
+    url: '/api/deal-breakers/{deal_breaker_id}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Deal Breaker Set Version
+ */
+export const getDealBreakerSetVersion = <ThrowOnError extends boolean = false>(options: Options<GetDealBreakerSetVersionData, ThrowOnError>): RequestResult<GetDealBreakerSetVersionResponses, GetDealBreakerSetVersionErrors, ThrowOnError> => (options.client ?? client).get<GetDealBreakerSetVersionResponses, GetDealBreakerSetVersionErrors, ThrowOnError>({ url: '/api/deal-breakers/versions/{version_id}', ...options });

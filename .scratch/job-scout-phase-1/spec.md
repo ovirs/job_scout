@@ -155,13 +155,14 @@ Phase 1 is everything before the ETL: no Watchlist, no Pipelines, no Screening R
 
 ### Standing rules
 
-- Nothing the user creates is physically deleted. Applications, Cover Letter drafts, notes, Deal Breakers and the user's documents are marked with a deletion date and hidden everywhere in the app. Phase 1 has no restore screen.
+- Nothing the user creates is physically deleted. Applications, Cover Letter drafts, notes, Deal Breakers and the user's documents are marked with a deletion date and hidden from the live app: current views and anything used for new work. A version that an Evaluation or Cover Letter draft references stays intact, deleted records included. Phase 1 has no restore screen.
 - Every LLM-produced record stores the model, the prompt version and the versions of the inputs it used.
 
 ### User inputs
 
 - Four kinds of user input: Career Profile, Preferences and Writing Guide (each one free-text document) and Deal Breakers (a list of one-sentence free-text items).
 - Each is versioned: saving creates a new immutable version, and Evaluations and Cover Letter drafts reference the versions they used. The Deal Breakers are versioned as a set. Each Deal Breaker also keeps a stable id across versions so verdicts can be compared between runs.
+- Deleting a Deal Breaker creates a new set version without it. Earlier set versions keep it and stay retrievable by id, so an Evaluation always shows the Deal Breakers it was judged against.
 - Editing any input triggers no LLM call.
 
 ### Job Posting model
