@@ -9,9 +9,10 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.extraction import ManualEntryExtraction
+from job_scout import job_postings
+from job_scout.extraction import ManualEntryExtraction, WorkplaceType
 from job_scout.llm import Failure, Outcome
-from job_scout.models import Clipping
+from job_scout.models import Clipping, JobPosting
 
 
 def submit(*, owner_id: uuid.UUID, pasted_text: str, url: str | None) -> Clipping:
@@ -20,11 +21,12 @@ def submit(*, owner_id: uuid.UUID, pasted_text: str, url: str | None) -> Clippin
 
 
 async def clipping(
-    session: AsyncSession, *, owner_id: uuid.UUID, clipping_id: int
+    session: AsyncSession, *, owner_id: uuid.UUID, clipping_id: int, for_update: bool = False
 ) -> Clipping | None:
-    return await session.scalar(
-        select(Clipping).where(Clipping.id == clipping_id, Clipping.owner_id == owner_id)
-    )
+    """The owner's clipping; `for_update` locks it until the transaction ends, so two
+    requests cannot both confirm it."""
+    query = select(Clipping).where(Clipping.id == clipping_id, Clipping.owner_id == owner_id)
+    return await session.scalar(query.with_for_update() if for_update else query)
 
 
 def retry(clipping: Clipping) -> None:
@@ -32,6 +34,51 @@ def retry(clipping: Clipping) -> None:
     assert clipping.status == "failed"
     clipping.status = "pending"
     clipping.failure_kind = clipping.failure_reason = None
+
+
+def confirm(
+    clipping: Clipping,
+    *,
+    title: str,
+    company: str,
+    location_text: str | None,
+    workplace_type: WorkplaceType | None,
+    description: str,
+) -> JobPosting:
+    """The Manual Entry a done clipping becomes: the envelope as the user corrected it, the
+    extracted fields as extracted, and the pasted text kept whole. It is never merged.
+
+    The workplace type is both envelope and extracted fact; the user's correction is
+    stored as both, so the two never disagree.
+    """
+    assert clipping.status == "done"
+    extracted_fields = extraction(clipping).extracted_fields()
+    extracted_fields.workplace_type = workplace_type
+    posting = job_postings.new_manual_entry(
+        owner_id=clipping.owner_id,
+        title=title,
+        company=company,
+        location_text=location_text,
+        workplace_type=workplace_type,
+        description=description,
+        url=clipping.url,
+        pasted_text=clipping.pasted_text,
+        extracted_fields=extracted_fields,
+    )
+    clipping.status = "confirmed"
+    clipping.job_posting = posting
+    return posting
+
+
+def abandon(clipping: Clipping) -> None:
+    """Leave a done or failed clipping unconfirmed for good; it is kept, never deleted."""
+    assert clipping.status in ("done", "failed")
+    clipping.status = "abandoned"
+
+
+def extraction(clipping: Clipping) -> ManualEntryExtraction:
+    assert clipping.extraction is not None
+    return ManualEntryExtraction.model_validate(clipping.extraction)
 
 
 def record(clipping: Clipping, outcome: Outcome[ManualEntryExtraction]) -> None:

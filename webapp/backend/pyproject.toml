@@ -27,6 +27,7 @@ dev = [
     "asgi-lifespan>=2.1.0",
     "httpx>=0.28.1",
     "mypy>=2.4.0",
+    "playwright>=1.64.0",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "ruff>=0.17.0",
@@ -38,6 +39,7 @@ asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 asyncio_default_test_loop_scope = "function"
 testpaths = ["tests"]
+markers = ["browser: drives the React app in a headless browser (deselect with -m 'not browser')"]
 
 [tool.mypy]
 strict = true

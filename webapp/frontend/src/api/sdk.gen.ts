@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CreateJobPostingData, CreateJobPostingErrors, CreateJobPostingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, ListJobPostingsData, ListJobPostingsResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListJobPostingsData, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -24,21 +24,35 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 export const listJobPostings = <ThrowOnError extends boolean = false>(options?: Options<ListJobPostingsData, ThrowOnError>): RequestResult<ListJobPostingsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListJobPostingsResponses, unknown, ThrowOnError>({ url: '/api/job-postings', ...options });
 
 /**
- * Create Job Posting
+ * Find Similar Job Postings
+ *
+ * Stored postings from the same company, compared case- and whitespace-insensitively,
+ * the most similar title first: the possible duplicates of a posting about to be saved.
  */
-export const createJobPosting = <ThrowOnError extends boolean = false>(options: Options<CreateJobPostingData, ThrowOnError>): RequestResult<CreateJobPostingResponses, CreateJobPostingErrors, ThrowOnError> => (options.client ?? client).post<CreateJobPostingResponses, CreateJobPostingErrors, ThrowOnError>({
-    url: '/api/job-postings',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
+export const findSimilarJobPostings = <ThrowOnError extends boolean = false>(options: Options<FindSimilarJobPostingsData, ThrowOnError>): RequestResult<FindSimilarJobPostingsResponses, FindSimilarJobPostingsErrors, ThrowOnError> => (options.client ?? client).get<FindSimilarJobPostingsResponses, FindSimilarJobPostingsErrors, ThrowOnError>({ url: '/api/job-postings/similar', ...options });
+
+/**
+ * Get Job Posting
+ */
+export const getJobPosting = <ThrowOnError extends boolean = false>(options: Options<GetJobPostingData, ThrowOnError>): RequestResult<GetJobPostingResponses, GetJobPostingErrors, ThrowOnError> => (options.client ?? client).get<GetJobPostingResponses, GetJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}', ...options });
+
+/**
+ * Close Job Posting
+ *
+ * Close a posting, keeping it: a Manual Entry is closed only by the user.
+ */
+export const closeJobPosting = <ThrowOnError extends boolean = false>(options: Options<CloseJobPostingData, ThrowOnError>): RequestResult<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError> => (options.client ?? client).post<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/close', ...options });
+
+/**
+ * Reopen Job Posting
+ */
+export const reopenJobPosting = <ThrowOnError extends boolean = false>(options: Options<ReopenJobPostingData, ThrowOnError>): RequestResult<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError> => (options.client ?? client).post<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/reopen', ...options });
 
 /**
  * Submit Clipping
  *
- * Store a paste as a pending clipping and queue its extraction; poll it for the result.
+ * Store the pasted text as a pending Clipping and queue its extraction; poll it for
+ * the result.
  */
 export const submitClipping = <ThrowOnError extends boolean = false>(options: Options<SubmitClippingData, ThrowOnError>): RequestResult<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError> => (options.client ?? client).post<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError>({
     url: '/api/clippings',
@@ -60,6 +74,28 @@ export const getClipping = <ThrowOnError extends boolean = false>(options: Optio
  * Queue the extraction of a failed clipping again.
  */
 export const retryClipping = <ThrowOnError extends boolean = false>(options: Options<RetryClippingData, ThrowOnError>): RequestResult<RetryClippingResponses, RetryClippingErrors, ThrowOnError> => (options.client ?? client).post<RetryClippingResponses, RetryClippingErrors, ThrowOnError>({ url: '/api/clippings/{clipping_id}/retry', ...options });
+
+/**
+ * Confirm Clipping
+ *
+ * Save a done Clipping as a Manual Entry, with the user's corrections.
+ */
+export const confirmClipping = <ThrowOnError extends boolean = false>(options: Options<ConfirmClippingData, ThrowOnError>): RequestResult<ConfirmClippingResponses, ConfirmClippingErrors, ThrowOnError> => (options.client ?? client).post<ConfirmClippingResponses, ConfirmClippingErrors, ThrowOnError>({
+    url: '/api/clippings/{clipping_id}/confirm',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Abandon Clipping
+ *
+ * Give up on a done or failed Clipping, for instance for a similar posting already
+ * stored; nothing is saved as a Job Posting.
+ */
+export const abandonClipping = <ThrowOnError extends boolean = false>(options: Options<AbandonClippingData, ThrowOnError>): RequestResult<AbandonClippingResponses, AbandonClippingErrors, ThrowOnError> => (options.client ?? client).post<AbandonClippingResponses, AbandonClippingErrors, ThrowOnError>({ url: '/api/clippings/{clipping_id}/abandon', ...options });
 
 /**
  * Get Current Document

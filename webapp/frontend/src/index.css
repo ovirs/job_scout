@@ -58,3 +58,64 @@ li {
   display: flex;
   gap: 0.5rem;
 }
+
+select {
+  justify-self: start;
+}
+
+.hint,
+.missing {
+  color: color-mix(in srgb, currentColor 65%, transparent);
+}
+
+.missing {
+  font-style: italic;
+}
+
+.badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.description {
+  white-space: pre-wrap;
+}
+
+.confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  align-items: start;
+}
+
+.confirmation > form {
+  flex: 1 1 30rem;
+}
+
+.confirmation > aside {
+  flex: 1 1 15rem;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 1rem;
+  margin: 0;
+}
+
+.facts dd {
+  margin: 0;
+}
+
+.technologies {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.technologies li {
+  margin-bottom: 0;
+}

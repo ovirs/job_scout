@@ -5,6 +5,34 @@ export type ClientOptions = {
 };
 
 /**
+ * ClippingConfirm
+ *
+ * The envelope of the Manual Entry, as the user corrected it on the confirmation screen.
+ */
+export type ClippingConfirm = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Company
+     */
+    company: string;
+    /**
+     * Location Text
+     */
+    location_text?: string | null;
+    /**
+     * Workplace Type
+     */
+    workplace_type?: 'remote' | 'hybrid' | 'onsite' | null;
+    /**
+     * Description
+     */
+    description: string;
+};
+
+/**
  * ClippingExtractionRead
  */
 export type ClippingExtractionRead = {
@@ -42,7 +70,7 @@ export type ClippingRead = {
     /**
      * Status
      */
-    status: 'pending' | 'done' | 'failed';
+    status: 'pending' | 'done' | 'failed' | 'confirmed' | 'abandoned';
     /**
      * Pasted Text
      */
@@ -65,6 +93,10 @@ export type ClippingRead = {
     prompt_version: string | null;
     failure: ExtractionFailureRead | null;
     extraction: ClippingExtractionRead | null;
+    /**
+     * Job Posting Id
+     */
+    job_posting_id: number | null;
 };
 
 /**
@@ -222,28 +254,6 @@ export type HttpValidationError = {
 };
 
 /**
- * JobPostingCreate
- */
-export type JobPostingCreate = {
-    /**
-     * Title
-     */
-    title: string;
-    /**
-     * Company
-     */
-    company: string;
-    /**
-     * Location Text
-     */
-    location_text?: string | null;
-    /**
-     * Description
-     */
-    description: string;
-};
-
-/**
  * JobPostingRead
  */
 export type JobPostingRead = {
@@ -279,6 +289,10 @@ export type JobPostingRead = {
      * Url
      */
     url: string | null;
+    /**
+     * Pasted Text
+     */
+    pasted_text: string | null;
     /**
      * Created At
      */
@@ -380,30 +394,131 @@ export type ListJobPostingsResponses = {
 
 export type ListJobPostingsResponse = ListJobPostingsResponses[keyof ListJobPostingsResponses];
 
-export type CreateJobPostingData = {
-    body: JobPostingCreate;
+export type FindSimilarJobPostingsData = {
+    body?: never;
     path?: never;
-    query?: never;
-    url: '/api/job-postings';
+    query: {
+        /**
+         * Company
+         */
+        company: string;
+        /**
+         * Title
+         */
+        title: string;
+    };
+    url: '/api/job-postings/similar';
 };
 
-export type CreateJobPostingErrors = {
+export type FindSimilarJobPostingsErrors = {
     /**
      * Validation Error
      */
     422: HttpValidationError;
 };
 
-export type CreateJobPostingError = CreateJobPostingErrors[keyof CreateJobPostingErrors];
+export type FindSimilarJobPostingsError = FindSimilarJobPostingsErrors[keyof FindSimilarJobPostingsErrors];
 
-export type CreateJobPostingResponses = {
+export type FindSimilarJobPostingsResponses = {
+    /**
+     * Response Find Similar Job Postings
+     *
+     * Successful Response
+     */
+    200: Array<JobPostingRead>;
+};
+
+export type FindSimilarJobPostingsResponse = FindSimilarJobPostingsResponses[keyof FindSimilarJobPostingsResponses];
+
+export type GetJobPostingData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}';
+};
+
+export type GetJobPostingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetJobPostingError = GetJobPostingErrors[keyof GetJobPostingErrors];
+
+export type GetJobPostingResponses = {
     /**
      * Successful Response
      */
-    201: JobPostingRead;
+    200: JobPostingRead;
 };
 
-export type CreateJobPostingResponse = CreateJobPostingResponses[keyof CreateJobPostingResponses];
+export type GetJobPostingResponse = GetJobPostingResponses[keyof GetJobPostingResponses];
+
+export type CloseJobPostingData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/close';
+};
+
+export type CloseJobPostingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CloseJobPostingError = CloseJobPostingErrors[keyof CloseJobPostingErrors];
+
+export type CloseJobPostingResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPostingRead;
+};
+
+export type CloseJobPostingResponse = CloseJobPostingResponses[keyof CloseJobPostingResponses];
+
+export type ReopenJobPostingData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/reopen';
+};
+
+export type ReopenJobPostingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReopenJobPostingError = ReopenJobPostingErrors[keyof ReopenJobPostingErrors];
+
+export type ReopenJobPostingResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPostingRead;
+};
+
+export type ReopenJobPostingResponse = ReopenJobPostingResponses[keyof ReopenJobPostingResponses];
 
 export type SubmitClippingData = {
     body: ClippingSubmit;
@@ -489,6 +604,66 @@ export type RetryClippingResponses = {
 };
 
 export type RetryClippingResponse = RetryClippingResponses[keyof RetryClippingResponses];
+
+export type ConfirmClippingData = {
+    body: ClippingConfirm;
+    path: {
+        /**
+         * Clipping Id
+         */
+        clipping_id: number;
+    };
+    query?: never;
+    url: '/api/clippings/{clipping_id}/confirm';
+};
+
+export type ConfirmClippingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfirmClippingError = ConfirmClippingErrors[keyof ConfirmClippingErrors];
+
+export type ConfirmClippingResponses = {
+    /**
+     * Successful Response
+     */
+    201: JobPostingRead;
+};
+
+export type ConfirmClippingResponse = ConfirmClippingResponses[keyof ConfirmClippingResponses];
+
+export type AbandonClippingData = {
+    body?: never;
+    path: {
+        /**
+         * Clipping Id
+         */
+        clipping_id: number;
+    };
+    query?: never;
+    url: '/api/clippings/{clipping_id}/abandon';
+};
+
+export type AbandonClippingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AbandonClippingError = AbandonClippingErrors[keyof AbandonClippingErrors];
+
+export type AbandonClippingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClippingRead;
+};
+
+export type AbandonClippingResponse = AbandonClippingResponses[keyof AbandonClippingResponses];
 
 export type GetCurrentDocumentData = {
     body?: never;

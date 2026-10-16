@@ -8,6 +8,10 @@ Job Scout surfaces the Job Postings that match the user's Career Profile, evalua
 The actual job description and details available on the market, whether scraped via ATS or entered manually.
 _Avoid_: Job, Listing, Opportunity
 
+**Envelope**:
+The part of a Job Posting that every origin provides the same way: its source, company, title, location, workplace type, description, link, and when it was first seen, last seen and closed. The rest is what the LLM reads out of the description.
+_Avoid_: Header, Metadata, Core fields
+
 **Manual Entry**:
 A Job Posting the user added by hand, from a Clipping, rather than one a Pipeline pulled.
 _Avoid_: Manual posting, Custom posting

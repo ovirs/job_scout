@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { addDealBreaker, createJobPosting, deleteDealBreaker, editDealBreaker, getClipping, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, listJobPostings, type Options, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
-import type { AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CreateJobPostingData, CreateJobPostingError, CreateJobPostingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, ListJobPostingsData, ListJobPostingsResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listJobPostings, type Options, reopenJobPosting, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListJobPostingsData, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -57,13 +57,71 @@ export const listJobPostingsOptions = (options?: Options<ListJobPostingsData>) =
     queryKey: listJobPostingsQueryKey(options)
 });
 
+export const findSimilarJobPostingsQueryKey = (options: Options<FindSimilarJobPostingsData>) => createQueryKey('findSimilarJobPostings', options);
+
 /**
- * Create Job Posting
+ * Find Similar Job Postings
+ *
+ * Stored postings from the same company, compared case- and whitespace-insensitively,
+ * the most similar title first: the possible duplicates of a posting about to be saved.
  */
-export const createJobPostingMutation = (options?: Partial<Options<CreateJobPostingData>>): UseMutationOptions<CreateJobPostingResponse, CreateJobPostingError, Options<CreateJobPostingData>> => {
-    const mutationOptions: UseMutationOptions<CreateJobPostingResponse, CreateJobPostingError, Options<CreateJobPostingData>> = {
+export const findSimilarJobPostingsOptions = (options: Options<FindSimilarJobPostingsData>) => queryOptions<FindSimilarJobPostingsResponse, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, ReturnType<typeof findSimilarJobPostingsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await findSimilarJobPostings({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: findSimilarJobPostingsQueryKey(options)
+});
+
+export const getJobPostingQueryKey = (options: Options<GetJobPostingData>) => createQueryKey('getJobPosting', options);
+
+/**
+ * Get Job Posting
+ */
+export const getJobPostingOptions = (options: Options<GetJobPostingData>) => queryOptions<GetJobPostingResponse, GetJobPostingError, GetJobPostingResponse, ReturnType<typeof getJobPostingQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getJobPosting({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getJobPostingQueryKey(options)
+});
+
+/**
+ * Close Job Posting
+ *
+ * Close a posting, keeping it: a Manual Entry is closed only by the user.
+ */
+export const closeJobPostingMutation = (options?: Partial<Options<CloseJobPostingData>>): UseMutationOptions<CloseJobPostingResponse, CloseJobPostingError, Options<CloseJobPostingData>> => {
+    const mutationOptions: UseMutationOptions<CloseJobPostingResponse, CloseJobPostingError, Options<CloseJobPostingData>> = {
         mutationFn: async (fnOptions) => {
-            const { data } = await createJobPosting({
+            const { data } = await closeJobPosting({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Reopen Job Posting
+ */
+export const reopenJobPostingMutation = (options?: Partial<Options<ReopenJobPostingData>>): UseMutationOptions<ReopenJobPostingResponse, ReopenJobPostingError, Options<ReopenJobPostingData>> => {
+    const mutationOptions: UseMutationOptions<ReopenJobPostingResponse, ReopenJobPostingError, Options<ReopenJobPostingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await reopenJobPosting({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -77,7 +135,8 @@ export const createJobPostingMutation = (options?: Partial<Options<CreateJobPost
 /**
  * Submit Clipping
  *
- * Store a paste as a pending clipping and queue its extraction; poll it for the result.
+ * Store the pasted text as a pending Clipping and queue its extraction; poll it for
+ * the result.
  */
 export const submitClippingMutation = (options?: Partial<Options<SubmitClippingData>>): UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> => {
     const mutationOptions: UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> = {
@@ -120,6 +179,45 @@ export const retryClippingMutation = (options?: Partial<Options<RetryClippingDat
     const mutationOptions: UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await retryClipping({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Confirm Clipping
+ *
+ * Save a done Clipping as a Manual Entry, with the user's corrections.
+ */
+export const confirmClippingMutation = (options?: Partial<Options<ConfirmClippingData>>): UseMutationOptions<ConfirmClippingResponse, ConfirmClippingError, Options<ConfirmClippingData>> => {
+    const mutationOptions: UseMutationOptions<ConfirmClippingResponse, ConfirmClippingError, Options<ConfirmClippingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await confirmClipping({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Abandon Clipping
+ *
+ * Give up on a done or failed Clipping, for instance for a similar posting already
+ * stored; nothing is saved as a Job Posting.
+ */
+export const abandonClippingMutation = (options?: Partial<Options<AbandonClippingData>>): UseMutationOptions<AbandonClippingResponse, AbandonClippingError, Options<AbandonClippingData>> => {
+    const mutationOptions: UseMutationOptions<AbandonClippingResponse, AbandonClippingError, Options<AbandonClippingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await abandonClipping({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

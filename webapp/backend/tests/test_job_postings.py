@@ -1,25 +1,17 @@
 from collections.abc import Awaitable, Callable
 
 import httpx
-
-POSTING = {
-    "title": "Senior Data Engineer",
-    "company": "Acme",
-    "location_text": "Bucharest, Romania",
-    "description": "Build and run our batch and streaming pipelines.",
-}
+from clipping_helpers import save_manual_entry
 
 
 async def test_a_saved_job_posting_is_listed_and_processed_by_the_worker(
     client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
 ) -> None:
-    saved = await client.post("/api/job-postings", json=POSTING)
-    assert saved.status_code == 201
-    assert saved.json()["processing_status"] == "queued"
+    saved = await save_manual_entry(client, run_queued_tasks)
+    assert saved["processing_status"] == "queued"
 
     listed = (await client.get("/api/job-postings")).json()
-    assert [{k: p[k] for k in POSTING} for p in listed] == [POSTING]
-    assert listed[0]["id"] == saved.json()["id"]
+    assert [p["id"] for p in listed] == [saved["id"]]
     assert listed[0]["processing_status"] == "queued"
 
     await run_queued_tasks()
@@ -28,9 +20,11 @@ async def test_a_saved_job_posting_is_listed_and_processed_by_the_worker(
     assert listed[0]["processing_status"] == "processed"
 
 
-async def test_the_list_shows_the_newest_job_posting_first(client: httpx.AsyncClient) -> None:
+async def test_the_list_shows_the_newest_job_posting_first(
+    client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
+) -> None:
     for title in ["Data Engineer", "Analytics Engineer", "Platform Engineer"]:
-        await client.post("/api/job-postings", json={**POSTING, "title": title})
+        await save_manual_entry(client, run_queued_tasks, title=title)
 
     listed = (await client.get("/api/job-postings")).json()
 
@@ -39,3 +33,7 @@ async def test_the_list_shows_the_newest_job_posting_first(client: httpx.AsyncCl
         "Analytics Engineer",
         "Data Engineer",
     ]
+
+
+async def test_an_unknown_job_posting_is_not_found(client: httpx.AsyncClient) -> None:
+    assert (await client.get("/api/job-postings/1")).status_code == 404

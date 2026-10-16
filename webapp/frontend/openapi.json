@@ -25,22 +25,158 @@
             }
           }
         }
-      },
-      "post": {
-        "summary": "Create Job Posting",
-        "operationId": "create_job_posting",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/JobPostingCreate"
+      }
+    },
+    "/api/job-postings/similar": {
+      "get": {
+        "summary": "Find Similar Job Postings",
+        "description": "Stored postings from the same company, compared case- and whitespace-insensitively,\nthe most similar title first: the possible duplicates of a posting about to be saved.",
+        "operationId": "find_similar_job_postings",
+        "parameters": [
+          {
+            "name": "company",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "title": "Company"
+            }
+          },
+          {
+            "name": "title",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Title"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/JobPostingRead"
+                  },
+                  "title": "Response Find Similar Job Postings"
+                }
               }
             }
           },
-          "required": true
-        },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}": {
+      "get": {
+        "summary": "Get Job Posting",
+        "operationId": "get_job_posting",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
         "responses": {
-          "201": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}/close": {
+      "post": {
+        "summary": "Close Job Posting",
+        "description": "Close a posting, keeping it: a Manual Entry is closed only by the user.",
+        "operationId": "close_job_posting",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}/reopen": {
+      "post": {
+        "summary": "Reopen Job Posting",
+        "operationId": "reopen_job_posting",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -66,7 +202,7 @@
     "/api/clippings": {
       "post": {
         "summary": "Submit Clipping",
-        "description": "Store a paste as a pending clipping and queue its extraction; poll it for the result.",
+        "description": "Store the pasted text as a pending Clipping and queue its extraction; poll it for\nthe result.",
         "operationId": "submit_clipping",
         "requestBody": {
           "content": {
@@ -146,6 +282,96 @@
         "summary": "Retry Clipping",
         "description": "Queue the extraction of a failed clipping again.",
         "operationId": "retry_clipping",
+        "parameters": [
+          {
+            "name": "clipping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clipping Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClippingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clippings/{clipping_id}/confirm": {
+      "post": {
+        "summary": "Confirm Clipping",
+        "description": "Save a done Clipping as a Manual Entry, with the user's corrections.",
+        "operationId": "confirm_clipping",
+        "parameters": [
+          {
+            "name": "clipping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clipping Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClippingConfirm"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clippings/{clipping_id}/abandon": {
+      "post": {
+        "summary": "Abandon Clipping",
+        "description": "Give up on a done or failed Clipping, for instance for a similar posting already\nstored; nothing is saved as a Job Posting.",
+        "operationId": "abandon_clipping",
         "parameters": [
           {
             "name": "clipping_id",
@@ -535,6 +761,62 @@
   },
   "components": {
     "schemas": {
+      "ClippingConfirm": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Company"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Text"
+          },
+          "workplace_type": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "remote",
+                  "hybrid",
+                  "onsite"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workplace Type"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Description"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "description"
+        ],
+        "title": "ClippingConfirm",
+        "description": "The envelope of the Manual Entry, as the user corrected it on the confirmation screen."
+      },
       "ClippingExtractionRead": {
         "properties": {
           "title": {
@@ -604,7 +886,9 @@
             "enum": [
               "pending",
               "done",
-              "failed"
+              "failed",
+              "confirmed",
+              "abandoned"
             ],
             "title": "Status"
           },
@@ -669,6 +953,17 @@
                 "type": "null"
               }
             ]
+          },
+          "job_posting_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Posting Id"
           }
         },
         "type": "object",
@@ -681,7 +976,8 @@
           "model",
           "prompt_version",
           "failure",
-          "extraction"
+          "extraction",
+          "job_posting_id"
         ],
         "title": "ClippingRead"
       },
@@ -964,44 +1260,6 @@
         "type": "object",
         "title": "HTTPValidationError"
       },
-      "JobPostingCreate": {
-        "properties": {
-          "title": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Title"
-          },
-          "company": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Company"
-          },
-          "location_text": {
-            "anyOf": [
-              {
-                "type": "string",
-                "minLength": 1
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Location Text"
-          },
-          "description": {
-            "type": "string",
-            "minLength": 1,
-            "title": "Description"
-          }
-        },
-        "type": "object",
-        "required": [
-          "title",
-          "company",
-          "description"
-        ],
-        "title": "JobPostingCreate"
-      },
       "JobPostingRead": {
         "properties": {
           "id": {
@@ -1062,6 +1320,17 @@
             ],
             "title": "Url"
           },
+          "pasted_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pasted Text"
+          },
           "created_at": {
             "type": "string",
             "format": "date-time",
@@ -1108,6 +1377,7 @@
           "workplace_type",
           "description",
           "url",
+          "pasted_text",
           "created_at",
           "closed_at",
           "extracted_fields",

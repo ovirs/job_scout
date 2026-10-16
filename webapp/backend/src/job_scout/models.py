@@ -44,7 +44,8 @@ class JobPosting(Base):
     location_text: Mapped[str | None]
     workplace_type: Mapped[WorkplaceType | None] = mapped_column(String)
     description: Mapped[str]
-    url: Mapped[str | None]
+    url: Mapped[str | None]  # a reference, never fetched
+    pasted_text: Mapped[str | None]  # a Manual Entry's whole Clipping, kept next to it
     content_hash: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(server_default=func.now())
@@ -67,7 +68,7 @@ class JobPosting(Base):
     processed_at: Mapped[datetime | None]
 
 
-ClippingStatus = Literal["pending", "done", "failed"]
+ClippingStatus = Literal["pending", "done", "failed", "confirmed", "abandoned"]
 
 
 class Clipping(Base):
@@ -75,7 +76,8 @@ class Clipping(Base):
 
     Pending while the worker extracts it; done once the extraction and the
     description cut from the pasted text are stored; failed, with the reason, when
-    every attempt failed, until the user retries.
+    every attempt failed, until the user retries. Once done, the user either
+    confirms it as a Manual Entry or abandons it; neither deletes it.
     """
 
     __tablename__ = "clippings"
@@ -102,6 +104,10 @@ class Clipping(Base):
     extraction: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     description: Mapped[str | None]
     description_cut: Mapped[bool | None]  # false when the whole pasted text is the description
+
+    # Once confirmed: the Manual Entry it became
+    job_posting_id: Mapped[int | None] = mapped_column(ForeignKey("job_postings.id"), unique=True)
+    job_posting: Mapped[JobPosting | None] = relationship(lazy="raise")
 
 
 class DocumentVersion(Base):

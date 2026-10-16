@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout import clippings, job_postings, queue, user_inputs
 from job_scout.config import Settings
-from job_scout.extraction import ExtractedFields, ManualEntryExtraction, WorkplaceType
+from job_scout.extraction import ExtractedFields, WorkplaceType
 from job_scout.llm import FailureKind
 from job_scout.models import (
     Clipping,
@@ -30,11 +30,14 @@ from job_scout.runtime import open_runtime
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
 
-class JobPostingCreate(BaseModel):
+class ClippingConfirm(BaseModel):
+    """The envelope of the Manual Entry, as the user corrected it on the confirmation screen."""
+
     title: NonBlank
     company: NonBlank
     location_text: NonBlank | None = None
-    description: Annotated[str, Field(min_length=1)]
+    workplace_type: WorkplaceType | None = None
+    description: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as given
 
 
 class JobPostingRead(BaseModel):
@@ -46,6 +49,7 @@ class JobPostingRead(BaseModel):
     workplace_type: WorkplaceType | None
     description: str
     url: str | None
+    pasted_text: str | None  # a Manual Entry's whole Clipping
     created_at: datetime
     closed_at: datetime | None
     extracted_fields: ExtractedFields | None
@@ -62,6 +66,7 @@ class JobPostingRead(BaseModel):
             workplace_type=posting.workplace_type,
             description=posting.description,
             url=posting.url,
+            pasted_text=posting.pasted_text,
             created_at=posting.created_at,
             closed_at=posting.closed_at,
             extracted_fields=posting.extracted_fields,
@@ -98,6 +103,7 @@ class ClippingRead(BaseModel):
     prompt_version: str | None
     failure: ExtractionFailureRead | None
     extraction: ClippingExtractionRead | None
+    job_posting_id: int | None  # the Manual Entry it was confirmed as
 
     @classmethod
     def of(cls, clipping: Clipping) -> "ClippingRead":
@@ -112,13 +118,14 @@ class ClippingRead(BaseModel):
             failure=None
             if clipping.failure_kind is None or clipping.failure_reason is None
             else ExtractionFailureRead(kind=clipping.failure_kind, reason=clipping.failure_reason),
-            extraction=None if clipping.status != "done" else _extraction_read(clipping),
+            extraction=None if clipping.extraction is None else _extraction_read(clipping),
+            job_posting_id=clipping.job_posting_id,
         )
 
 
 def _extraction_read(clipping: Clipping) -> ClippingExtractionRead:
     assert clipping.description is not None and clipping.description_cut is not None
-    extraction = ManualEntryExtraction.model_validate(clipping.extraction)
+    extraction = clippings.extraction(clipping)
     return ClippingExtractionRead(
         title=extraction.title,
         company=extraction.company,
@@ -196,17 +203,6 @@ Owner = Annotated[uuid.UUID, Depends(current_owner)]
 router = APIRouter(prefix="/api")
 
 
-@router.post("/job-postings", status_code=201)
-async def create_job_posting(
-    body: JobPostingCreate, session: Session, task_queue: TaskQueue, owner: Owner
-) -> JobPostingRead:
-    posting = job_postings.new_manual_entry(owner_id=owner, **body.model_dump())
-    session.add(posting)
-    await session.commit()
-    await queue.enqueue_mark_processed(task_queue, posting.id)
-    return JobPostingRead.of(posting)
-
-
 @router.get("/job-postings")
 async def list_job_postings(session: Session, owner: Owner) -> list[JobPostingRead]:
     postings = await session.scalars(
@@ -215,6 +211,45 @@ async def list_job_postings(session: Session, owner: Owner) -> list[JobPostingRe
         .order_by(JobPosting.created_at.desc(), JobPosting.id.desc())
     )
     return [JobPostingRead.of(p) for p in postings]
+
+
+@router.get("/job-postings/similar")
+async def find_similar_job_postings(
+    company: NonBlank, title: str, session: Session, owner: Owner
+) -> list[JobPostingRead]:
+    """Stored postings from the same company, compared case- and whitespace-insensitively,
+    the most similar title first: the possible duplicates of a posting about to be saved."""
+    postings = await job_postings.similar(session, owner_id=owner, company=company, title=title)
+    return [JobPostingRead.of(p) for p in postings]
+
+
+@router.get("/job-postings/{job_posting_id}")
+async def get_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
+    return JobPostingRead.of(await _job_posting(session, owner, job_posting_id))
+
+
+@router.post("/job-postings/{job_posting_id}/close")
+async def close_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
+    """Close a posting, keeping it: a Manual Entry is closed only by the user."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    job_postings.close(posting)
+    await session.commit()
+    return JobPostingRead.of(posting)
+
+
+@router.post("/job-postings/{job_posting_id}/reopen")
+async def reopen_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
+    posting = await _job_posting(session, owner, job_posting_id)
+    job_postings.reopen(posting)
+    await session.commit()
+    return JobPostingRead.of(posting)
+
+
+async def _job_posting(session: AsyncSession, owner: uuid.UUID, job_posting_id: int) -> JobPosting:
+    posting = await job_postings.job_posting(session, owner_id=owner, job_posting_id=job_posting_id)
+    if posting is None:
+        raise HTTPException(status_code=404, detail="No such Job Posting")
+    return posting
 
 
 @router.post("/clippings", status_code=201)
@@ -249,8 +284,46 @@ async def retry_clipping(
     return ClippingRead.of(clipping)
 
 
-async def _clipping(session: AsyncSession, owner: uuid.UUID, clipping_id: int) -> Clipping:
-    clipping = await clippings.clipping(session, owner_id=owner, clipping_id=clipping_id)
+@router.post("/clippings/{clipping_id}/confirm", status_code=201)
+async def confirm_clipping(
+    clipping_id: int,
+    body: ClippingConfirm,
+    session: Session,
+    task_queue: TaskQueue,
+    owner: Owner,
+) -> JobPostingRead:
+    """Save a done Clipping as a Manual Entry, with the user's corrections."""
+    clipping = await _clipping(session, owner, clipping_id, for_update=True)
+    if clipping.status != "done":
+        raise HTTPException(status_code=409, detail="Only a done Clipping can be confirmed")
+    posting = clippings.confirm(clipping, **body.model_dump())
+    await session.commit()
+    # The seam for the Evaluation: a confirmed Manual Entry enqueues it here (#5). Until
+    # then the walking skeleton's task stands in for it.
+    await queue.enqueue_mark_processed(task_queue, posting.id)
+    return JobPostingRead.of(posting)
+
+
+@router.post("/clippings/{clipping_id}/abandon")
+async def abandon_clipping(clipping_id: int, session: Session, owner: Owner) -> ClippingRead:
+    """Give up on a done or failed Clipping, for instance for a similar posting already
+    stored; nothing is saved as a Job Posting."""
+    clipping = await _clipping(session, owner, clipping_id, for_update=True)
+    if clipping.status not in ("done", "failed"):
+        raise HTTPException(
+            status_code=409, detail="Only a done or failed Clipping can be abandoned"
+        )
+    clippings.abandon(clipping)
+    await session.commit()
+    return ClippingRead.of(clipping)
+
+
+async def _clipping(
+    session: AsyncSession, owner: uuid.UUID, clipping_id: int, *, for_update: bool = False
+) -> Clipping:
+    clipping = await clippings.clipping(
+        session, owner_id=owner, clipping_id=clipping_id, for_update=for_update
+    )
     if clipping is None:
         raise HTTPException(status_code=404, detail="No such Clipping")
     return clipping

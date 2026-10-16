@@ -1,20 +1,18 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { type FormEvent, Fragment, useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Fragment, type ReactNode, useEffect, useState } from 'react'
 import { age } from './age'
-import {
-  createJobPostingMutation,
-  listJobPostingsOptions,
-  listJobPostingsQueryKey,
-} from './api/@tanstack/react-query.gen'
+import { listJobPostingsOptions } from './api/@tanstack/react-query.gen'
+import { ClippingPage, NewClippingForm } from './ClippingPage'
 import { DealBreakersPage } from './DealBreakersPage'
 import { DOCUMENTS, type DocumentKind, DocumentPage } from './DocumentPage'
+import { JobPostingPage } from './JobPostingPage'
 
 const JOB_POSTINGS = {
   hash: '#/',
   label: 'Job Postings',
   page: (
     <>
-      <NewJobPostingForm />
+      <NewClippingForm />
       <JobPostingList />
     </>
   ),
@@ -32,9 +30,26 @@ function documentPage(kind: DocumentKind) {
   return { hash: `#/${kind}`, label: DOCUMENTS[kind].title, page: <DocumentPage kind={kind} /> }
 }
 
+/** Pages for one record, reached by link rather than from the navigation. */
+const RECORD_PAGES: [RegExp, (id: number) => ReactNode][] = [
+  [/^#\/clippings\/(\d+)$/, (id) => <ClippingPage id={id} />],
+  [/^#\/job-postings\/(\d+)$/, (id) => <JobPostingPage id={id} />],
+]
+
+function recordPage(hash: string): ReactNode | null {
+  for (const [pattern, page] of RECORD_PAGES) {
+    const match = pattern.exec(hash)
+    if (match) return page(Number(match[1]))
+  }
+  return null
+}
+
 export default function App() {
   const hash = useHash()
-  const current = PAGES.find((page) => page.hash === hash) ?? JOB_POSTINGS
+  const record = recordPage(hash)
+  const current = record
+    ? { hash, page: record }
+    : (PAGES.find((page) => page.hash === hash) ?? JOB_POSTINGS)
 
   return (
     <main>
@@ -66,58 +81,6 @@ function useHash(): string {
   return hash
 }
 
-const EMPTY_FORM = { title: '', company: '', location_text: '', description: '' }
-
-function NewJobPostingForm() {
-  const queryClient = useQueryClient()
-  const [form, setForm] = useState(EMPTY_FORM)
-  const save = useMutation({
-    ...createJobPostingMutation(),
-    onSuccess: () => {
-      setForm(EMPTY_FORM)
-      return queryClient.invalidateQueries({ queryKey: listJobPostingsQueryKey() })
-    },
-  })
-
-  function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    save.mutate({ body: { ...form, location_text: form.location_text.trim() || null } })
-  }
-
-  const field = (name: keyof typeof EMPTY_FORM) => ({
-    name,
-    value: form[name],
-    onChange: (event: { target: { value: string } }) =>
-      setForm({ ...form, [name]: event.target.value }),
-  })
-
-  return (
-    <form onSubmit={submit}>
-      <h2>New job posting</h2>
-      <label>
-        Title
-        <input required {...field('title')} />
-      </label>
-      <label>
-        Company
-        <input required {...field('company')} />
-      </label>
-      <label>
-        Location
-        <input {...field('location_text')} />
-      </label>
-      <label>
-        Description
-        <textarea required rows={10} {...field('description')} />
-      </label>
-      <button type="submit" disabled={save.isPending}>
-        {save.isPending ? 'Saving…' : 'Save'}
-      </button>
-      {save.isError && <p role="alert">Could not save the job posting. Try again.</p>}
-    </form>
-  )
-}
-
 function JobPostingList() {
   const postings = useQuery({
     ...listJobPostingsOptions(),
@@ -146,11 +109,15 @@ function JobPostingList() {
           <tbody>
             {postings.data.map((posting) => (
               <tr key={posting.id}>
-                <td>{posting.title}</td>
+                <td>
+                  <a href={`#/job-postings/${posting.id}`}>{posting.title}</a>
+                </td>
                 <td>{posting.company}</td>
                 <td>{posting.location_text}</td>
                 <td>{age(posting.created_at)}</td>
-                <td>{posting.processing_status}</td>
+                <td>
+                  {posting.closed_at ? `closed ${age(posting.closed_at)}` : posting.processing_status}
+                </td>
               </tr>
             ))}
           </tbody>
