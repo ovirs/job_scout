@@ -8,6 +8,14 @@ Job Scout surfaces the Job Postings that match the user's Career Profile, evalua
 The actual job description and details available on the market, whether scraped via ATS or entered manually.
 _Avoid_: Job, Listing, Opportunity
 
+**Manual Entry**:
+A Job Posting the user added by hand, from a Clipping, rather than one a Pipeline pulled.
+_Avoid_: Manual posting, Custom posting
+
+**Clipping**:
+The text the user pasted from a page showing a Job Posting, kept whole while the app reads it, until the user confirms it as a Manual Entry or abandons it. A Clipping is not a Job Posting.
+_Avoid_: Paste, Entry draft, Import, Pending entry
+
 **Triage**:
 The user's own sorting of a Job Posting into Interested, Maybe or Ignored. It overrides the Evaluation's recommendation. A Job Posting the user has not sorted is untriaged.
 _Avoid_: Mark, Decision, Rating, Screening (which is done by Screening Rules)

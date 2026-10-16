@@ -63,6 +63,124 @@
         }
       }
     },
+    "/api/clippings": {
+      "post": {
+        "summary": "Submit Clipping",
+        "description": "Store a paste as a pending clipping and queue its extraction; poll it for the result.",
+        "operationId": "submit_clipping",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClippingSubmit"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClippingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clippings/{clipping_id}": {
+      "get": {
+        "summary": "Get Clipping",
+        "operationId": "get_clipping",
+        "parameters": [
+          {
+            "name": "clipping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clipping Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClippingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/clippings/{clipping_id}/retry": {
+      "post": {
+        "summary": "Retry Clipping",
+        "description": "Queue the extraction of a failed clipping again.",
+        "operationId": "retry_clipping",
+        "parameters": [
+          {
+            "name": "clipping_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Clipping Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClippingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/documents/{kind}": {
       "get": {
         "summary": "Get Current Document",
@@ -417,6 +535,183 @@
   },
   "components": {
     "schemas": {
+      "ClippingExtractionRead": {
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "company": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Company"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Text"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "description_cut": {
+            "type": "boolean",
+            "title": "Description Cut"
+          },
+          "extracted_fields": {
+            "$ref": "#/components/schemas/ExtractedFields"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "location_text",
+          "description",
+          "description_cut",
+          "extracted_fields"
+        ],
+        "title": "ClippingExtractionRead"
+      },
+      "ClippingRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "pasted_text": {
+            "type": "string",
+            "title": "Pasted Text"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExtractionFailureRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ClippingExtractionRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "pasted_text",
+          "url",
+          "created_at",
+          "model",
+          "prompt_version",
+          "failure",
+          "extraction"
+        ],
+        "title": "ClippingRead"
+      },
+      "ClippingSubmit": {
+        "properties": {
+          "pasted_text": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "title": "Pasted Text"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "type": "object",
+        "required": [
+          "pasted_text"
+        ],
+        "title": "ClippingSubmit"
+      },
       "DealBreakerRead": {
         "properties": {
           "id": {
@@ -632,6 +927,29 @@
           "nice_to_have_technologies"
         ],
         "title": "ExtractedFields"
+      },
+      "ExtractionFailureRead": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "error",
+              "refusal",
+              "malformed"
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "ExtractionFailureRead"
       },
       "HTTPValidationError": {
         "properties": {

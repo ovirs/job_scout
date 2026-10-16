@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { addDealBreaker, createJobPosting, deleteDealBreaker, editDealBreaker, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, listJobPostings, type Options, saveDocument } from '../sdk.gen';
-import type { AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CreateJobPostingData, CreateJobPostingError, CreateJobPostingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, ListJobPostingsData, ListJobPostingsResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse } from '../types.gen';
+import { addDealBreaker, createJobPosting, deleteDealBreaker, editDealBreaker, getClipping, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, listJobPostings, type Options, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
+import type { AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CreateJobPostingData, CreateJobPostingError, CreateJobPostingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, ListJobPostingsData, ListJobPostingsResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -64,6 +64,62 @@ export const createJobPostingMutation = (options?: Partial<Options<CreateJobPost
     const mutationOptions: UseMutationOptions<CreateJobPostingResponse, CreateJobPostingError, Options<CreateJobPostingData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await createJobPosting({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Submit Clipping
+ *
+ * Store a paste as a pending clipping and queue its extraction; poll it for the result.
+ */
+export const submitClippingMutation = (options?: Partial<Options<SubmitClippingData>>): UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> => {
+    const mutationOptions: UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await submitClipping({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getClippingQueryKey = (options: Options<GetClippingData>) => createQueryKey('getClipping', options);
+
+/**
+ * Get Clipping
+ */
+export const getClippingOptions = (options: Options<GetClippingData>) => queryOptions<GetClippingResponse, GetClippingError, GetClippingResponse, ReturnType<typeof getClippingQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getClipping({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getClippingQueryKey(options)
+});
+
+/**
+ * Retry Clipping
+ *
+ * Queue the extraction of a failed clipping again.
+ */
+export const retryClippingMutation = (options?: Partial<Options<RetryClippingData>>): UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> => {
+    const mutationOptions: UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await retryClipping({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

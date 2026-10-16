@@ -36,11 +36,11 @@ Phase 1 is everything before the ETL: no Watchlist, no Pipelines, no Screening R
 ### Manual entry
 
 11. As the user, I want to paste a Job Posting's text into a single text box, so that I can add a posting from any site, including LinkedIn, in one step.
-12. As the user, I want to give an optional URL with the paste, stored as a reference and never fetched, so that I can go back to the original without the app scraping anything.
-13. As the user, I want the app to read the paste and find the title, company, location and the description itself, so that I do not have to fill in a form.
-14. As the user, I want the description cut out of my paste by its first and last line rather than retyped by the LLM, so that the stored description is always my own paste, word for word, without the page's menus and buttons.
+12. As the user, I want to give an optional URL with the pasted text, stored as a reference and never fetched, so that I can go back to the original without the app scraping anything.
+13. As the user, I want the app to read the pasted text and find the title, company, location and the description itself, so that I do not have to fill in a form.
+14. As the user, I want the description cut out of the text I pasted by its first and last line rather than retyped by the LLM, so that the stored description is always my own text, word for word, without the page's menus and buttons.
 15. As the user, I want to see what was found on a confirmation screen and correct the title, company, location, workplace type and description before saving, so that a wrong reading never gets stored.
-16. As the user, I want to see a clear status while the paste is being read, and the reason if reading fails, with a way to retry, so that I am never left on a blank screen.
+16. As the user, I want to see a clear status while the pasted text is being read, and the reason if reading fails, with a way to retry, so that I am never left on a blank screen.
 17. As the user, I want the confirmation screen to show similar postings I already stored from the same company, so that I do not add the same posting twice.
 18. As the user, I want to choose between opening the existing posting and saving mine anyway, so that a duplicate is never merged or discarded without my say.
 19. As the user, I want the full pasted text kept next to the posting, so that nothing I pasted is lost if the cut was wrong.
@@ -179,12 +179,12 @@ Phase 1 is everything before the ETL: no Watchlist, no Pipelines, no Screening R
 ### Manual entry flow
 
 1. The user submits pasted text and an optional URL. The URL is stored, never fetched.
-2. The backend stores a pending entry and enqueues extraction. The frontend polls its status.
-3. The worker runs the extraction step with the manual entry variant of the prompt (`ManualEntryExtraction`). Code cuts the description from the pasted text from the first occurrence of `description_first_line` to `description_last_line`, never using LLM-written description text. If the markers cannot be found, the confirmation screen opens with the whole paste as the description for the user to trim.
+2. The backend stores the pasted text as a pending Clipping and enqueues extraction. The frontend polls its status.
+3. The worker runs the extraction step with the manual entry variant of the prompt (`ManualEntryExtraction`). Code cuts the description from the pasted text from the first occurrence of `description_first_line` to the next occurrence of `description_last_line` after it, never using LLM-written description text. If the markers cannot be found, the confirmation screen opens with the whole pasted text as the description for the user to trim.
 4. The confirmation screen shows title, company, location text, workplace type and description, all editable, plus the extracted fields, plus stored postings from the same company (company name compared case- and whitespace-insensitively), most similar title first.
-5. The user saves, or opens one of the similar postings and abandons the entry. Saving never merges. The extracted fields are stored with the saved posting, so extraction is not run again.
+5. The user saves, or opens one of the similar postings and abandons the Clipping. Saving never merges. The extracted fields are stored with the saved posting, so extraction is not run again.
 6. Saving enqueues the Evaluation.
-- Extraction failure: the entry shows the reason and a retry; the queue retries a few times first.
+- Extraction failure: the Clipping shows the reason and a retry; the queue retries a few times first.
 
 ### Extraction output
 
@@ -313,7 +313,7 @@ class EvaluationResult(BaseModel):
 
 ### API shape
 
-- The frontend uses only the webapp's HTTP API, described by its OpenAPI schema, with resources for the four user inputs, Job Postings (manual entry submission, confirmation, close and reopen, lists), Evaluations (per posting, re-run one, re-run all unacted), Triage, Applications (start, state change, delete), notes and Cover Letter drafts (generate, revise, save, restore, copy text).
+- The frontend uses only the webapp's HTTP API, described by its OpenAPI schema, with resources for the four user inputs, Clippings (submission, status, retry), Job Postings (confirmation of a Clipping, close and reopen, lists), Evaluations (per posting, re-run one, re-run all unacted), Triage, Applications (start, state change, delete), notes and Cover Letter drafts (generate, revise, save, restore, copy text).
 - Long-running actions return immediately with a queued status and are polled.
 
 ## Testing Decisions

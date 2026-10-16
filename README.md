@@ -16,6 +16,15 @@ Then open <http://localhost:5173>. Compose starts Postgres, applies the migratio
 
 All configuration comes from environment variables, each with a default in [compose.yaml](compose.yaml): `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `API_PORT` and `FRONTEND_PORT`. Set them in your shell or in a `.env` file next to `compose.yaml`. The backend itself reads `DATABASE_URL`.
 
+The background worker makes every LLM call, through the Anthropic API:
+
+- `ANTHROPIC_API_KEY`: your API key. Without it the app still runs, but every LLM step fails with a reason saying the key is not set.
+- `EXTRACTION_MODEL`: the model that reads a pasted Job Posting (default `claude-opus-5-5`).
+- `EXTRACTION_EFFORT`: how hard that model thinks, one of `low`, `medium`, `high`, `xhigh` or `max`. Unset, the API's default applies; not every model accepts every level.
+- `LLM_RETRY_WAIT_SECONDS`: how long a failed LLM call waits before the queue tries it again (default 30). After three failed attempts the reason is shown and the user retries by hand.
+
+Prompts live in `webapp/backend/src/job_scout/prompts/`, one file per step, each starting with a `version:` header that every LLM-produced record stores. Bump the version whenever you change a prompt's text.
+
 ## Test
 
 The backend tests drive the HTTP API against a real Postgres, which they start in a throwaway container, so Docker must be running. Queued tasks run to completion inside the test. You need [uv](https://docs.astral.sh/uv/).

@@ -5,6 +5,83 @@ export type ClientOptions = {
 };
 
 /**
+ * ClippingExtractionRead
+ */
+export type ClippingExtractionRead = {
+    /**
+     * Title
+     */
+    title: string | null;
+    /**
+     * Company
+     */
+    company: string | null;
+    /**
+     * Location Text
+     */
+    location_text: string | null;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Description Cut
+     */
+    description_cut: boolean;
+    extracted_fields: ExtractedFields;
+};
+
+/**
+ * ClippingRead
+ */
+export type ClippingRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Status
+     */
+    status: 'pending' | 'done' | 'failed';
+    /**
+     * Pasted Text
+     */
+    pasted_text: string;
+    /**
+     * Url
+     */
+    url: string | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Model
+     */
+    model: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version: string | null;
+    failure: ExtractionFailureRead | null;
+    extraction: ClippingExtractionRead | null;
+};
+
+/**
+ * ClippingSubmit
+ */
+export type ClippingSubmit = {
+    /**
+     * Pasted Text
+     */
+    pasted_text: string;
+    /**
+     * Url
+     */
+    url?: string | null;
+};
+
+/**
  * DealBreakerRead
  */
 export type DealBreakerRead = {
@@ -118,6 +195,20 @@ export type ExtractedFields = {
      * Nice To Have Technologies
      */
     nice_to_have_technologies: Array<Technology>;
+};
+
+/**
+ * ExtractionFailureRead
+ */
+export type ExtractionFailureRead = {
+    /**
+     * Kind
+     */
+    kind: 'error' | 'refusal' | 'malformed';
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**
@@ -313,6 +404,91 @@ export type CreateJobPostingResponses = {
 };
 
 export type CreateJobPostingResponse = CreateJobPostingResponses[keyof CreateJobPostingResponses];
+
+export type SubmitClippingData = {
+    body: ClippingSubmit;
+    path?: never;
+    query?: never;
+    url: '/api/clippings';
+};
+
+export type SubmitClippingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubmitClippingError = SubmitClippingErrors[keyof SubmitClippingErrors];
+
+export type SubmitClippingResponses = {
+    /**
+     * Successful Response
+     */
+    201: ClippingRead;
+};
+
+export type SubmitClippingResponse = SubmitClippingResponses[keyof SubmitClippingResponses];
+
+export type GetClippingData = {
+    body?: never;
+    path: {
+        /**
+         * Clipping Id
+         */
+        clipping_id: number;
+    };
+    query?: never;
+    url: '/api/clippings/{clipping_id}';
+};
+
+export type GetClippingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetClippingError = GetClippingErrors[keyof GetClippingErrors];
+
+export type GetClippingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClippingRead;
+};
+
+export type GetClippingResponse = GetClippingResponses[keyof GetClippingResponses];
+
+export type RetryClippingData = {
+    body?: never;
+    path: {
+        /**
+         * Clipping Id
+         */
+        clipping_id: number;
+    };
+    query?: never;
+    url: '/api/clippings/{clipping_id}/retry';
+};
+
+export type RetryClippingErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RetryClippingError = RetryClippingErrors[keyof RetryClippingErrors];
+
+export type RetryClippingResponses = {
+    /**
+     * Successful Response
+     */
+    200: ClippingRead;
+};
+
+export type RetryClippingResponse = RetryClippingResponses[keyof RetryClippingResponses];
 
 export type GetCurrentDocumentData = {
     body?: never;

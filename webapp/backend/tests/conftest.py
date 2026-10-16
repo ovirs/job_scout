@@ -16,6 +16,7 @@ from testcontainers.community.postgres import PostgresContainer
 from job_scout import migrations, queue, worker
 from job_scout.api import create_app
 from job_scout.config import Settings
+from job_scout.llm.fake import FakeLlm
 
 TEMPLATE_DATABASE = "job_scout_template"
 
@@ -35,7 +36,7 @@ def settings(postgres_server: PostgresContainer) -> Iterator[Settings]:
     admin_url = postgres_server.get_connection_url()
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(f"CREATE DATABASE {name} TEMPLATE {TEMPLATE_DATABASE}")
-    yield Settings(database_url=_database_url(postgres_server, name))
+    yield Settings(database_url=_database_url(postgres_server, name), llm_retry_wait_seconds=0)
     with psycopg.connect(admin_url, autocommit=True) as conn:
         conn.execute(f"DROP DATABASE {name} WITH (FORCE)")
 
@@ -50,11 +51,17 @@ async def client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
 
 
 @pytest.fixture
-def run_queued_tasks(settings: Settings) -> Callable[[], Awaitable[None]]:
-    """Run every queued task to completion, then return."""
+def fake_llm(settings: Settings) -> FakeLlm:
+    """The LLM the worker calls in tests: give it canned outcomes, read its calls."""
+    return FakeLlm(settings)
+
+
+@pytest.fixture
+def run_queued_tasks(settings: Settings, fake_llm: FakeLlm) -> Callable[[], Awaitable[None]]:
+    """Run every queued task to completion, retries included, then return."""
 
     async def run() -> None:
-        await worker.run(settings, wait=False)
+        await worker.run(settings, llm=fake_llm, wait=False)
 
     return run
 

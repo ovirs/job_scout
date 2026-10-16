@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CreateJobPostingData, CreateJobPostingErrors, CreateJobPostingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, ListJobPostingsData, ListJobPostingsResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses } from './types.gen';
+import type { AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CreateJobPostingData, CreateJobPostingErrors, CreateJobPostingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, ListJobPostingsData, ListJobPostingsResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -34,6 +34,32 @@ export const createJobPosting = <ThrowOnError extends boolean = false>(options: 
         ...options.headers
     }
 });
+
+/**
+ * Submit Clipping
+ *
+ * Store a paste as a pending clipping and queue its extraction; poll it for the result.
+ */
+export const submitClipping = <ThrowOnError extends boolean = false>(options: Options<SubmitClippingData, ThrowOnError>): RequestResult<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError> => (options.client ?? client).post<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError>({
+    url: '/api/clippings',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Clipping
+ */
+export const getClipping = <ThrowOnError extends boolean = false>(options: Options<GetClippingData, ThrowOnError>): RequestResult<GetClippingResponses, GetClippingErrors, ThrowOnError> => (options.client ?? client).get<GetClippingResponses, GetClippingErrors, ThrowOnError>({ url: '/api/clippings/{clipping_id}', ...options });
+
+/**
+ * Retry Clipping
+ *
+ * Queue the extraction of a failed clipping again.
+ */
+export const retryClipping = <ThrowOnError extends boolean = false>(options: Options<RetryClippingData, ThrowOnError>): RequestResult<RetryClippingResponses, RetryClippingErrors, ThrowOnError> => (options.client ?? client).post<RetryClippingResponses, RetryClippingErrors, ThrowOnError>({ url: '/api/clippings/{clipping_id}/retry', ...options });
 
 /**
  * Get Current Document

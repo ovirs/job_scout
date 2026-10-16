@@ -12,10 +12,18 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import job_postings, queue, user_inputs
+from job_scout import clippings, job_postings, queue, user_inputs
 from job_scout.config import Settings
-from job_scout.extraction import ExtractedFields, WorkplaceType
-from job_scout.models import DealBreakerSetVersion, DocumentKind, DocumentVersion, JobPosting
+from job_scout.extraction import ExtractedFields, ManualEntryExtraction, WorkplaceType
+from job_scout.llm import FailureKind
+from job_scout.models import (
+    Clipping,
+    ClippingStatus,
+    DealBreakerSetVersion,
+    DocumentKind,
+    DocumentVersion,
+    JobPosting,
+)
 from job_scout.owners import current_owner
 from job_scout.runtime import open_runtime
 
@@ -59,6 +67,66 @@ class JobPostingRead(BaseModel):
             extracted_fields=posting.extracted_fields,
             processing_status="queued" if posting.processed_at is None else "processed",
         )
+
+
+class ClippingSubmit(BaseModel):
+    pasted_text: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as pasted
+    url: NonBlank | None = None
+
+
+class ExtractionFailureRead(BaseModel):
+    kind: FailureKind
+    reason: str
+
+
+class ClippingExtractionRead(BaseModel):
+    title: str | None
+    company: str | None
+    location_text: str | None
+    description: str  # cut from the pasted text, never written by the LLM
+    description_cut: bool  # false when the markers were not found: the whole pasted text
+    extracted_fields: ExtractedFields
+
+
+class ClippingRead(BaseModel):
+    id: int
+    status: ClippingStatus
+    pasted_text: str
+    url: str | None
+    created_at: datetime
+    model: str | None
+    prompt_version: str | None
+    failure: ExtractionFailureRead | None
+    extraction: ClippingExtractionRead | None
+
+    @classmethod
+    def of(cls, clipping: Clipping) -> "ClippingRead":
+        return cls(
+            id=clipping.id,
+            status=clipping.status,
+            pasted_text=clipping.pasted_text,
+            url=clipping.url,
+            created_at=clipping.created_at,
+            model=clipping.model,
+            prompt_version=clipping.prompt_version,
+            failure=None
+            if clipping.failure_kind is None or clipping.failure_reason is None
+            else ExtractionFailureRead(kind=clipping.failure_kind, reason=clipping.failure_reason),
+            extraction=None if clipping.status != "done" else _extraction_read(clipping),
+        )
+
+
+def _extraction_read(clipping: Clipping) -> ClippingExtractionRead:
+    assert clipping.description is not None and clipping.description_cut is not None
+    extraction = ManualEntryExtraction.model_validate(clipping.extraction)
+    return ClippingExtractionRead(
+        title=extraction.title,
+        company=extraction.company,
+        location_text=extraction.location_text,
+        description=clipping.description,
+        description_cut=clipping.description_cut,
+        extracted_fields=extraction.extracted_fields(),
+    )
 
 
 class DocumentSave(BaseModel):
@@ -149,6 +217,45 @@ async def list_job_postings(session: Session, owner: Owner) -> list[JobPostingRe
     return [JobPostingRead.of(p) for p in postings]
 
 
+@router.post("/clippings", status_code=201)
+async def submit_clipping(
+    body: ClippingSubmit, session: Session, task_queue: TaskQueue, owner: Owner
+) -> ClippingRead:
+    """Store the pasted text as a pending Clipping and queue its extraction; poll it for
+    the result."""
+    clipping = clippings.submit(owner_id=owner, pasted_text=body.pasted_text, url=body.url)
+    session.add(clipping)
+    await session.commit()
+    await queue.enqueue_extract_clipping(task_queue, clipping.id)
+    return ClippingRead.of(clipping)
+
+
+@router.get("/clippings/{clipping_id}")
+async def get_clipping(clipping_id: int, session: Session, owner: Owner) -> ClippingRead:
+    return ClippingRead.of(await _clipping(session, owner, clipping_id))
+
+
+@router.post("/clippings/{clipping_id}/retry")
+async def retry_clipping(
+    clipping_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+) -> ClippingRead:
+    """Queue the extraction of a failed clipping again."""
+    clipping = await _clipping(session, owner, clipping_id)
+    if clipping.status != "failed":
+        raise HTTPException(status_code=409, detail="Only a failed Clipping can be retried")
+    clippings.retry(clipping)
+    await session.commit()
+    await queue.enqueue_extract_clipping(task_queue, clipping.id)
+    return ClippingRead.of(clipping)
+
+
+async def _clipping(session: AsyncSession, owner: uuid.UUID, clipping_id: int) -> Clipping:
+    clipping = await clippings.clipping(session, owner_id=owner, clipping_id=clipping_id)
+    if clipping is None:
+        raise HTTPException(status_code=404, detail="No such Clipping")
+    return clipping
+
+
 @router.get("/documents/{kind}")
 async def get_current_document(
     kind: DocumentKind, session: Session, owner: Owner
@@ -180,7 +287,9 @@ async def get_document_version(
 
 
 @router.get("/deal-breakers")
-async def get_current_deal_breakers(session: Session, owner: Owner) -> DealBreakerSetVersionRead | None:
+async def get_current_deal_breakers(
+    session: Session, owner: Owner
+) -> DealBreakerSetVersionRead | None:
     """The current set of Deal Breakers, or null while the user has added none."""
     version = await user_inputs.current_deal_breaker_set(session, owner_id=owner)
     return None if version is None else DealBreakerSetVersionRead.of(version)

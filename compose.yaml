@@ -5,6 +5,11 @@ x-backend: &backend
   build: ./webapp/backend
   environment:
     DATABASE_URL: postgresql://${POSTGRES_USER:-job_scout}:${POSTGRES_PASSWORD:-job_scout}@db:5432/${POSTGRES_DB:-job_scout}
+    # Without a key the app runs, but every LLM step fails with a reason saying so
+    ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+    EXTRACTION_MODEL: ${EXTRACTION_MODEL:-claude-opus-5-5}
+    EXTRACTION_EFFORT: ${EXTRACTION_EFFORT:-}
+    LLM_RETRY_WAIT_SECONDS: ${LLM_RETRY_WAIT_SECONDS:-30}
   depends_on:
     migrate:
       condition: service_completed_successfully

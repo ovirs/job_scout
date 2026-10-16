@@ -4,3 +4,6 @@
 
 # Local Claude Code settings
 .claude/settings.json
+
+# Local secrets (the Anthropic API key)
+.env

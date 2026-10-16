@@ -5,14 +5,19 @@ import logging
 
 from job_scout import queue
 from job_scout.config import Settings
+from job_scout.llm import AnthropicLlm, Llm
 from job_scout.runtime import open_runtime
 
 
-async def run(settings: Settings, *, wait: bool = True) -> None:
-    """Run queued tasks; with `wait=False`, return once the queue is empty."""
+async def run(settings: Settings, *, llm: Llm | None = None, wait: bool = True) -> None:
+    """Run queued tasks; with `wait=False`, return once the queue is empty.
+
+    LLM calls go to the Anthropic API unless another `llm` is given.
+    """
+    llm = llm or AnthropicLlm(settings)
     async with open_runtime(settings) as runtime:
         await runtime.task_queue.run_worker_async(
-            additional_context=queue.worker_context(runtime.sessions),
+            additional_context=queue.worker_context(runtime.sessions, llm),
             wait=wait,
         )
 
