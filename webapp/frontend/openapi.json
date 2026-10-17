@@ -1477,6 +1477,39 @@
             ],
             "title": "Deal Breaker Set Version Id"
           },
+          "career_profile_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Career Profile Version Number"
+          },
+          "preferences_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences Version Number"
+          },
+          "deal_breaker_set_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deal Breaker Set Version Number"
+          },
           "outdated": {
             "anyOf": [
               {
@@ -1596,6 +1629,9 @@
           "career_profile_version_id",
           "preferences_version_id",
           "deal_breaker_set_version_id",
+          "career_profile_version_number",
+          "preferences_version_number",
+          "deal_breaker_set_version_number",
           "outdated",
           "summary",
           "score",

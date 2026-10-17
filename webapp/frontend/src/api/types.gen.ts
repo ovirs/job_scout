@@ -307,6 +307,18 @@ export type EvaluationRead = {
      */
     deal_breaker_set_version_id: number | null;
     /**
+     * Career Profile Version Number
+     */
+    career_profile_version_number: number | null;
+    /**
+     * Preferences Version Number
+     */
+    preferences_version_number: number | null;
+    /**
+     * Deal Breaker Set Version Number
+     */
+    deal_breaker_set_version_number: number | null;
+    /**
      * Outdated
      */
     outdated: boolean | null;

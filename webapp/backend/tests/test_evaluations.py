@@ -407,6 +407,15 @@ async def test_rerunning_a_posting_adds_an_evaluation_and_keeps_the_earlier_ones
         (settings.evaluation_model, "v1", second_profile, preferences, second_set, False),
         (settings.evaluation_model, "v1", first_profile, preferences, first_set, False),
     ]
+    # Numbered as the user sees the versions on the pages that edit them
+    assert [
+        (
+            e["career_profile_version_number"],
+            e["preferences_version_number"],
+            e["deal_breaker_set_version_number"],
+        )
+        for e in history
+    ] == [(2, 1, 2), (1, 1, 1)]
     # Each judged against the Deal Breakers as they were worded then
     assert [e["deal_breaker_verdicts"][0]["deal_breaker_text"] for e in history] == [
         "Spark is required.",

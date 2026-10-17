@@ -210,7 +210,13 @@ class Evaluation(Base):
     career_profile_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("document_versions.id")
     )
+    career_profile_version: Mapped[DocumentVersion | None] = relationship(
+        foreign_keys=[career_profile_version_id], lazy="selectin"
+    )
     preferences_version_id: Mapped[int | None] = mapped_column(ForeignKey("document_versions.id"))
+    preferences_version: Mapped[DocumentVersion | None] = relationship(
+        foreign_keys=[preferences_version_id], lazy="selectin"
+    )
     deal_breaker_set_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("deal_breaker_set_versions.id")
     )

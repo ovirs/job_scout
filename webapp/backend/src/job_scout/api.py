@@ -109,6 +109,10 @@ class EvaluationRead(BaseModel):
     career_profile_version_id: int | None
     preferences_version_id: int | None
     deal_breaker_set_version_id: int | None
+    # The same versions numbered as the user sees them; null when the input was missing
+    career_profile_version_number: int | None
+    preferences_version_number: int | None
+    deal_breaker_set_version_number: int | None
     outdated: bool | None  # the posting's text changed since; null until it ran
 
     # Once done
@@ -152,6 +156,9 @@ class EvaluationRead(BaseModel):
             career_profile_version_id=run.career_profile_version_id,
             preferences_version_id=run.preferences_version_id,
             deal_breaker_set_version_id=run.deal_breaker_set_version_id,
+            career_profile_version_number=_version_number(run.career_profile_version),
+            preferences_version_number=_version_number(run.preferences_version),
+            deal_breaker_set_version_number=_version_number(run.deal_breaker_set_version),
             outdated=evaluations.outdated(run, posting),
             summary=result and result.summary,
             score=result and result.score,
@@ -163,6 +170,10 @@ class EvaluationRead(BaseModel):
             red_flags=result.red_flags if result else [],
             green_flags=result.green_flags if result else [],
         )
+
+
+def _version_number(version: DocumentVersion | DealBreakerSetVersion | None) -> int | None:
+    return None if version is None else version.number
 
 
 class ClippingSubmit(BaseModel):

@@ -119,3 +119,69 @@ select {
 .technologies li {
   margin-bottom: 0;
 }
+
+.evaluation {
+  margin: 1rem 0;
+  padding: 0 1rem 0.5rem;
+  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+  border-radius: 0.25rem;
+}
+
+mark {
+  color: inherit;
+  border-radius: 0.15rem;
+}
+
+mark.violated,
+mark.red,
+.verdict.violated {
+  background: color-mix(in srgb, #e5484d 35%, transparent);
+}
+
+mark.unknown,
+.verdict.unknown {
+  background: color-mix(in srgb, #f5a524 35%, transparent);
+}
+
+mark.clear,
+mark.green,
+.verdict.clear {
+  background: color-mix(in srgb, #30a46c 30%, transparent);
+}
+
+mark.active {
+  outline: 2px solid currentColor;
+}
+
+.verdict {
+  padding: 0 0.3rem;
+  border-radius: 0.25rem;
+  font-size: 0.85em;
+}
+
+.quotes {
+  margin: 0.25rem 0 0;
+  padding-left: 1.25rem;
+  list-style: none;
+}
+
+.quotes li {
+  margin-bottom: 0.15rem;
+}
+
+button.quote {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-style: italic;
+  text-align: left;
+  text-decoration: underline dotted;
+  cursor: pointer;
+}
+
+.disqualified {
+  padding: 0 0.75rem;
+  border-left: 4px solid #e5484d;
+}
