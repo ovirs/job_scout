@@ -9,6 +9,7 @@ it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 
 FailureKind = Literal["error", "refusal", "malformed"]
@@ -35,4 +36,8 @@ class Outcome[T]:
 class Llm(Protocol):
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         """Read a Clipping's pasted text."""
+        ...
+
+    async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
+        """Judge one Job Posting against the user's inputs, as laid out in `prompt`."""
         ...

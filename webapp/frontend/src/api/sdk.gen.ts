@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListJobPostingsData, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -47,6 +47,29 @@ export const closeJobPosting = <ThrowOnError extends boolean = false>(options: O
  * Reopen Job Posting
  */
 export const reopenJobPosting = <ThrowOnError extends boolean = false>(options: Options<ReopenJobPostingData, ThrowOnError>): RequestResult<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError> => (options.client ?? client).post<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/reopen', ...options });
+
+/**
+ * List Evaluations
+ *
+ * Every Evaluation of the posting, the latest first, each with what it was made with.
+ */
+export const listEvaluations = <ThrowOnError extends boolean = false>(options: Options<ListEvaluationsData, ThrowOnError>): RequestResult<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError> => (options.client ?? client).get<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
+
+/**
+ * Rerun Evaluation
+ *
+ * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
+ * are kept as history. Also the retry of one that was not evaluated, and allowed while
+ * another is under way, so one stuck by a crashed worker never blocks it.
+ */
+export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: Options<RerunEvaluationData, ThrowOnError>): RequestResult<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError> => (options.client ?? client).post<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
+
+/**
+ * Get Current Evaluation
+ *
+ * The posting's latest done Evaluation, or null while it has none.
+ */
+export const getCurrentEvaluation = <ThrowOnError extends boolean = false>(options: Options<GetCurrentEvaluationData, ThrowOnError>): RequestResult<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations/current', ...options });
 
 /**
  * Submit Clipping

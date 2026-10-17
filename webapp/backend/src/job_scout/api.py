@@ -4,7 +4,7 @@ import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Annotated, Literal
+from typing import Annotated
 
 import procrastinate
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
@@ -12,8 +12,10 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import clippings, job_postings, queue, user_inputs
+from job_scout import clippings, evaluations, job_postings, queue, user_inputs
 from job_scout.config import Settings
+from job_scout.evaluation import Recommendation, Verdict
+from job_scout.evaluations import CheckedFlag
 from job_scout.extraction import ExtractedFields, WorkplaceType
 from job_scout.llm import FailureKind
 from job_scout.models import (
@@ -22,9 +24,13 @@ from job_scout.models import (
     DealBreakerSetVersion,
     DocumentKind,
     DocumentVersion,
+    Evaluation,
+    EvaluationFailureKind,
+    EvaluationStatus,
     JobPosting,
 )
 from job_scout.owners import current_owner
+from job_scout.quotes import EvidenceMatch
 from job_scout.runtime import open_runtime
 
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -53,10 +59,10 @@ class JobPostingRead(BaseModel):
     created_at: datetime
     closed_at: datetime | None
     extracted_fields: ExtractedFields | None
-    processing_status: Literal["queued", "processed"]
+    evaluation_status: EvaluationStatus | None  # the latest Evaluation's; null before any
 
     @classmethod
-    def of(cls, posting: JobPosting) -> "JobPostingRead":
+    def of(cls, posting: JobPosting, latest_evaluation: Evaluation | None) -> "JobPostingRead":
         return cls(
             id=posting.id,
             source=posting.source,
@@ -70,7 +76,92 @@ class JobPostingRead(BaseModel):
             created_at=posting.created_at,
             closed_at=posting.closed_at,
             extracted_fields=posting.extracted_fields,
-            processing_status="queued" if posting.processed_at is None else "processed",
+            evaluation_status=None if latest_evaluation is None else latest_evaluation.status,
+        )
+
+
+class EvaluationFailureRead(BaseModel):
+    kind: EvaluationFailureKind
+    reason: str
+
+
+class DealBreakerVerdictRead(BaseModel):
+    deal_breaker_id: int
+    deal_breaker_text: str  # as worded in the version the posting was judged against
+    verdict: Verdict
+    evidence: list[str]  # passages from the posting
+    evidence_matches: list[EvidenceMatch]  # where each passage is in the posting
+    explanation: str
+
+
+class EvaluationRead(BaseModel):
+    id: int
+    job_posting_id: int
+    status: EvaluationStatus
+    failure: EvaluationFailureRead | None  # why it was not evaluated
+    created_at: datetime
+    started_at: datetime | None
+    finished_at: datetime | None
+
+    # What it was made with, once it ran
+    model: str | None
+    prompt_version: str | None
+    career_profile_version_id: int | None
+    preferences_version_id: int | None
+    deal_breaker_set_version_id: int | None
+    outdated: bool | None  # the posting's text changed since; null until it ran
+
+    # Once done
+    summary: str | None
+    score: int | None  # 1 to 10, only for ordering
+    recommendation: Recommendation | None  # skip whenever a Deal Breaker is violated
+    llm_recommendation: Recommendation | None  # the LLM's own
+    disqualified_but_recommended: bool | None
+    deal_breaker_verdicts: list[DealBreakerVerdictRead]
+    to_check: list[DealBreakerVerdictRead]  # the unknown verdicts
+    red_flags: list[CheckedFlag]
+    green_flags: list[CheckedFlag]
+
+    @classmethod
+    def of(cls, run: Evaluation, posting: JobPosting) -> "EvaluationRead":
+        result = evaluations.checked_result(run)
+        texts = evaluations.deal_breaker_texts(run.deal_breaker_set_version)
+        verdicts = [
+            DealBreakerVerdictRead(
+                deal_breaker_id=verdict.deal_breaker_id,
+                deal_breaker_text=texts[verdict.deal_breaker_id],
+                verdict=verdict.verdict,
+                evidence=verdict.evidence,
+                evidence_matches=verdict.evidence_matches,
+                explanation=verdict.explanation,
+            )
+            for verdict in (result.deal_breaker_verdicts if result else [])
+        ]
+        return cls(
+            id=run.id,
+            job_posting_id=run.job_posting_id,
+            status=run.status,
+            failure=None
+            if run.failure_kind is None or run.failure_reason is None
+            else EvaluationFailureRead(kind=run.failure_kind, reason=run.failure_reason),
+            created_at=run.created_at,
+            started_at=run.started_at,
+            finished_at=run.finished_at,
+            model=run.model,
+            prompt_version=run.prompt_version,
+            career_profile_version_id=run.career_profile_version_id,
+            preferences_version_id=run.preferences_version_id,
+            deal_breaker_set_version_id=run.deal_breaker_set_version_id,
+            outdated=evaluations.outdated(run, posting),
+            summary=result and result.summary,
+            score=result and result.score,
+            recommendation=run.recommendation,
+            llm_recommendation=run.llm_recommendation,
+            disqualified_but_recommended=run.disqualified_but_recommended,
+            deal_breaker_verdicts=verdicts,
+            to_check=[verdict for verdict in verdicts if evaluations.to_check(verdict.verdict)],
+            red_flags=result.red_flags if result else [],
+            green_flags=result.green_flags if result else [],
         )
 
 
@@ -210,7 +301,7 @@ async def list_job_postings(session: Session, owner: Owner) -> list[JobPostingRe
         .where(JobPosting.owner_id == owner)
         .order_by(JobPosting.created_at.desc(), JobPosting.id.desc())
     )
-    return [JobPostingRead.of(p) for p in postings]
+    return await _job_posting_reads(session, owner, list(postings))
 
 
 @router.get("/job-postings/similar")
@@ -220,12 +311,13 @@ async def find_similar_job_postings(
     """Stored postings from the same company, compared case- and whitespace-insensitively,
     the most similar title first: the possible duplicates of a posting about to be saved."""
     postings = await job_postings.similar(session, owner_id=owner, company=company, title=title)
-    return [JobPostingRead.of(p) for p in postings]
+    return await _job_posting_reads(session, owner, postings)
 
 
 @router.get("/job-postings/{job_posting_id}")
 async def get_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
-    return JobPostingRead.of(await _job_posting(session, owner, job_posting_id))
+    posting = await _job_posting(session, owner, job_posting_id)
+    return await _job_posting_read(session, owner, posting)
 
 
 @router.post("/job-postings/{job_posting_id}/close")
@@ -234,7 +326,7 @@ async def close_job_posting(job_posting_id: int, session: Session, owner: Owner)
     posting = await _job_posting(session, owner, job_posting_id)
     job_postings.close(posting)
     await session.commit()
-    return JobPostingRead.of(posting)
+    return await _job_posting_read(session, owner, posting)
 
 
 @router.post("/job-postings/{job_posting_id}/reopen")
@@ -242,7 +334,58 @@ async def reopen_job_posting(job_posting_id: int, session: Session, owner: Owner
     posting = await _job_posting(session, owner, job_posting_id)
     job_postings.reopen(posting)
     await session.commit()
-    return JobPostingRead.of(posting)
+    return await _job_posting_read(session, owner, posting)
+
+
+@router.get("/job-postings/{job_posting_id}/evaluations")
+async def list_evaluations(
+    job_posting_id: int, session: Session, owner: Owner
+) -> list[EvaluationRead]:
+    """Every Evaluation of the posting, the latest first, each with what it was made with."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    runs = await evaluations.history(session, owner_id=owner, job_posting_id=posting.id)
+    return [EvaluationRead.of(run, posting) for run in runs]
+
+
+@router.get("/job-postings/{job_posting_id}/evaluations/current")
+async def get_current_evaluation(
+    job_posting_id: int, session: Session, owner: Owner
+) -> EvaluationRead | None:
+    """The posting's latest done Evaluation, or null while it has none."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    runs = await evaluations.history(session, owner_id=owner, job_posting_id=posting.id)
+    current = evaluations.current(runs)
+    return None if current is None else EvaluationRead.of(current, posting)
+
+
+@router.post("/job-postings/{job_posting_id}/evaluations", status_code=201)
+async def rerun_evaluation(
+    job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+) -> EvaluationRead:
+    """Queue a new Evaluation of the posting, with the current user inputs; earlier ones
+    are kept as history. Also the retry of one that was not evaluated, and allowed while
+    another is under way, so one stuck by a crashed worker never blocks it."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    run = evaluations.queued(posting)
+    session.add(run)
+    await session.commit()
+    await queue.enqueue_evaluate(task_queue, run.id)
+    return EvaluationRead.of(run, posting)
+
+
+async def _job_posting_read(
+    session: AsyncSession, owner: uuid.UUID, posting: JobPosting
+) -> JobPostingRead:
+    return (await _job_posting_reads(session, owner, [posting]))[0]
+
+
+async def _job_posting_reads(
+    session: AsyncSession, owner: uuid.UUID, postings: list[JobPosting]
+) -> list[JobPostingRead]:
+    latest = await evaluations.latest_by_posting(
+        session, owner_id=owner, job_posting_ids=[p.id for p in postings]
+    )
+    return [JobPostingRead.of(p, latest.get(p.id)) for p in postings]
 
 
 async def _job_posting(session: AsyncSession, owner: uuid.UUID, job_posting_id: int) -> JobPosting:
@@ -297,11 +440,13 @@ async def confirm_clipping(
     if clipping.status != "done":
         raise HTTPException(status_code=409, detail="Only a done Clipping can be confirmed")
     posting = clippings.confirm(clipping, **body.model_dump())
+    session.add(posting)
+    await session.flush()  # assigns the posting's id
+    run = evaluations.queued(posting)
+    session.add(run)
     await session.commit()
-    # The seam for the Evaluation: a confirmed Manual Entry enqueues it here (#5). Until
-    # then the walking skeleton's task stands in for it.
-    await queue.enqueue_mark_processed(task_queue, posting.id)
-    return JobPostingRead.of(posting)
+    await queue.enqueue_evaluate(task_queue, run.id)
+    return JobPostingRead.of(posting, run)
 
 
 @router.post("/clippings/{clipping_id}/abandon")

@@ -233,12 +233,12 @@ class ManualEntryExtraction(ExtractedFields):
 class DealBreakerVerdict(BaseModel):
     deal_breaker_id: int
     verdict: Literal["clear", "violated", "unknown"]
-    evidence: str | None      # verbatim from the posting; required when clear or violated
+    evidence: list[str]       # passages verbatim from the posting; at least one when clear or violated
     explanation: str          # one sentence
 
 class Flag(BaseModel):
     point: str                # one sentence, specific to this person
-    evidence: str             # verbatim from the posting
+    evidence: list[str]       # passages verbatim from the posting; at least one
 
 class EvaluationResult(BaseModel):
     deal_breaker_verdicts: list[DealBreakerVerdict]
@@ -251,10 +251,11 @@ class EvaluationResult(BaseModel):
 
 - Checks in code after the call; any failure makes the result malformed:
   - exactly one verdict per Deal Breaker id in the version used;
-  - `evidence` present for clear and violated;
+  - `evidence` present for clear and violated, and for every flag;
   - at most five flags of each colour;
   - score a whole number from 1 to 10;
-  - every `evidence` string occurs in the posting text after normalising whitespace, case, quote styles and bullet characters. The match position is stored so the posting view can highlight it.
+  - every `evidence` passage occurs in the posting text after normalising whitespace, case, quote styles and bullet characters. Each passage's match position is stored so the posting view can highlight it.
+- Evidence is a list of passages, each one unbroken stretch of the posting, because a verdict or flag can rest on more than one place (seen in the first real run: the model joined two quotes into one string, which no check could find). Prompt v1 says so.
 - **Hard gate**: if any verdict is violated, the stored recommendation is skip. The LLM's own recommendation is stored beside it. A posting with a violated verdict and an LLM recommendation other than skip is flagged "disqualified but recommended". It is routed by the LLM's own recommendation into the inbox with a badge naming the violated Deal Breaker and its evidence. Everywhere else the stored (gated) recommendation is used.
 - An unknown verdict changes nothing and is shown as a "to check" item with its explanation.
 - **Record**: each Evaluation is its own row holding the full structured result, the stored and LLM recommendations, the model, the prompt version, the Career Profile, Preferences and Deal Breaker versions, the posting's content hash at the time, a status (queued, running, done, not evaluated with reason) and timestamps. Earlier Evaluations of a posting are kept as history; the latest done one is current.

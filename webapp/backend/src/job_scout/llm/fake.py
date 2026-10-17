@@ -1,9 +1,10 @@
 """The fake LLM for tests: canned results or failures per step, and a record of the inputs."""
 
 from job_scout.config import Settings
+from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 from job_scout.llm.interface import Failure, Outcome
-from job_scout.prompts import MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.prompts import EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 
 class FakeStep[I, T]:
@@ -46,6 +47,16 @@ NOTHING_FOUND = ManualEntryExtraction(
     nice_to_have_technologies=[],
 )
 
+# Passes the checks for a posting judged against no Deal Breakers
+NO_DEAL_BREAKERS_JUDGED = EvaluationResult(
+    deal_breaker_verdicts=[],
+    red_flags=[],
+    green_flags=[],
+    score=5,
+    recommendation="maybe",
+    summary="A posting judged against no Deal Breakers.",
+)
+
 
 class FakeLlm:
     """Reports the models configured in `settings`, as the real adapter would."""
@@ -56,6 +67,14 @@ class FakeLlm:
             model=settings.extraction_model,
             prompt=MANUAL_ENTRY_EXTRACTION,
         )
+        self.evaluation = FakeStep[EvaluationPrompt, EvaluationResult](
+            default=NO_DEAL_BREAKERS_JUDGED,
+            model=settings.evaluation_model,
+            prompt=EVALUATION,
+        )
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         return self.manual_entry_extraction(pasted_text)
+
+    async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
+        return self.evaluation(prompt)

@@ -5,6 +5,24 @@ export type ClientOptions = {
 };
 
 /**
+ * CheckedFlag
+ */
+export type CheckedFlag = {
+    /**
+     * Point
+     */
+    point: string;
+    /**
+     * Evidence
+     */
+    evidence: Array<string>;
+    /**
+     * Evidence Matches
+     */
+    evidence_matches: Array<EvidenceMatch>;
+};
+
+/**
  * ClippingConfirm
  *
  * The envelope of the Manual Entry, as the user corrected it on the confirmation screen.
@@ -160,6 +178,36 @@ export type DealBreakerSetVersionRead = {
 };
 
 /**
+ * DealBreakerVerdictRead
+ */
+export type DealBreakerVerdictRead = {
+    /**
+     * Deal Breaker Id
+     */
+    deal_breaker_id: number;
+    /**
+     * Deal Breaker Text
+     */
+    deal_breaker_text: string;
+    /**
+     * Verdict
+     */
+    verdict: 'clear' | 'violated' | 'unknown';
+    /**
+     * Evidence
+     */
+    evidence: Array<string>;
+    /**
+     * Evidence Matches
+     */
+    evidence_matches: Array<EvidenceMatch>;
+    /**
+     * Explanation
+     */
+    explanation: string;
+};
+
+/**
  * DocumentSave
  */
 export type DocumentSave = {
@@ -193,6 +241,129 @@ export type DocumentVersionRead = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * EvaluationFailureRead
+ */
+export type EvaluationFailureRead = {
+    /**
+     * Kind
+     */
+    kind: 'error' | 'refusal' | 'malformed' | 'missing_input';
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
+ * EvaluationRead
+ */
+export type EvaluationRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Job Posting Id
+     */
+    job_posting_id: number;
+    /**
+     * Status
+     */
+    status: 'queued' | 'running' | 'done' | 'not_evaluated';
+    failure: EvaluationFailureRead | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Started At
+     */
+    started_at: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Model
+     */
+    model: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version: string | null;
+    /**
+     * Career Profile Version Id
+     */
+    career_profile_version_id: number | null;
+    /**
+     * Preferences Version Id
+     */
+    preferences_version_id: number | null;
+    /**
+     * Deal Breaker Set Version Id
+     */
+    deal_breaker_set_version_id: number | null;
+    /**
+     * Outdated
+     */
+    outdated: boolean | null;
+    /**
+     * Summary
+     */
+    summary: string | null;
+    /**
+     * Score
+     */
+    score: number | null;
+    /**
+     * Recommendation
+     */
+    recommendation: 'apply' | 'maybe' | 'skip' | null;
+    /**
+     * Llm Recommendation
+     */
+    llm_recommendation: 'apply' | 'maybe' | 'skip' | null;
+    /**
+     * Disqualified But Recommended
+     */
+    disqualified_but_recommended: boolean | null;
+    /**
+     * Deal Breaker Verdicts
+     */
+    deal_breaker_verdicts: Array<DealBreakerVerdictRead>;
+    /**
+     * To Check
+     */
+    to_check: Array<DealBreakerVerdictRead>;
+    /**
+     * Red Flags
+     */
+    red_flags: Array<CheckedFlag>;
+    /**
+     * Green Flags
+     */
+    green_flags: Array<CheckedFlag>;
+};
+
+/**
+ * EvidenceMatch
+ */
+export type EvidenceMatch = {
+    /**
+     * Field
+     */
+    field: 'description' | 'title' | 'location_text' | 'company';
+    /**
+     * Start
+     */
+    start: number;
+    /**
+     * End
+     */
+    end: number;
 };
 
 /**
@@ -303,9 +474,9 @@ export type JobPostingRead = {
     closed_at: string | null;
     extracted_fields: ExtractedFields | null;
     /**
-     * Processing Status
+     * Evaluation Status
      */
-    processing_status: 'queued' | 'processed';
+    evaluation_status: 'queued' | 'running' | 'done' | 'not_evaluated' | null;
 };
 
 /**
@@ -519,6 +690,100 @@ export type ReopenJobPostingResponses = {
 };
 
 export type ReopenJobPostingResponse = ReopenJobPostingResponses[keyof ReopenJobPostingResponses];
+
+export type ListEvaluationsData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/evaluations';
+};
+
+export type ListEvaluationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListEvaluationsError = ListEvaluationsErrors[keyof ListEvaluationsErrors];
+
+export type ListEvaluationsResponses = {
+    /**
+     * Response List Evaluations
+     *
+     * Successful Response
+     */
+    200: Array<EvaluationRead>;
+};
+
+export type ListEvaluationsResponse = ListEvaluationsResponses[keyof ListEvaluationsResponses];
+
+export type RerunEvaluationData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/evaluations';
+};
+
+export type RerunEvaluationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RerunEvaluationError = RerunEvaluationErrors[keyof RerunEvaluationErrors];
+
+export type RerunEvaluationResponses = {
+    /**
+     * Successful Response
+     */
+    201: EvaluationRead;
+};
+
+export type RerunEvaluationResponse = RerunEvaluationResponses[keyof RerunEvaluationResponses];
+
+export type GetCurrentEvaluationData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/evaluations/current';
+};
+
+export type GetCurrentEvaluationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCurrentEvaluationError = GetCurrentEvaluationErrors[keyof GetCurrentEvaluationErrors];
+
+export type GetCurrentEvaluationResponses = {
+    /**
+     * Response Get Current Evaluation
+     *
+     * Successful Response
+     */
+    200: EvaluationRead | null;
+};
+
+export type GetCurrentEvaluationResponse = GetCurrentEvaluationResponses[keyof GetCurrentEvaluationResponses];
 
 export type SubmitClippingData = {
     body: ClippingSubmit;

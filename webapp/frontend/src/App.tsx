@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Fragment, type ReactNode, useEffect, useState } from 'react'
 import { age } from './age'
 import { listJobPostingsOptions } from './api/@tanstack/react-query.gen'
+import type { JobPostingRead } from './api/types.gen'
 import { ClippingPage, NewClippingForm } from './ClippingPage'
 import { DealBreakersPage } from './DealBreakersPage'
 import { DOCUMENTS, type DocumentKind, DocumentPage } from './DocumentPage'
@@ -81,12 +82,32 @@ function useHash(): string {
   return hash
 }
 
+function evaluationStatusLabel(status: JobPostingRead['evaluation_status']): string {
+  switch (status) {
+    case 'queued':
+      return 'evaluation queued'
+    case 'running':
+      return 'evaluating'
+    case 'done':
+      return 'evaluated'
+    case 'not_evaluated':
+      return 'not evaluated'
+    default:
+      return 'no evaluation'
+  }
+}
+
 function JobPostingList() {
   const postings = useQuery({
     ...listJobPostingsOptions(),
-    // Poll while the worker has postings still to process
+    // Poll while the worker has Evaluations still to run
     refetchInterval: (query) =>
-      query.state.data?.some((posting) => posting.processing_status === 'queued') ? 1000 : false,
+      query.state.data?.some(
+        (posting) =>
+          posting.evaluation_status === 'queued' || posting.evaluation_status === 'running',
+      )
+        ? 1000
+        : false,
   })
 
   return (
@@ -116,7 +137,9 @@ function JobPostingList() {
                 <td>{posting.location_text}</td>
                 <td>{age(posting.created_at)}</td>
                 <td>
-                  {posting.closed_at ? `closed ${age(posting.closed_at)}` : posting.processing_status}
+                  {posting.closed_at
+                    ? `closed ${age(posting.closed_at)}`
+                    : evaluationStatusLabel(posting.evaluation_status)}
                 </td>
               </tr>
             ))}

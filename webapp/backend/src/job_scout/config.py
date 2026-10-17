@@ -24,9 +24,11 @@ class Settings(BaseSettings):
 
     # The model for each LLM step
     extraction_model: str = DEFAULT_MODEL
+    evaluation_model: str = DEFAULT_MODEL
 
-    # How hard the model thinks about each extraction; unset leaves it to the API's default
+    # How hard the model thinks about each step; unset leaves it to the API's default
     extraction_effort: Effort | None = None
+    evaluation_effort: Effort | None = None
 
     # How long a failed LLM call waits on the queue before its next attempt
     llm_retry_wait_seconds: int = 30

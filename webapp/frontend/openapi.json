@@ -199,6 +199,136 @@
         }
       }
     },
+    "/api/job-postings/{job_posting_id}/evaluations": {
+      "get": {
+        "summary": "List Evaluations",
+        "description": "Every Evaluation of the posting, the latest first, each with what it was made with.",
+        "operationId": "list_evaluations",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRead"
+                  },
+                  "title": "Response List Evaluations"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Rerun Evaluation",
+        "description": "Queue a new Evaluation of the posting, with the current user inputs; earlier ones\nare kept as history. Also the retry of one that was not evaluated, and allowed while\nanother is under way, so one stuck by a crashed worker never blocks it.",
+        "operationId": "rerun_evaluation",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}/evaluations/current": {
+      "get": {
+        "summary": "Get Current Evaluation",
+        "description": "The posting's latest done Evaluation, or null while it has none.",
+        "operationId": "get_current_evaluation",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/EvaluationRead"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Get Current Evaluation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/clippings": {
       "post": {
         "summary": "Submit Clipping",
@@ -761,6 +891,35 @@
   },
   "components": {
     "schemas": {
+      "CheckedFlag": {
+        "properties": {
+          "point": {
+            "type": "string",
+            "title": "Point"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "evidence_matches": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMatch"
+            },
+            "type": "array",
+            "title": "Evidence Matches"
+          }
+        },
+        "type": "object",
+        "required": [
+          "point",
+          "evidence",
+          "evidence_matches"
+        ],
+        "title": "CheckedFlag"
+      },
       "ClippingConfirm": {
         "properties": {
           "title": {
@@ -1072,6 +1231,55 @@
         ],
         "title": "DealBreakerSetVersionRead"
       },
+      "DealBreakerVerdictRead": {
+        "properties": {
+          "deal_breaker_id": {
+            "type": "integer",
+            "title": "Deal Breaker Id"
+          },
+          "deal_breaker_text": {
+            "type": "string",
+            "title": "Deal Breaker Text"
+          },
+          "verdict": {
+            "type": "string",
+            "enum": [
+              "clear",
+              "violated",
+              "unknown"
+            ],
+            "title": "Verdict"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence"
+          },
+          "evidence_matches": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceMatch"
+            },
+            "type": "array",
+            "title": "Evidence Matches"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deal_breaker_id",
+          "deal_breaker_text",
+          "verdict",
+          "evidence",
+          "evidence_matches",
+          "explanation"
+        ],
+        "title": "DealBreakerVerdictRead"
+      },
       "DocumentSave": {
         "properties": {
           "text": {
@@ -1123,6 +1331,312 @@
           "created_at"
         ],
         "title": "DocumentVersionRead"
+      },
+      "EvaluationFailureRead": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "refusal",
+                  "malformed"
+                ]
+              },
+              {
+                "type": "string",
+                "const": "missing_input"
+              }
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "EvaluationFailureRead"
+      },
+      "EvaluationRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "job_posting_id": {
+            "type": "integer",
+            "title": "Job Posting Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "not_evaluated"
+            ],
+            "title": "Status"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationFailureRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "career_profile_version_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Career Profile Version Id"
+          },
+          "preferences_version_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Preferences Version Id"
+          },
+          "deal_breaker_set_version_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Deal Breaker Set Version Id"
+          },
+          "outdated": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outdated"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "recommendation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "apply",
+                  "maybe",
+                  "skip"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendation"
+          },
+          "llm_recommendation": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "apply",
+                  "maybe",
+                  "skip"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Recommendation"
+          },
+          "disqualified_but_recommended": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disqualified But Recommended"
+          },
+          "deal_breaker_verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/DealBreakerVerdictRead"
+            },
+            "type": "array",
+            "title": "Deal Breaker Verdicts"
+          },
+          "to_check": {
+            "items": {
+              "$ref": "#/components/schemas/DealBreakerVerdictRead"
+            },
+            "type": "array",
+            "title": "To Check"
+          },
+          "red_flags": {
+            "items": {
+              "$ref": "#/components/schemas/CheckedFlag"
+            },
+            "type": "array",
+            "title": "Red Flags"
+          },
+          "green_flags": {
+            "items": {
+              "$ref": "#/components/schemas/CheckedFlag"
+            },
+            "type": "array",
+            "title": "Green Flags"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_posting_id",
+          "status",
+          "failure",
+          "created_at",
+          "started_at",
+          "finished_at",
+          "model",
+          "prompt_version",
+          "career_profile_version_id",
+          "preferences_version_id",
+          "deal_breaker_set_version_id",
+          "outdated",
+          "summary",
+          "score",
+          "recommendation",
+          "llm_recommendation",
+          "disqualified_but_recommended",
+          "deal_breaker_verdicts",
+          "to_check",
+          "red_flags",
+          "green_flags"
+        ],
+        "title": "EvaluationRead"
+      },
+      "EvidenceMatch": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": [
+              "description",
+              "title",
+              "location_text",
+              "company"
+            ],
+            "title": "Field"
+          },
+          "start": {
+            "type": "integer",
+            "title": "Start"
+          },
+          "end": {
+            "type": "integer",
+            "title": "End"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field",
+          "start",
+          "end"
+        ],
+        "title": "EvidenceMatch"
       },
       "ExtractedFields": {
         "properties": {
@@ -1358,13 +1872,22 @@
               }
             ]
           },
-          "processing_status": {
-            "type": "string",
-            "enum": [
-              "queued",
-              "processed"
+          "evaluation_status": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "running",
+                  "done",
+                  "not_evaluated"
+                ]
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Processing Status"
+            "title": "Evaluation Status"
           }
         },
         "type": "object",
@@ -1381,7 +1904,7 @@
           "created_at",
           "closed_at",
           "extracted_fields",
-          "processing_status"
+          "evaluation_status"
         ],
         "title": "JobPostingRead"
       },

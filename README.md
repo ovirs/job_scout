@@ -21,7 +21,8 @@ The background worker makes every LLM call, through the Anthropic API:
 - `ANTHROPIC_API_KEY`: your API key. Without it the app still runs, but every LLM step fails with a reason saying the key is not set.
 - `EXTRACTION_MODEL`: the model that reads a pasted Job Posting (default `claude-opus-5-5`).
 - `EXTRACTION_EFFORT`: how hard that model thinks, one of `low`, `medium`, `high`, `xhigh` or `max`. Unset, the API's default applies; not every model accepts every level.
-- `LLM_RETRY_WAIT_SECONDS`: how long a failed LLM call waits before the queue tries it again (default 30). After three failed attempts the reason is shown and the user retries by hand.
+- `EVALUATION_MODEL` and `EVALUATION_EFFORT`: the same for the model that evaluates a saved Job Posting against the Career Profile, Preferences and Deal Breakers.
+- `LLM_RETRY_WAIT_SECONDS`: how long a failed LLM call waits before the queue tries it again (default 30). After three failed attempts the reason is shown and the user retries by hand. An Evaluation whose answer fails a check (a quote not in the posting, a missing verdict, a score out of range, too many flags) counts as failed too.
 
 Prompts live in `webapp/backend/src/job_scout/prompts/`, one file per step, each starting with a `version:` header that every LLM-produced record stores. Bump the version whenever you change a prompt's text.
 

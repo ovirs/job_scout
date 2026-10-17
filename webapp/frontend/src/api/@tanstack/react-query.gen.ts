@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listJobPostings, type Options, reopenJobPosting, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListJobPostingsData, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -131,6 +131,67 @@ export const reopenJobPostingMutation = (options?: Partial<Options<ReopenJobPost
     };
     return mutationOptions;
 };
+
+export const listEvaluationsQueryKey = (options: Options<ListEvaluationsData>) => createQueryKey('listEvaluations', options);
+
+/**
+ * List Evaluations
+ *
+ * Every Evaluation of the posting, the latest first, each with what it was made with.
+ */
+export const listEvaluationsOptions = (options: Options<ListEvaluationsData>) => queryOptions<ListEvaluationsResponse, ListEvaluationsError, ListEvaluationsResponse, ReturnType<typeof listEvaluationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listEvaluations({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listEvaluationsQueryKey(options)
+});
+
+/**
+ * Rerun Evaluation
+ *
+ * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
+ * are kept as history. Also the retry of one that was not evaluated, and allowed while
+ * another is under way, so one stuck by a crashed worker never blocks it.
+ */
+export const rerunEvaluationMutation = (options?: Partial<Options<RerunEvaluationData>>): UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> => {
+    const mutationOptions: UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await rerunEvaluation({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getCurrentEvaluationQueryKey = (options: Options<GetCurrentEvaluationData>) => createQueryKey('getCurrentEvaluation', options);
+
+/**
+ * Get Current Evaluation
+ *
+ * The posting's latest done Evaluation, or null while it has none.
+ */
+export const getCurrentEvaluationOptions = (options: Options<GetCurrentEvaluationData>) => queryOptions<GetCurrentEvaluationResponse, GetCurrentEvaluationError, GetCurrentEvaluationResponse, ReturnType<typeof getCurrentEvaluationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getCurrentEvaluation({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCurrentEvaluationQueryKey(options)
+});
 
 /**
  * Submit Clipping

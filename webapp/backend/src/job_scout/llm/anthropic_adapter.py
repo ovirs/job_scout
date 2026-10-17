@@ -4,15 +4,19 @@ Not covered by automated tests; prompt quality is judged by reading results.
 """
 
 import anthropic
-from anthropic.types import OutputConfigParam
+from anthropic.types import OutputConfigParam, TextBlockParam
 from pydantic import BaseModel, ValidationError
 
 from job_scout.config import Effort, Settings
+from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 from job_scout.llm.interface import Failure, Outcome
-from job_scout.prompts import MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.prompts import EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 MAX_TOKENS = 8192
+
+# A user message: plain text, or blocks of text sent in order
+type Content = str | list[TextBlockParam]
 
 
 class AnthropicLlm:
@@ -22,6 +26,8 @@ class AnthropicLlm:
         self._client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else None
         self._extraction_model = settings.extraction_model
         self._extraction_effort = settings.extraction_effort
+        self._evaluation_model = settings.evaluation_model
+        self._evaluation_effort = settings.evaluation_effort
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         # For a manual entry the user block is the pasted text and nothing else
@@ -33,8 +39,29 @@ class AnthropicLlm:
             schema=ManualEntryExtraction,
         )
 
+    async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
+        # The user inputs change rarely, so the instructions and they are cached together;
+        # the posting comes last
+        content: list[TextBlockParam] = [
+            {"type": "text", "text": prompt.user_inputs, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": prompt.posting},
+        ]
+        return await self._complete(
+            model=self._evaluation_model,
+            effort=self._evaluation_effort,
+            prompt=EVALUATION,
+            content=content,
+            schema=EvaluationResult,
+        )
+
     async def _complete[T: BaseModel](
-        self, *, model: str, effort: Effort | None, prompt: Prompt, content: str, schema: type[T]
+        self,
+        *,
+        model: str,
+        effort: Effort | None,
+        prompt: Prompt,
+        content: Content,
+        schema: type[T],
     ) -> Outcome[T]:
         result = await self._call(
             model=model, effort=effort, prompt=prompt, content=content, schema=schema
@@ -42,7 +69,13 @@ class AnthropicLlm:
         return Outcome(result=result, model=model, prompt_version=prompt.version)
 
     async def _call[T: BaseModel](
-        self, *, model: str, effort: Effort | None, prompt: Prompt, content: str, schema: type[T]
+        self,
+        *,
+        model: str,
+        effort: Effort | None,
+        prompt: Prompt,
+        content: Content,
+        schema: type[T],
     ) -> T | Failure:
         if self._client is None:
             return Failure("error", "ANTHROPIC_API_KEY is not set")
