@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -20,8 +20,12 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 
 /**
  * List Job Postings
+ *
+ * Every posting, the newest first; or one of the lists: inbox, skip, not-evaluated,
+ * shortlist, later or ignored. A list is sorted by `sort` (score or age), by default as
+ * its own use suits: the inbox and skip list by score, the others by age.
  */
-export const listJobPostings = <ThrowOnError extends boolean = false>(options?: Options<ListJobPostingsData, ThrowOnError>): RequestResult<ListJobPostingsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListJobPostingsResponses, unknown, ThrowOnError>({ url: '/api/job-postings', ...options });
+export const listJobPostings = <ThrowOnError extends boolean = false>(options?: Options<ListJobPostingsData, ThrowOnError>): RequestResult<ListJobPostingsResponses, ListJobPostingsErrors, ThrowOnError> => (options?.client ?? client).get<ListJobPostingsResponses, ListJobPostingsErrors, ThrowOnError>({ url: '/api/job-postings', ...options });
 
 /**
  * Find Similar Job Postings
@@ -35,6 +39,21 @@ export const findSimilarJobPostings = <ThrowOnError extends boolean = false>(opt
  * Get Job Posting
  */
 export const getJobPosting = <ThrowOnError extends boolean = false>(options: Options<GetJobPostingData, ThrowOnError>): RequestResult<GetJobPostingResponses, GetJobPostingErrors, ThrowOnError> => (options.client ?? client).get<GetJobPostingResponses, GetJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}', ...options });
+
+/**
+ * Set Job Posting Triage
+ *
+ * The user's Triage of the posting, replacing any earlier one; allowed for any
+ * posting, evaluated or not.
+ */
+export const setJobPostingTriage = <ThrowOnError extends boolean = false>(options: Options<SetJobPostingTriageData, ThrowOnError>): RequestResult<SetJobPostingTriageResponses, SetJobPostingTriageErrors, ThrowOnError> => (options.client ?? client).put<SetJobPostingTriageResponses, SetJobPostingTriageErrors, ThrowOnError>({
+    url: '/api/job-postings/{job_posting_id}/triage',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Close Job Posting

@@ -244,6 +244,42 @@ export type DocumentVersionRead = {
 };
 
 /**
+ * EvaluationBriefRead
+ *
+ * What a list row shows of a posting's current (latest done) Evaluation.
+ */
+export type EvaluationBriefRead = {
+    /**
+     * Score
+     */
+    score: number;
+    /**
+     * Recommendation
+     */
+    recommendation: 'apply' | 'maybe' | 'skip';
+    /**
+     * Llm Recommendation
+     */
+    llm_recommendation: 'apply' | 'maybe' | 'skip';
+    /**
+     * Summary
+     */
+    summary: string;
+    /**
+     * Disqualified But Recommended
+     */
+    disqualified_but_recommended: boolean;
+    /**
+     * Violated Deal Breakers
+     */
+    violated_deal_breakers: Array<ViolatedDealBreakerRead>;
+    /**
+     * Outdated
+     */
+    outdated: boolean;
+};
+
+/**
  * EvaluationFailureRead
  */
 export type EvaluationFailureRead = {
@@ -489,6 +525,9 @@ export type JobPostingRead = {
      * Evaluation Status
      */
     evaluation_status: 'queued' | 'running' | 'done' | 'not_evaluated' | null;
+    evaluation_failure: EvaluationFailureRead | null;
+    evaluation: EvaluationBriefRead | null;
+    triage: TriageRead | null;
 };
 
 /**
@@ -532,6 +571,38 @@ export type Technology = {
 };
 
 /**
+ * TriageRead
+ */
+export type TriageRead = {
+    /**
+     * Value
+     */
+    value: 'interested' | 'maybe' | 'ignored';
+    /**
+     * Origin
+     */
+    origin: 'user' | 'copied';
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Changed At
+     */
+    changed_at: string;
+};
+
+/**
+ * TriageSet
+ */
+export type TriageSet = {
+    /**
+     * Value
+     */
+    value: 'interested' | 'maybe' | 'ignored';
+};
+
+/**
  * ValidationError
  */
 export type ValidationError = {
@@ -559,12 +630,48 @@ export type ValidationError = {
     };
 };
 
+/**
+ * ViolatedDealBreakerRead
+ */
+export type ViolatedDealBreakerRead = {
+    /**
+     * Deal Breaker Id
+     */
+    deal_breaker_id: number;
+    /**
+     * Deal Breaker Text
+     */
+    deal_breaker_text: string;
+    /**
+     * Evidence
+     */
+    evidence: Array<string>;
+};
+
 export type ListJobPostingsData = {
     body?: never;
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * List
+         */
+        list?: 'inbox' | 'skip' | 'not-evaluated' | 'shortlist' | 'later' | 'ignored' | null;
+        /**
+         * Sort
+         */
+        sort?: 'score' | 'age' | null;
+    };
     url: '/api/job-postings';
 };
+
+export type ListJobPostingsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListJobPostingsError = ListJobPostingsErrors[keyof ListJobPostingsErrors];
 
 export type ListJobPostingsResponses = {
     /**
@@ -642,6 +749,36 @@ export type GetJobPostingResponses = {
 };
 
 export type GetJobPostingResponse = GetJobPostingResponses[keyof GetJobPostingResponses];
+
+export type SetJobPostingTriageData = {
+    body: TriageSet;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/triage';
+};
+
+export type SetJobPostingTriageErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetJobPostingTriageError = SetJobPostingTriageErrors[keyof SetJobPostingTriageErrors];
+
+export type SetJobPostingTriageResponses = {
+    /**
+     * Successful Response
+     */
+    200: JobPostingRead;
+};
+
+export type SetJobPostingTriageResponse = SetJobPostingTriageResponses[keyof SetJobPostingTriageResponses];
 
 export type CloseJobPostingData = {
     body?: never;

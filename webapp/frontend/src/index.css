@@ -185,3 +185,14 @@ button.quote {
   padding: 0 0.75rem;
   border-left: 4px solid #e5484d;
 }
+
+[role='tab'][aria-selected='true'],
+button[aria-pressed='true'] {
+  font-weight: bold;
+  text-decoration: underline;
+}
+
+.postings {
+  list-style: none;
+  padding: 0;
+}

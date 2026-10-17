@@ -8,18 +8,75 @@
     "/api/job-postings": {
       "get": {
         "summary": "List Job Postings",
+        "description": "Every posting, the newest first; or one of the lists: inbox, skip, not-evaluated,\nshortlist, later or ignored. A list is sorted by `sort` (score or age), by default as\nits own use suits: the inbox and skip list by score, the others by age.",
         "operationId": "list_job_postings",
+        "parameters": [
+          {
+            "name": "list",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "inbox",
+                    "skip",
+                    "not-evaluated",
+                    "shortlist",
+                    "later",
+                    "ignored"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "List"
+            }
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "enum": [
+                    "score",
+                    "age"
+                  ],
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
                 "schema": {
+                  "type": "array",
                   "items": {
                     "$ref": "#/components/schemas/JobPostingRead"
                   },
-                  "type": "array",
                   "title": "Response List Job Postings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
                 }
               }
             }
@@ -96,6 +153,56 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}/triage": {
+      "put": {
+        "summary": "Set Job Posting Triage",
+        "description": "The user's Triage of the posting, replacing any earlier one; allowed for any\nposting, evaluated or not.",
+        "operationId": "set_job_posting_triage",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TriageSet"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -1332,6 +1439,63 @@
         ],
         "title": "DocumentVersionRead"
       },
+      "EvaluationBriefRead": {
+        "properties": {
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "recommendation": {
+            "type": "string",
+            "enum": [
+              "apply",
+              "maybe",
+              "skip"
+            ],
+            "title": "Recommendation"
+          },
+          "llm_recommendation": {
+            "type": "string",
+            "enum": [
+              "apply",
+              "maybe",
+              "skip"
+            ],
+            "title": "Llm Recommendation"
+          },
+          "summary": {
+            "type": "string",
+            "title": "Summary"
+          },
+          "disqualified_but_recommended": {
+            "type": "boolean",
+            "title": "Disqualified But Recommended"
+          },
+          "violated_deal_breakers": {
+            "items": {
+              "$ref": "#/components/schemas/ViolatedDealBreakerRead"
+            },
+            "type": "array",
+            "title": "Violated Deal Breakers"
+          },
+          "outdated": {
+            "type": "boolean",
+            "title": "Outdated"
+          }
+        },
+        "type": "object",
+        "required": [
+          "score",
+          "recommendation",
+          "llm_recommendation",
+          "summary",
+          "disqualified_but_recommended",
+          "violated_deal_breakers",
+          "outdated"
+        ],
+        "title": "EvaluationBriefRead",
+        "description": "What a list row shows of a posting's current (latest done) Evaluation."
+      },
       "EvaluationFailureRead": {
         "properties": {
           "kind": {
@@ -1924,6 +2088,36 @@
               }
             ],
             "title": "Evaluation Status"
+          },
+          "evaluation_failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationFailureRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationBriefRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "triage": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TriageRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -1940,7 +2134,10 @@
           "created_at",
           "closed_at",
           "extracted_fields",
-          "evaluation_status"
+          "evaluation_status",
+          "evaluation_failure",
+          "evaluation",
+          "triage"
         ],
         "title": "JobPostingRead"
       },
@@ -2029,6 +2226,63 @@
         ],
         "title": "Technology"
       },
+      "TriageRead": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "interested",
+              "maybe",
+              "ignored"
+            ],
+            "title": "Value"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "user",
+              "copied"
+            ],
+            "title": "Origin"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Changed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "origin",
+          "created_at",
+          "changed_at"
+        ],
+        "title": "TriageRead"
+      },
+      "TriageSet": {
+        "properties": {
+          "value": {
+            "type": "string",
+            "enum": [
+              "interested",
+              "maybe",
+              "ignored"
+            ],
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value"
+        ],
+        "title": "TriageSet"
+      },
       "ValidationError": {
         "properties": {
           "loc": {
@@ -2068,6 +2322,32 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "ViolatedDealBreakerRead": {
+        "properties": {
+          "deal_breaker_id": {
+            "type": "integer",
+            "title": "Deal Breaker Id"
+          },
+          "deal_breaker_text": {
+            "type": "string",
+            "title": "Deal Breaker Text"
+          },
+          "evidence": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Evidence"
+          }
+        },
+        "type": "object",
+        "required": [
+          "deal_breaker_id",
+          "deal_breaker_text",
+          "evidence"
+        ],
+        "title": "ViolatedDealBreakerRead"
       }
     }
   }

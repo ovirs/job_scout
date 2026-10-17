@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setJobPostingTriage, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -43,8 +43,12 @@ export const listJobPostingsQueryKey = (options?: Options<ListJobPostingsData>) 
 
 /**
  * List Job Postings
+ *
+ * Every posting, the newest first; or one of the lists: inbox, skip, not-evaluated,
+ * shortlist, later or ignored. A list is sorted by `sort` (score or age), by default as
+ * its own use suits: the inbox and skip list by score, the others by age.
  */
-export const listJobPostingsOptions = (options?: Options<ListJobPostingsData>) => queryOptions<ListJobPostingsResponse, DefaultError, ListJobPostingsResponse, ReturnType<typeof listJobPostingsQueryKey>>({
+export const listJobPostingsOptions = (options?: Options<ListJobPostingsData>) => queryOptions<ListJobPostingsResponse, ListJobPostingsError, ListJobPostingsResponse, ReturnType<typeof listJobPostingsQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
         const { data } = await listJobPostings({
             ...options,
@@ -95,6 +99,26 @@ export const getJobPostingOptions = (options: Options<GetJobPostingData>) => que
     },
     queryKey: getJobPostingQueryKey(options)
 });
+
+/**
+ * Set Job Posting Triage
+ *
+ * The user's Triage of the posting, replacing any earlier one; allowed for any
+ * posting, evaluated or not.
+ */
+export const setJobPostingTriageMutation = (options?: Partial<Options<SetJobPostingTriageData>>): UseMutationOptions<SetJobPostingTriageResponse, SetJobPostingTriageError, Options<SetJobPostingTriageData>> => {
+    const mutationOptions: UseMutationOptions<SetJobPostingTriageResponse, SetJobPostingTriageError, Options<SetJobPostingTriageData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await setJobPostingTriage({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Close Job Posting

@@ -288,6 +288,23 @@ async def latest_by_posting(
     return {run.job_posting_id: run for run in runs}
 
 
+async def current_by_posting(
+    session: AsyncSession, *, owner_id: uuid.UUID, job_posting_ids: list[int]
+) -> dict[int, Evaluation]:
+    """The current (latest done) Evaluation of each of the postings that has one."""
+    runs = await session.scalars(
+        select(Evaluation)
+        .where(
+            Evaluation.owner_id == owner_id,
+            Evaluation.job_posting_id.in_(job_posting_ids),
+            Evaluation.status == "done",
+        )
+        .order_by(Evaluation.job_posting_id, Evaluation.id.desc())
+        .ext(distinct_on(Evaluation.job_posting_id))
+    )
+    return {run.job_posting_id: run for run in runs}
+
+
 def current(runs: list[Evaluation]) -> Evaluation | None:
     """The current Evaluation among a posting's history: the latest done one."""
     return next((run for run in runs if run.status == "done"), None)

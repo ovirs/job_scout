@@ -1,0 +1,135 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
+import { age } from './age'
+import {
+  listJobPostingsOptions,
+  listJobPostingsQueryKey,
+  rerunEvaluationMutation,
+} from './api/@tanstack/react-query.gen'
+import type { JobPostingRead, ListJobPostingsData } from './api/types.gen'
+import { TriageButtons } from './TriageButtons'
+
+type ListName = NonNullable<NonNullable<ListJobPostingsData['query']>['list']>
+type Sort = NonNullable<NonNullable<ListJobPostingsData['query']>['sort']>
+
+/** `sort` is how the list is ordered until the user picks otherwise. */
+const LISTS: { name: ListName; label: string; sort: Sort; empty: string }[] = [
+  { name: 'inbox', sort: 'score', label: 'Inbox', empty: 'Nothing waiting for your call.' },
+  { name: 'skip', sort: 'score', label: 'Skip list', empty: 'Nothing recommended to skip.' },
+  { name: 'not-evaluated', sort: 'age', label: 'Not evaluated', empty: 'Every untriaged posting is evaluated.' },
+  { name: 'shortlist', sort: 'age', label: 'Shortlist', empty: 'No postings you are interested in.' },
+  { name: 'later', sort: 'age', label: 'Later', empty: 'No postings set aside for later.' },
+  { name: 'ignored', sort: 'age', label: 'Ignored', empty: 'No ignored postings.' },
+]
+
+export function PostingLists() {
+  const [list, setList] = useState(LISTS[0])
+  const [sort, setSort] = useState<Sort>(LISTS[0].sort)
+  const name = list.name
+  const postings = useQuery({
+    ...listJobPostingsOptions({ query: { list: name, sort } }),
+    // Poll while the worker has Evaluations still to run
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        (p) => p.evaluation_status === 'queued' || p.evaluation_status === 'running',
+      )
+        ? 1000
+        : false,
+  })
+
+  return (
+    <section>
+      <h2>Job postings</h2>
+      <div className="actions" role="tablist" aria-label="Lists">
+        {LISTS.map((l) => (
+          <button
+            key={l.name}
+            type="button"
+            role="tab"
+            aria-selected={l.name === name}
+            onClick={() => {
+              setList(l)
+              setSort(l.sort)
+            }}
+          >
+            {l.label}
+          </button>
+        ))}
+      </div>
+      <label>
+        Sort by{' '}
+        <select value={sort} onChange={(e) => setSort(e.target.value as Sort)}>
+          <option value="score">Score, highest first</option>
+          <option value="age">Age, newest first</option>
+        </select>
+      </label>
+      {postings.isPending && <p>Loading…</p>}
+      {postings.isError && <p role="alert">Could not load the job postings.</p>}
+      {postings.data?.length === 0 && <p>{list.empty}</p>}
+      {postings.data && postings.data.length > 0 && (
+        <ul className="postings">
+          {postings.data.map((posting) => (
+            <PostingRow key={posting.id} posting={posting} />
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function PostingRow({ posting }: { posting: JobPostingRead }) {
+  const evaluation = posting.evaluation
+  return (
+    <li>
+      <a href={`#/job-postings/${posting.id}`}>{posting.title}</a> · {posting.company} ·{' '}
+      {age(posting.created_at)}
+      {posting.closed_at && <span className="badge">Closed on {posting.closed_at.slice(0, 10)}</span>}
+      {evaluation && (
+        <>
+          <span className="badge">Score {evaluation.score}</span>
+          <span className="badge">{evaluation.recommendation}</span>
+          {evaluation.disqualified_but_recommended && (
+            <span className="badge disqualified">
+              Disqualified but recommended:{' '}
+              {evaluation.violated_deal_breakers.map((d) => d.deal_breaker_text).join('; ')}
+            </span>
+          )}
+          {evaluation.outdated && <span className="badge">Edited since evaluated</span>}
+          <p>{evaluation.summary}</p>
+        </>
+      )}
+      {!evaluation && <NotEvaluated posting={posting} />}
+      <TriageButtons posting={posting} />
+    </li>
+  )
+}
+
+/** Why a posting has no Evaluation yet, with a retry when it failed. */
+function NotEvaluated({ posting }: { posting: JobPostingRead }) {
+  const queryClient = useQueryClient()
+  const rerun = useMutation({
+    ...rerunEvaluationMutation(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listJobPostingsQueryKey() }),
+  })
+  const status = posting.evaluation_status
+  const label =
+    status === 'queued' ? 'Evaluation queued' : status === 'running' ? 'Evaluating…' : 'Not evaluated'
+  return (
+    <p className="hint">
+      {label}
+      {posting.evaluation_failure && `: ${posting.evaluation_failure.reason}`}
+      {status === 'not_evaluated' && (
+        <>
+          {' '}
+          <button
+            type="button"
+            disabled={rerun.isPending}
+            onClick={() => rerun.mutate({ path: { job_posting_id: posting.id } })}
+          >
+            Try again
+          </button>
+        </>
+      )}
+    </p>
+  )
+}

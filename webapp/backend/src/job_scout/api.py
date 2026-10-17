@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import clippings, evaluations, job_postings, queue, user_inputs
+from job_scout import clippings, evaluations, job_postings, queue, triage, user_inputs
 from job_scout.config import Settings
 from job_scout.evaluation import Recommendation, Verdict
 from job_scout.evaluations import CheckedFlag
@@ -28,10 +28,14 @@ from job_scout.models import (
     EvaluationFailureKind,
     EvaluationStatus,
     JobPosting,
+    Triage,
+    TriageOrigin,
+    TriageValue,
 )
 from job_scout.owners import current_owner
 from job_scout.quotes import EvidenceMatch
 from job_scout.runtime import open_runtime
+from job_scout.triage import Entry, ListName, Sort
 
 NonBlank = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
 
@@ -44,6 +48,67 @@ class ClippingConfirm(BaseModel):
     location_text: NonBlank | None = None
     workplace_type: WorkplaceType | None = None
     description: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as given
+
+
+class TriageSet(BaseModel):
+    value: TriageValue
+
+
+class TriageRead(BaseModel):
+    value: TriageValue
+    origin: TriageOrigin  # set by the user, or copied by the app
+    created_at: datetime  # when the posting was first triaged
+    changed_at: datetime  # when the value last changed
+
+    @classmethod
+    def of(cls, triage: Triage) -> "TriageRead":
+        return cls(
+            value=triage.value,
+            origin=triage.origin,
+            created_at=triage.created_at,
+            changed_at=triage.changed_at,
+        )
+
+
+class ViolatedDealBreakerRead(BaseModel):
+    deal_breaker_id: int
+    deal_breaker_text: str
+    evidence: list[str]
+
+
+class EvaluationBriefRead(BaseModel):
+    """What a list row shows of a posting's current (latest done) Evaluation."""
+
+    score: int
+    recommendation: Recommendation  # skip whenever a Deal Breaker is violated
+    llm_recommendation: Recommendation  # the LLM's own
+    summary: str
+    disqualified_but_recommended: bool
+    violated_deal_breakers: list[ViolatedDealBreakerRead]
+    outdated: bool  # the posting's text changed since
+
+    @classmethod
+    def of(cls, run: Evaluation, posting: JobPosting) -> "EvaluationBriefRead":
+        result = evaluations.checked_result(run)
+        assert result is not None and run.recommendation and run.llm_recommendation
+        texts = evaluations.deal_breaker_texts(run.deal_breaker_set_version)
+        return cls(
+            score=result.score,
+            recommendation=run.recommendation,
+            llm_recommendation=run.llm_recommendation,
+            summary=result.summary,
+            disqualified_but_recommended=bool(run.disqualified_but_recommended),
+            violated_deal_breakers=[
+                ViolatedDealBreakerRead(
+                    deal_breaker_id=verdict.deal_breaker_id,
+                    deal_breaker_text=texts[verdict.deal_breaker_id],
+                    evidence=verdict.evidence,
+                )
+                for verdict in result.deal_breaker_verdicts
+                if verdict.verdict == "violated"
+            ],
+            outdated=bool(evaluations.outdated(run, posting)),
+        )
 
 
 class JobPostingRead(BaseModel):
@@ -60,9 +125,20 @@ class JobPostingRead(BaseModel):
     closed_at: datetime | None
     extracted_fields: ExtractedFields | None
     evaluation_status: EvaluationStatus | None  # the latest Evaluation's; null before any
+    evaluation_failure: "EvaluationFailureRead | None"  # why the latest was not evaluated
+    evaluation: EvaluationBriefRead | None  # the current one; null until one is done
+    triage: TriageRead | None  # null while untriaged
 
     @classmethod
-    def of(cls, posting: JobPosting, latest_evaluation: Evaluation | None) -> "JobPostingRead":
+    def of(
+        cls,
+        posting: JobPosting,
+        latest_evaluation: Evaluation | None,
+        *,
+        current_evaluation: Evaluation | None = None,
+        triage: Triage | None = None,
+    ) -> "JobPostingRead":
+        latest = latest_evaluation
         return cls(
             id=posting.id,
             source=posting.source,
@@ -76,7 +152,23 @@ class JobPostingRead(BaseModel):
             created_at=posting.created_at,
             closed_at=posting.closed_at,
             extracted_fields=posting.extracted_fields,
-            evaluation_status=None if latest_evaluation is None else latest_evaluation.status,
+            evaluation_status=None if latest is None else latest.status,
+            evaluation_failure=None
+            if latest is None or latest.failure_kind is None or latest.failure_reason is None
+            else EvaluationFailureRead(kind=latest.failure_kind, reason=latest.failure_reason),
+            evaluation=None
+            if current_evaluation is None
+            else EvaluationBriefRead.of(current_evaluation, posting),
+            triage=None if triage is None else TriageRead.of(triage),
+        )
+
+    @classmethod
+    def of_entry(cls, entry: Entry) -> "JobPostingRead":
+        return cls.of(
+            entry.posting,
+            entry.latest_evaluation,
+            current_evaluation=entry.current_evaluation,
+            triage=entry.triage,
         )
 
 
@@ -306,13 +398,21 @@ router = APIRouter(prefix="/api")
 
 
 @router.get("/job-postings")
-async def list_job_postings(session: Session, owner: Owner) -> list[JobPostingRead]:
+async def list_job_postings(
+    session: Session, owner: Owner, list: ListName | None = None, sort: Sort | None = None
+) -> list[JobPostingRead]:
+    """Every posting, the newest first; or one of the lists: inbox, skip, not-evaluated,
+    shortlist, later or ignored. A list is sorted by `sort` (score or age), by default as
+    its own use suits: the inbox and skip list by score, the others by age."""
     postings = await session.scalars(
         select(JobPosting)
         .where(JobPosting.owner_id == owner)
         .order_by(JobPosting.created_at.desc(), JobPosting.id.desc())
     )
-    return await _job_posting_reads(session, owner, list(postings))
+    found = await triage.entries(session, owner_id=owner, postings=[*postings])
+    if list is not None:
+        found = triage.listing(found, list, sort)
+    return [JobPostingRead.of_entry(entry) for entry in found]
 
 
 @router.get("/job-postings/similar")
@@ -328,6 +428,18 @@ async def find_similar_job_postings(
 @router.get("/job-postings/{job_posting_id}")
 async def get_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
     posting = await _job_posting(session, owner, job_posting_id)
+    return await _job_posting_read(session, owner, posting)
+
+
+@router.put("/job-postings/{job_posting_id}/triage")
+async def set_job_posting_triage(
+    job_posting_id: int, body: TriageSet, session: Session, owner: Owner
+) -> JobPostingRead:
+    """The user's Triage of the posting, replacing any earlier one; allowed for any
+    posting, evaluated or not."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    await triage.set_triage(session, posting, body.value)
+    await session.commit()
     return await _job_posting_read(session, owner, posting)
 
 
@@ -393,10 +505,8 @@ async def _job_posting_read(
 async def _job_posting_reads(
     session: AsyncSession, owner: uuid.UUID, postings: list[JobPosting]
 ) -> list[JobPostingRead]:
-    latest = await evaluations.latest_by_posting(
-        session, owner_id=owner, job_posting_ids=[p.id for p in postings]
-    )
-    return [JobPostingRead.of(p, latest.get(p.id)) for p in postings]
+    entries = await triage.entries(session, owner_id=owner, postings=postings)
+    return [JobPostingRead.of_entry(entry) for entry in entries]
 
 
 async def _job_posting(session: AsyncSession, owner: uuid.UUID, job_posting_id: int) -> JobPosting:
