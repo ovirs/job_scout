@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getApplication, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplications, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, getApplication, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -132,6 +132,43 @@ export const startApplicationMutation = (options?: Partial<Options<StartApplicat
     const mutationOptions: UseMutationOptions<StartApplicationResponse, StartApplicationError, Options<StartApplicationData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await startApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listJobPostingNotesQueryKey = (options: Options<ListJobPostingNotesData>) => createQueryKey('listJobPostingNotes', options);
+
+/**
+ * List Job Posting Notes
+ *
+ * The posting's notes, the first first.
+ */
+export const listJobPostingNotesOptions = (options: Options<ListJobPostingNotesData>) => queryOptions<ListJobPostingNotesResponse, ListJobPostingNotesError, ListJobPostingNotesResponse, ReturnType<typeof listJobPostingNotesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listJobPostingNotes({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listJobPostingNotesQueryKey(options)
+});
+
+/**
+ * Add Job Posting Note
+ */
+export const addJobPostingNoteMutation = (options?: Partial<Options<AddJobPostingNoteData>>): UseMutationOptions<AddJobPostingNoteResponse, AddJobPostingNoteError, Options<AddJobPostingNoteData>> => {
+    const mutationOptions: UseMutationOptions<AddJobPostingNoteResponse, AddJobPostingNoteError, Options<AddJobPostingNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addJobPostingNote({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -310,6 +347,63 @@ export const setApplicationStateMutation = (options?: Partial<Options<SetApplica
     const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await setApplicationState({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listApplicationNotesQueryKey = (options: Options<ListApplicationNotesData>) => createQueryKey('listApplicationNotes', options);
+
+/**
+ * List Application Notes
+ *
+ * The Application's notes and its posting's, together, the first first; each says
+ * which of the two it is on.
+ */
+export const listApplicationNotesOptions = (options: Options<ListApplicationNotesData>) => queryOptions<ListApplicationNotesResponse, ListApplicationNotesError, ListApplicationNotesResponse, ReturnType<typeof listApplicationNotesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listApplicationNotes({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listApplicationNotesQueryKey(options)
+});
+
+/**
+ * Add Application Note
+ */
+export const addApplicationNoteMutation = (options?: Partial<Options<AddApplicationNoteData>>): UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> => {
+    const mutationOptions: UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addApplicationNote({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Delete Note
+ *
+ * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
+ */
+export const deleteNoteMutation = (options?: Partial<Options<DeleteNoteData>>): UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> => {
+    const mutationOptions: UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteNote({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

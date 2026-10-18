@@ -14,6 +14,7 @@ import type { EvaluationRead, EvidenceMatch, JobPostingRead } from './api/types.
 import { currentOf, EvaluationPanel, highlightsOf } from './EvaluationPanel'
 import { ExtractedFacts, WORKPLACE_TYPES } from './ExtractedFacts'
 import { Highlighted, scrollToQuote } from './Highlighted'
+import { PostingNotes } from './Notes'
 import { TriageButtons } from './TriageButtons'
 
 export function JobPostingPage({ id }: { id: number }) {
@@ -83,6 +84,7 @@ function JobPostingView({
       <TriageButtons posting={posting} />
       <ApplicationAction posting={posting} />
       <CloseOrReopen posting={posting} />
+      <PostingNotes postingId={posting.id} applicationId={posting.application?.id ?? null} />
       {posting.extracted_fields && (
         <>
           <h3>Facts</h3>

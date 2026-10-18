@@ -28,6 +28,10 @@ _Avoid_: Mark, Decision, Rating, Screening (which is done by Screening Rules)
 The user's tracked progress in applying for a specific Job Posting, from preparing it through to its outcome (e.g., applied, interview loop, rejected). It exists only once the user starts applying; Triage comes before it.
 _Avoid_: Job
 
+**Note**:
+A free-text, dated remark the user writes on a Job Posting or on an Application, such as an interview round, a contact or an impression. A Job Posting's Notes stay on the posting and are shown alongside its Application.
+_Avoid_: Comment, Annotation, Document (which is a User Input)
+
 **Cover Letter**:
 The letter the user sends with one Application, written from the Career Profile and the Job Posting and finished by the user. An Application has at most one, and its successive texts are drafts of that one letter.
 _Avoid_: Motivation letter, Letter (alone), Draft (which is one text of a Cover Letter)
@@ -54,7 +58,7 @@ _Avoid_: Settings, Config, Profile data
 
 **Document**:
 A User Input written as one piece of free text: the Career Profile, Preferences or Writing Guide. Deal Breakers are not a Document, since they are a list of separate one-sentence items.
-_Avoid_: File, Note (which belongs to an Application)
+_Avoid_: File, Note (which the user writes on a Job Posting or an Application)
 
 **Evaluation**:
 A judgement of one Job Posting against the Career Profile, Deal Breakers and Preferences, made to help the user decide whether applying is worth it. It holds a verdict per Deal Breaker, red and green flags, a score used only for ordering, and a recommendation.

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -64,6 +64,25 @@ export const setJobPostingTriage = <ThrowOnError extends boolean = false>(option
  * of a posting that has none done or under way.
  */
 export const startApplication = <ThrowOnError extends boolean = false>(options: Options<StartApplicationData, ThrowOnError>): RequestResult<StartApplicationResponses, StartApplicationErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationResponses, StartApplicationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/applications', ...options });
+
+/**
+ * List Job Posting Notes
+ *
+ * The posting's notes, the first first.
+ */
+export const listJobPostingNotes = <ThrowOnError extends boolean = false>(options: Options<ListJobPostingNotesData, ThrowOnError>): RequestResult<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError> => (options.client ?? client).get<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/notes', ...options });
+
+/**
+ * Add Job Posting Note
+ */
+export const addJobPostingNote = <ThrowOnError extends boolean = false>(options: Options<AddJobPostingNoteData, ThrowOnError>): RequestResult<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError> => (options.client ?? client).post<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError>({
+    url: '/api/job-postings/{job_posting_id}/notes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Close Job Posting
@@ -137,6 +156,33 @@ export const setApplicationState = <ThrowOnError extends boolean = false>(option
         ...options.headers
     }
 });
+
+/**
+ * List Application Notes
+ *
+ * The Application's notes and its posting's, together, the first first; each says
+ * which of the two it is on.
+ */
+export const listApplicationNotes = <ThrowOnError extends boolean = false>(options: Options<ListApplicationNotesData, ThrowOnError>): RequestResult<ListApplicationNotesResponses, ListApplicationNotesErrors, ThrowOnError> => (options.client ?? client).get<ListApplicationNotesResponses, ListApplicationNotesErrors, ThrowOnError>({ url: '/api/applications/{application_id}/notes', ...options });
+
+/**
+ * Add Application Note
+ */
+export const addApplicationNote = <ThrowOnError extends boolean = false>(options: Options<AddApplicationNoteData, ThrowOnError>): RequestResult<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError> => (options.client ?? client).post<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError>({
+    url: '/api/applications/{application_id}/notes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Delete Note
+ *
+ * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
+ */
+export const deleteNote = <ThrowOnError extends boolean = false>(options: Options<DeleteNoteData, ThrowOnError>): RequestResult<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError>({ url: '/api/notes/{note_id}', ...options });
 
 /**
  * Submit Clipping

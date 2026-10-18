@@ -12,6 +12,7 @@ import {
   startApplicationMutation,
 } from './api/@tanstack/react-query.gen'
 import type { ApplicationRead, ApplicationStateSet, JobPostingRead } from './api/types.gen'
+import { ApplicationNotes } from './Notes'
 
 type State = ApplicationStateSet['state']
 
@@ -155,6 +156,7 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
           </li>
         ))}
       </ol>
+      <ApplicationNotes postingId={application.job_posting_id} applicationId={application.id} />
       {copy && (
         <>
           <h3>What you applied to</h3>

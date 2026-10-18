@@ -623,6 +623,44 @@ export type JobPostingRead = {
 };
 
 /**
+ * NoteAdd
+ */
+export type NoteAdd = {
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * NoteRead
+ *
+ * A note, on a posting or on an Application: exactly one of the two ids is set.
+ */
+export type NoteRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Job Posting Id
+     */
+    job_posting_id: number | null;
+    /**
+     * Application Id
+     */
+    application_id: number | null;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Created At
+     */
+    created_at: string;
+};
+
+/**
  * PostingCopyRead
  *
  * The posting as it was when the Application first moved to Applied.
@@ -934,6 +972,68 @@ export type StartApplicationResponses = {
 
 export type StartApplicationResponse = StartApplicationResponses[keyof StartApplicationResponses];
 
+export type ListJobPostingNotesData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/notes';
+};
+
+export type ListJobPostingNotesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListJobPostingNotesError = ListJobPostingNotesErrors[keyof ListJobPostingNotesErrors];
+
+export type ListJobPostingNotesResponses = {
+    /**
+     * Response List Job Posting Notes
+     *
+     * Successful Response
+     */
+    200: Array<NoteRead>;
+};
+
+export type ListJobPostingNotesResponse = ListJobPostingNotesResponses[keyof ListJobPostingNotesResponses];
+
+export type AddJobPostingNoteData = {
+    body: NoteAdd;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/notes';
+};
+
+export type AddJobPostingNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddJobPostingNoteError = AddJobPostingNoteErrors[keyof AddJobPostingNoteErrors];
+
+export type AddJobPostingNoteResponses = {
+    /**
+     * Successful Response
+     */
+    201: NoteRead;
+};
+
+export type AddJobPostingNoteResponse = AddJobPostingNoteResponses[keyof AddJobPostingNoteResponses];
+
 export type CloseJobPostingData = {
     body?: never;
     path: {
@@ -1209,6 +1309,98 @@ export type SetApplicationStateResponses = {
 };
 
 export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
+
+export type ListApplicationNotesData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/notes';
+};
+
+export type ListApplicationNotesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListApplicationNotesError = ListApplicationNotesErrors[keyof ListApplicationNotesErrors];
+
+export type ListApplicationNotesResponses = {
+    /**
+     * Response List Application Notes
+     *
+     * Successful Response
+     */
+    200: Array<NoteRead>;
+};
+
+export type ListApplicationNotesResponse = ListApplicationNotesResponses[keyof ListApplicationNotesResponses];
+
+export type AddApplicationNoteData = {
+    body: NoteAdd;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/notes';
+};
+
+export type AddApplicationNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddApplicationNoteError = AddApplicationNoteErrors[keyof AddApplicationNoteErrors];
+
+export type AddApplicationNoteResponses = {
+    /**
+     * Successful Response
+     */
+    201: NoteRead;
+};
+
+export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];
+
+export type DeleteNoteData = {
+    body?: never;
+    path: {
+        /**
+         * Note Id
+         */
+        note_id: number;
+    };
+    query?: never;
+    url: '/api/notes/{note_id}';
+};
+
+export type DeleteNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteNoteError = DeleteNoteErrors[keyof DeleteNoteErrors];
+
+export type DeleteNoteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteNoteResponse = DeleteNoteResponses[keyof DeleteNoteResponses];
 
 export type SubmitClippingData = {
     body: ClippingSubmit;

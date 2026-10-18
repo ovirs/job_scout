@@ -12,7 +12,16 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import applications, clippings, evaluations, job_postings, queue, triage, user_inputs
+from job_scout import (
+    applications,
+    clippings,
+    evaluations,
+    job_postings,
+    notes,
+    queue,
+    triage,
+    user_inputs,
+)
 from job_scout.config import Settings
 from job_scout.evaluation import Recommendation, Verdict
 from job_scout.evaluations import CheckedFlag
@@ -30,6 +39,7 @@ from job_scout.models import (
     EvaluationFailureKind,
     EvaluationStatus,
     JobPosting,
+    Note,
     Triage,
     TriageOrigin,
     TriageValue,
@@ -69,6 +79,30 @@ class TriageRead(BaseModel):
             origin=triage.origin,
             created_at=triage.created_at,
             changed_at=triage.changed_at,
+        )
+
+
+class NoteAdd(BaseModel):
+    text: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as given
+
+
+class NoteRead(BaseModel):
+    """A note, on a posting or on an Application: exactly one of the two ids is set."""
+
+    id: int
+    job_posting_id: int | None
+    application_id: int | None
+    text: str
+    created_at: datetime
+
+    @classmethod
+    def of(cls, note: Note) -> "NoteRead":
+        return cls(
+            id=note.id,
+            job_posting_id=note.job_posting_id,
+            application_id=note.application_id,
+            text=note.text,
+            created_at=note.created_at,
         )
 
 
@@ -560,6 +594,26 @@ async def start_application(
     return ApplicationRead.of(application)
 
 
+@router.get("/job-postings/{job_posting_id}/notes")
+async def list_job_posting_notes(
+    job_posting_id: int, session: Session, owner: Owner
+) -> list[NoteRead]:
+    """The posting's notes, the first first."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    return [NoteRead.of(note) for note in await notes.of_posting(session, posting)]
+
+
+@router.post("/job-postings/{job_posting_id}/notes", status_code=201)
+async def add_job_posting_note(
+    job_posting_id: int, body: NoteAdd, session: Session, owner: Owner
+) -> NoteRead:
+    posting = await _job_posting(session, owner, job_posting_id)
+    note = notes.on_posting(posting, body.text)
+    session.add(note)
+    await session.commit()
+    return NoteRead.of(note)
+
+
 @router.post("/job-postings/{job_posting_id}/close")
 async def close_job_posting(job_posting_id: int, session: Session, owner: Owner) -> JobPostingRead:
     """Close a posting, keeping it: a Manual Entry is closed only by the user."""
@@ -675,6 +729,27 @@ async def delete_application(application_id: int, session: Session, owner: Owner
     await session.commit()
 
 
+@router.get("/applications/{application_id}/notes")
+async def list_application_notes(
+    application_id: int, session: Session, owner: Owner
+) -> list[NoteRead]:
+    """The Application's notes and its posting's, together, the first first; each says
+    which of the two it is on."""
+    application = await _application(session, owner, application_id)
+    return [NoteRead.of(note) for note in await notes.of_application(session, application)]
+
+
+@router.post("/applications/{application_id}/notes", status_code=201)
+async def add_application_note(
+    application_id: int, body: NoteAdd, session: Session, owner: Owner
+) -> NoteRead:
+    application = await _application(session, owner, application_id)
+    note = notes.on_application(application, body.text)
+    session.add(note)
+    await session.commit()
+    return NoteRead.of(note)
+
+
 async def _application(session: AsyncSession, owner: uuid.UUID, application_id: int) -> Application:
     application = await applications.application(
         session, owner_id=owner, application_id=application_id
@@ -682,6 +757,16 @@ async def _application(session: AsyncSession, owner: uuid.UUID, application_id: 
     if application is None:
         raise HTTPException(status_code=404, detail="No such Application")
     return application
+
+
+@router.delete("/notes/{note_id}", status_code=204)
+async def delete_note(note_id: int, session: Session, owner: Owner) -> None:
+    """Delete a note, on a posting or on an Application: it is hidden everywhere but kept."""
+    note = await notes.note(session, owner_id=owner, note_id=note_id)
+    if note is None:
+        raise HTTPException(status_code=404, detail="No such note")
+    notes.delete(note)
+    await session.commit()
 
 
 @router.post("/clippings", status_code=201)
