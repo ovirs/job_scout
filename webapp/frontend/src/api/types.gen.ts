@@ -5,6 +5,97 @@ export type ClientOptions = {
 };
 
 /**
+ * ApplicationBriefRead
+ *
+ * What a posting shows of its live Application.
+ */
+export type ApplicationBriefRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * State
+     */
+    state: 'preparing' | 'applied' | 'screen_call' | 'interview_loop' | 'offer' | 'accepted' | 'rejected' | 'withdrawn' | 'no_response';
+};
+
+/**
+ * ApplicationRead
+ */
+export type ApplicationRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Job Posting Id
+     */
+    job_posting_id: number;
+    /**
+     * State
+     */
+    state: 'preparing' | 'applied' | 'screen_call' | 'interview_loop' | 'offer' | 'accepted' | 'rejected' | 'withdrawn' | 'no_response';
+    /**
+     * Closed
+     */
+    closed: boolean;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * State Changed At
+     */
+    state_changed_at: string;
+    /**
+     * History
+     */
+    history: Array<ApplicationStateChangeRead>;
+    /**
+     * Job Posting Title
+     */
+    job_posting_title: string;
+    /**
+     * Job Posting Company
+     */
+    job_posting_company: string;
+    /**
+     * Job Posting Closed At
+     */
+    job_posting_closed_at: string | null;
+    posting_copy: PostingCopyRead | null;
+    /**
+     * Posting Changed Since Copy
+     */
+    posting_changed_since_copy: boolean | null;
+};
+
+/**
+ * ApplicationStateChangeRead
+ */
+export type ApplicationStateChangeRead = {
+    /**
+     * State
+     */
+    state: 'preparing' | 'applied' | 'screen_call' | 'interview_loop' | 'offer' | 'accepted' | 'rejected' | 'withdrawn' | 'no_response';
+    /**
+     * Changed At
+     */
+    changed_at: string;
+};
+
+/**
+ * ApplicationStateSet
+ */
+export type ApplicationStateSet = {
+    /**
+     * State
+     */
+    state: 'preparing' | 'applied' | 'screen_call' | 'interview_loop' | 'offer' | 'accepted' | 'rejected' | 'withdrawn' | 'no_response';
+};
+
+/**
  * CheckedFlag
  */
 export type CheckedFlag = {
@@ -528,6 +619,39 @@ export type JobPostingRead = {
     evaluation_failure: EvaluationFailureRead | null;
     evaluation: EvaluationBriefRead | null;
     triage: TriageRead | null;
+    application: ApplicationBriefRead | null;
+};
+
+/**
+ * PostingCopyRead
+ *
+ * The posting as it was when the Application first moved to Applied.
+ */
+export type PostingCopyRead = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Company
+     */
+    company: string;
+    /**
+     * Location Text
+     */
+    location_text: string | null;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Url
+     */
+    url: string | null;
+    /**
+     * Copied At
+     */
+    copied_at: string;
 };
 
 /**
@@ -780,6 +904,36 @@ export type SetJobPostingTriageResponses = {
 
 export type SetJobPostingTriageResponse = SetJobPostingTriageResponses[keyof SetJobPostingTriageResponses];
 
+export type StartApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Job Posting Id
+         */
+        job_posting_id: number;
+    };
+    query?: never;
+    url: '/api/job-postings/{job_posting_id}/applications';
+};
+
+export type StartApplicationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartApplicationError = StartApplicationErrors[keyof StartApplicationErrors];
+
+export type StartApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    201: ApplicationRead;
+};
+
+export type StartApplicationResponse = StartApplicationResponses[keyof StartApplicationResponses];
+
 export type CloseJobPostingData = {
     body?: never;
     path: {
@@ -933,6 +1087,128 @@ export type GetCurrentEvaluationResponses = {
 };
 
 export type GetCurrentEvaluationResponse = GetCurrentEvaluationResponses[keyof GetCurrentEvaluationResponses];
+
+export type ListApplicationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Closed
+         */
+        closed?: boolean | null;
+    };
+    url: '/api/applications';
+};
+
+export type ListApplicationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListApplicationsError = ListApplicationsErrors[keyof ListApplicationsErrors];
+
+export type ListApplicationsResponses = {
+    /**
+     * Response List Applications
+     *
+     * Successful Response
+     */
+    200: Array<ApplicationRead>;
+};
+
+export type ListApplicationsResponse = ListApplicationsResponses[keyof ListApplicationsResponses];
+
+export type DeleteApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}';
+};
+
+export type DeleteApplicationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteApplicationError = DeleteApplicationErrors[keyof DeleteApplicationErrors];
+
+export type DeleteApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteApplicationResponse = DeleteApplicationResponses[keyof DeleteApplicationResponses];
+
+export type GetApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}';
+};
+
+export type GetApplicationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetApplicationError = GetApplicationErrors[keyof GetApplicationErrors];
+
+export type GetApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApplicationRead;
+};
+
+export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
+
+export type SetApplicationStateData = {
+    body: ApplicationStateSet;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/state';
+};
+
+export type SetApplicationStateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetApplicationStateError = SetApplicationStateErrors[keyof SetApplicationStateErrors];
+
+export type SetApplicationStateResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApplicationRead;
+};
+
+export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
 
 export type SubmitClippingData = {
     body: ClippingSubmit;

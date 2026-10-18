@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { age } from './age'
+import { ApplicationAction } from './ApplicationPage'
 import {
   closeJobPostingMutation,
   getJobPostingOptions,
@@ -80,6 +81,7 @@ function JobPostingView({
         )}
       </p>
       <TriageButtons posting={posting} />
+      <ApplicationAction posting={posting} />
       <CloseOrReopen posting={posting} />
       {posting.extracted_fields && (
         <>

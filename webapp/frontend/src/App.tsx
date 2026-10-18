@@ -1,4 +1,5 @@
 import { Fragment, type ReactNode, useEffect, useState } from 'react'
+import { ApplicationPage, ApplicationsPage } from './ApplicationPage'
 import { ClippingPage, NewClippingForm } from './ClippingPage'
 import { DealBreakersPage } from './DealBreakersPage'
 import { DOCUMENTS, type DocumentKind, DocumentPage } from './DocumentPage'
@@ -18,6 +19,7 @@ const JOB_POSTINGS = {
 
 const PAGES = [
   JOB_POSTINGS,
+  { hash: '#/applications', label: 'Applications', page: <ApplicationsPage /> },
   documentPage('career-profile'),
   documentPage('preferences'),
   { hash: '#/deal-breakers', label: 'Deal Breakers', page: <DealBreakersPage /> },
@@ -32,6 +34,7 @@ function documentPage(kind: DocumentKind) {
 const RECORD_PAGES: [RegExp, (id: number) => ReactNode][] = [
   [/^#\/clippings\/(\d+)$/, (id) => <ClippingPage id={id} />],
   [/^#\/job-postings\/(\d+)$/, (id) => <JobPostingPage id={id} />],
+  [/^#\/applications\/(\d+)$/, (id) => <ApplicationPage id={id} />],
 ]
 
 function recordPage(hash: string): ReactNode | null {

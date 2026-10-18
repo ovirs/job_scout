@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setJobPostingTriage, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addDealBreaker, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, editDealBreaker, findSimilarJobPostings, getApplication, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplications, listEvaluations, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -104,12 +104,34 @@ export const getJobPostingOptions = (options: Options<GetJobPostingData>) => que
  * Set Job Posting Triage
  *
  * The user's Triage of the posting, replacing any earlier one; allowed for any
- * posting, evaluated or not.
+ * posting, evaluated or not. Refused while the posting has a live Application, which
+ * keeps it locked at Interested.
  */
 export const setJobPostingTriageMutation = (options?: Partial<Options<SetJobPostingTriageData>>): UseMutationOptions<SetJobPostingTriageResponse, SetJobPostingTriageError, Options<SetJobPostingTriageData>> => {
     const mutationOptions: UseMutationOptions<SetJobPostingTriageResponse, SetJobPostingTriageError, Options<SetJobPostingTriageData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await setJobPostingTriage({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Start Application
+ *
+ * Start applying: a new Application in Preparing, with the posting's Triage set to
+ * Interested. Refused while the posting has a live Application. Queues an Evaluation
+ * of a posting that has none done or under way.
+ */
+export const startApplicationMutation = (options?: Partial<Options<StartApplicationData>>): UseMutationOptions<StartApplicationResponse, StartApplicationError, Options<StartApplicationData>> => {
+    const mutationOptions: UseMutationOptions<StartApplicationResponse, StartApplicationError, Options<StartApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await startApplication({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -216,6 +238,87 @@ export const getCurrentEvaluationOptions = (options: Options<GetCurrentEvaluatio
     },
     queryKey: getCurrentEvaluationQueryKey(options)
 });
+
+export const listApplicationsQueryKey = (options?: Options<ListApplicationsData>) => createQueryKey('listApplications', options);
+
+/**
+ * List Applications
+ *
+ * The live Applications by state, Preparing to No response, the latest move first
+ * within a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No
+ * response) or only those in flight.
+ */
+export const listApplicationsOptions = (options?: Options<ListApplicationsData>) => queryOptions<ListApplicationsResponse, ListApplicationsError, ListApplicationsResponse, ReturnType<typeof listApplicationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listApplications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listApplicationsQueryKey(options)
+});
+
+/**
+ * Delete Application
+ *
+ * Delete an Application while it is Preparing: it is hidden everywhere but kept, and
+ * the posting's Triage stays Interested, changeable again. Past Preparing, an
+ * Application is closed rather than deleted.
+ */
+export const deleteApplicationMutation = (options?: Partial<Options<DeleteApplicationData>>): UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> => {
+    const mutationOptions: UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getApplicationQueryKey = (options: Options<GetApplicationData>) => createQueryKey('getApplication', options);
+
+/**
+ * Get Application
+ */
+export const getApplicationOptions = (options: Options<GetApplicationData>) => queryOptions<GetApplicationResponse, GetApplicationError, GetApplicationResponse, ReturnType<typeof getApplicationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getApplication({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getApplicationQueryKey(options)
+});
+
+/**
+ * Set Application State
+ *
+ * Move the Application to any state, from any other; each move is kept, dated, in
+ * its history.
+ */
+export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
+    const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await setApplicationState({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Submit Clipping

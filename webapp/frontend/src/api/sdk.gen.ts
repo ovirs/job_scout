@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -44,7 +44,8 @@ export const getJobPosting = <ThrowOnError extends boolean = false>(options: Opt
  * Set Job Posting Triage
  *
  * The user's Triage of the posting, replacing any earlier one; allowed for any
- * posting, evaluated or not.
+ * posting, evaluated or not. Refused while the posting has a live Application, which
+ * keeps it locked at Interested.
  */
 export const setJobPostingTriage = <ThrowOnError extends boolean = false>(options: Options<SetJobPostingTriageData, ThrowOnError>): RequestResult<SetJobPostingTriageResponses, SetJobPostingTriageErrors, ThrowOnError> => (options.client ?? client).put<SetJobPostingTriageResponses, SetJobPostingTriageErrors, ThrowOnError>({
     url: '/api/job-postings/{job_posting_id}/triage',
@@ -54,6 +55,15 @@ export const setJobPostingTriage = <ThrowOnError extends boolean = false>(option
         ...options.headers
     }
 });
+
+/**
+ * Start Application
+ *
+ * Start applying: a new Application in Preparing, with the posting's Triage set to
+ * Interested. Refused while the posting has a live Application. Queues an Evaluation
+ * of a posting that has none done or under way.
+ */
+export const startApplication = <ThrowOnError extends boolean = false>(options: Options<StartApplicationData, ThrowOnError>): RequestResult<StartApplicationResponses, StartApplicationErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationResponses, StartApplicationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/applications', ...options });
 
 /**
  * Close Job Posting
@@ -89,6 +99,44 @@ export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: O
  * The posting's latest done Evaluation, or null while it has none.
  */
 export const getCurrentEvaluation = <ThrowOnError extends boolean = false>(options: Options<GetCurrentEvaluationData, ThrowOnError>): RequestResult<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations/current', ...options });
+
+/**
+ * List Applications
+ *
+ * The live Applications by state, Preparing to No response, the latest move first
+ * within a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No
+ * response) or only those in flight.
+ */
+export const listApplications = <ThrowOnError extends boolean = false>(options?: Options<ListApplicationsData, ThrowOnError>): RequestResult<ListApplicationsResponses, ListApplicationsErrors, ThrowOnError> => (options?.client ?? client).get<ListApplicationsResponses, ListApplicationsErrors, ThrowOnError>({ url: '/api/applications', ...options });
+
+/**
+ * Delete Application
+ *
+ * Delete an Application while it is Preparing: it is hidden everywhere but kept, and
+ * the posting's Triage stays Interested, changeable again. Past Preparing, an
+ * Application is closed rather than deleted.
+ */
+export const deleteApplication = <ThrowOnError extends boolean = false>(options: Options<DeleteApplicationData, ThrowOnError>): RequestResult<DeleteApplicationResponses, DeleteApplicationErrors, ThrowOnError> => (options.client ?? client).delete<DeleteApplicationResponses, DeleteApplicationErrors, ThrowOnError>({ url: '/api/applications/{application_id}', ...options });
+
+/**
+ * Get Application
+ */
+export const getApplication = <ThrowOnError extends boolean = false>(options: Options<GetApplicationData, ThrowOnError>): RequestResult<GetApplicationResponses, GetApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetApplicationResponses, GetApplicationErrors, ThrowOnError>({ url: '/api/applications/{application_id}', ...options });
+
+/**
+ * Set Application State
+ *
+ * Move the Application to any state, from any other; each move is kept, dated, in
+ * its history.
+ */
+export const setApplicationState = <ThrowOnError extends boolean = false>(options: Options<SetApplicationStateData, ThrowOnError>): RequestResult<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError> => (options.client ?? client).put<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError>({
+    url: '/api/applications/{application_id}/state',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Submit Clipping

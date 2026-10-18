@@ -305,6 +305,12 @@ async def current_by_posting(
     return {run.job_posting_id: run for run in runs}
 
 
+def none_done_or_under_way(runs: list[Evaluation]) -> bool:
+    """Whether a posting with this history has no Evaluation, done or under way; one
+    that was not evaluated does not count."""
+    return all(run.status == "not_evaluated" for run in runs)
+
+
 def current(runs: list[Evaluation]) -> Evaluation | None:
     """The current Evaluation among a posting's history: the latest done one."""
     return next((run for run in runs if run.status == "done"), None)

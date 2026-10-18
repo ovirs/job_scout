@@ -180,7 +180,7 @@
     "/api/job-postings/{job_posting_id}/triage": {
       "put": {
         "summary": "Set Job Posting Triage",
-        "description": "The user's Triage of the posting, replacing any earlier one; allowed for any\nposting, evaluated or not.",
+        "description": "The user's Triage of the posting, replacing any earlier one; allowed for any\nposting, evaluated or not. Refused while the posting has a live Application, which\nkeeps it locked at Interested.",
         "operationId": "set_job_posting_triage",
         "parameters": [
           {
@@ -210,6 +210,46 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/JobPostingRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/job-postings/{job_posting_id}/applications": {
+      "post": {
+        "summary": "Start Application",
+        "description": "Start applying: a new Application in Preparing, with the posting's Triage set to\nInterested. Refused while the posting has a live Application. Queues an Evaluation\nof a posting that has none done or under way.",
+        "operationId": "start_application",
+        "parameters": [
+          {
+            "name": "job_posting_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Job Posting Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
                 }
               }
             }
@@ -419,6 +459,177 @@
                     }
                   ],
                   "title": "Response Get Current Evaluation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications": {
+      "get": {
+        "summary": "List Applications",
+        "description": "The live Applications by state, Preparing to No response, the latest move first\nwithin a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No\nresponse) or only those in flight.",
+        "operationId": "list_applications",
+        "parameters": [
+          {
+            "name": "closed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Closed"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ApplicationRead"
+                  },
+                  "title": "Response List Applications"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}": {
+      "get": {
+        "summary": "Get Application",
+        "operationId": "get_application",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete Application",
+        "description": "Delete an Application while it is Preparing: it is hidden everywhere but kept, and\nthe posting's Triage stays Interested, changeable again. Past Preparing, an\nApplication is closed rather than deleted.",
+        "operationId": "delete_application",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/state": {
+      "put": {
+        "summary": "Set Application State",
+        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history.",
+        "operationId": "set_application_state",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationStateSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
                 }
               }
             }
@@ -998,6 +1209,195 @@
   },
   "components": {
     "schemas": {
+      "ApplicationBriefRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "preparing",
+              "applied",
+              "screen_call",
+              "interview_loop",
+              "offer",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "no_response"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "state"
+        ],
+        "title": "ApplicationBriefRead",
+        "description": "What a posting shows of its live Application."
+      },
+      "ApplicationRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "job_posting_id": {
+            "type": "integer",
+            "title": "Job Posting Id"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "preparing",
+              "applied",
+              "screen_call",
+              "interview_loop",
+              "offer",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "no_response"
+            ],
+            "title": "State"
+          },
+          "closed": {
+            "type": "boolean",
+            "title": "Closed"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "state_changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "State Changed At"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/ApplicationStateChangeRead"
+            },
+            "type": "array",
+            "title": "History"
+          },
+          "job_posting_title": {
+            "type": "string",
+            "title": "Job Posting Title"
+          },
+          "job_posting_company": {
+            "type": "string",
+            "title": "Job Posting Company"
+          },
+          "job_posting_closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Job Posting Closed At"
+          },
+          "posting_copy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PostingCopyRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "posting_changed_since_copy": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posting Changed Since Copy"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "job_posting_id",
+          "state",
+          "closed",
+          "created_at",
+          "state_changed_at",
+          "history",
+          "job_posting_title",
+          "job_posting_company",
+          "job_posting_closed_at",
+          "posting_copy",
+          "posting_changed_since_copy"
+        ],
+        "title": "ApplicationRead"
+      },
+      "ApplicationStateChangeRead": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "preparing",
+              "applied",
+              "screen_call",
+              "interview_loop",
+              "offer",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "no_response"
+            ],
+            "title": "State"
+          },
+          "changed_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Changed At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state",
+          "changed_at"
+        ],
+        "title": "ApplicationStateChangeRead"
+      },
+      "ApplicationStateSet": {
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "preparing",
+              "applied",
+              "screen_call",
+              "interview_loop",
+              "offer",
+              "accepted",
+              "rejected",
+              "withdrawn",
+              "no_response"
+            ],
+            "title": "State"
+          }
+        },
+        "type": "object",
+        "required": [
+          "state"
+        ],
+        "title": "ApplicationStateSet"
+      },
       "CheckedFlag": {
         "properties": {
           "point": {
@@ -2118,6 +2518,16 @@
                 "type": "null"
               }
             ]
+          },
+          "application": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ApplicationBriefRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "type": "object",
@@ -2137,9 +2547,64 @@
           "evaluation_status",
           "evaluation_failure",
           "evaluation",
-          "triage"
+          "triage",
+          "application"
         ],
         "title": "JobPostingRead"
+      },
+      "PostingCopyRead": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "company": {
+            "type": "string",
+            "title": "Company"
+          },
+          "location_text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location Text"
+          },
+          "description": {
+            "type": "string",
+            "title": "Description"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          },
+          "copied_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Copied At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "title",
+          "company",
+          "location_text",
+          "description",
+          "url",
+          "copied_at"
+        ],
+        "title": "PostingCopyRead",
+        "description": "The posting as it was when the Application first moved to Applied."
       },
       "SalaryRange": {
         "properties": {

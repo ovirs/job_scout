@@ -13,9 +13,9 @@ from typing import Literal
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import evaluations
+from job_scout import applications, evaluations
 from job_scout.evaluation import Recommendation
-from job_scout.models import Evaluation, JobPosting, Triage, TriageValue
+from job_scout.models import Application, Evaluation, JobPosting, Triage, TriageValue
 
 ListName = Literal["inbox", "skip", "not-evaluated", "shortlist", "later", "ignored"]
 Sort = Literal["score", "age"]
@@ -24,8 +24,8 @@ Sort = Literal["score", "age"]
 async def set_triage(session: AsyncSession, posting: JobPosting, value: TriageValue) -> Triage:
     """The user's Triage of the posting: the first creates it, later ones change its value.
 
-    Any posting can be triaged, whatever its Evaluation. (While a live Application exists
-    the Triage will be locked at Interested; Applications come later.)
+    Any posting can be triaged, whatever its Evaluation. While the posting has a live
+    Application its Triage is locked at Interested: the caller refuses the change.
     """
     triage = await session.scalar(select(Triage).where(Triage.job_posting_id == posting.id))
     now = datetime.now(UTC)
@@ -54,6 +54,7 @@ class Entry:
     triage: Triage | None
     latest_evaluation: Evaluation | None  # done or not
     current_evaluation: Evaluation | None  # the latest done one
+    application: Application | None  # the live one
 
 
 async def triages_by_posting(
@@ -74,8 +75,17 @@ async def entries(
     triages = await triages_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
     latest = await evaluations.latest_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
     current = await evaluations.current_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
+    live_applications = await applications.live_by_posting(
+        session, owner_id=owner_id, job_posting_ids=ids
+    )
     return [
-        Entry(posting, triages.get(posting.id), latest.get(posting.id), current.get(posting.id))
+        Entry(
+            posting,
+            triages.get(posting.id),
+            latest.get(posting.id),
+            current.get(posting.id),
+            live_applications.get(posting.id),
+        )
         for posting in postings
     ]
 

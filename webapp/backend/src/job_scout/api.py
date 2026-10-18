@@ -12,13 +12,15 @@ from pydantic import BaseModel, Field, StringConstraints
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import clippings, evaluations, job_postings, queue, triage, user_inputs
+from job_scout import applications, clippings, evaluations, job_postings, queue, triage, user_inputs
 from job_scout.config import Settings
 from job_scout.evaluation import Recommendation, Verdict
 from job_scout.evaluations import CheckedFlag
 from job_scout.extraction import ExtractedFields, WorkplaceType
 from job_scout.llm import FailureKind
 from job_scout.models import (
+    Application,
+    ApplicationState,
     Clipping,
     ClippingStatus,
     DealBreakerSetVersion,
@@ -68,6 +70,88 @@ class TriageRead(BaseModel):
             created_at=triage.created_at,
             changed_at=triage.changed_at,
         )
+
+
+class ApplicationBriefRead(BaseModel):
+    """What a posting shows of its live Application."""
+
+    id: int
+    state: ApplicationState
+
+    @classmethod
+    def of(cls, application: Application) -> "ApplicationBriefRead":
+        return cls(id=application.id, state=application.state)
+
+
+class ApplicationStateSet(BaseModel):
+    state: ApplicationState
+
+
+class ApplicationStateChangeRead(BaseModel):
+    state: ApplicationState
+    changed_at: datetime
+
+
+class PostingCopyRead(BaseModel):
+    """The posting as it was when the Application first moved to Applied."""
+
+    title: str
+    company: str
+    location_text: str | None
+    description: str
+    url: str | None
+    copied_at: datetime
+
+
+class ApplicationRead(BaseModel):
+    id: int
+    job_posting_id: int
+    state: ApplicationState
+    closed: bool  # Accepted, Rejected, Withdrawn or No response
+    created_at: datetime
+    state_changed_at: datetime  # when it moved to its current state
+    history: list[ApplicationStateChangeRead]  # every move, the first first
+    # The posting as it is now
+    job_posting_title: str
+    job_posting_company: str
+    job_posting_closed_at: datetime | None
+    posting_copy: PostingCopyRead | None  # null until the first move to Applied
+    posting_changed_since_copy: bool | None  # the posting's text changed; null with no copy
+
+    @classmethod
+    def of(cls, application: Application) -> "ApplicationRead":
+        return cls(
+            id=application.id,
+            job_posting_id=application.job_posting_id,
+            state=application.state,
+            closed=applications.is_closed(application),
+            created_at=application.created_at,
+            state_changed_at=applications.state_changed_at(application),
+            history=[
+                ApplicationStateChangeRead(state=change.state, changed_at=change.changed_at)
+                for change in application.history
+            ],
+            job_posting_title=application.job_posting.title,
+            job_posting_company=application.job_posting.company,
+            job_posting_closed_at=application.job_posting.closed_at,
+            posting_copy=_posting_copy(application),
+            posting_changed_since_copy=applications.posting_changed_since_copy(application),
+        )
+
+
+def _posting_copy(application: Application) -> PostingCopyRead | None:
+    if application.copied_at is None:
+        return None
+    assert application.copy_title is not None and application.copy_company is not None
+    assert application.copy_description is not None
+    return PostingCopyRead(
+        title=application.copy_title,
+        company=application.copy_company,
+        location_text=application.copy_location_text,
+        description=application.copy_description,
+        url=application.copy_url,
+        copied_at=application.copied_at,
+    )
 
 
 class ViolatedDealBreakerRead(BaseModel):
@@ -128,6 +212,7 @@ class JobPostingRead(BaseModel):
     evaluation_failure: "EvaluationFailureRead | None"  # why the latest was not evaluated
     evaluation: EvaluationBriefRead | None  # the current one; null until one is done
     triage: TriageRead | None  # null while untriaged
+    application: ApplicationBriefRead | None  # the live one; null while there is none
 
     @classmethod
     def of(
@@ -137,6 +222,7 @@ class JobPostingRead(BaseModel):
         *,
         current_evaluation: Evaluation | None = None,
         triage: Triage | None = None,
+        application: Application | None = None,
     ) -> "JobPostingRead":
         latest = latest_evaluation
         return cls(
@@ -160,6 +246,7 @@ class JobPostingRead(BaseModel):
             if current_evaluation is None
             else EvaluationBriefRead.of(current_evaluation, posting),
             triage=None if triage is None else TriageRead.of(triage),
+            application=None if application is None else ApplicationBriefRead.of(application),
         )
 
     @classmethod
@@ -169,6 +256,7 @@ class JobPostingRead(BaseModel):
             entry.latest_evaluation,
             current_evaluation=entry.current_evaluation,
             triage=entry.triage,
+            application=entry.application,
         )
 
 
@@ -436,11 +524,40 @@ async def set_job_posting_triage(
     job_posting_id: int, body: TriageSet, session: Session, owner: Owner
 ) -> JobPostingRead:
     """The user's Triage of the posting, replacing any earlier one; allowed for any
-    posting, evaluated or not."""
+    posting, evaluated or not. Refused while the posting has a live Application, which
+    keeps it locked at Interested."""
     posting = await _job_posting(session, owner, job_posting_id)
+    if await applications.live(session, posting) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail="The Triage is locked at Interested while the posting has a live Application",
+        )
     await triage.set_triage(session, posting, body.value)
     await session.commit()
     return await _job_posting_read(session, owner, posting)
+
+
+@router.post("/job-postings/{job_posting_id}/applications", status_code=201)
+async def start_application(
+    job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+) -> ApplicationRead:
+    """Start applying: a new Application in Preparing, with the posting's Triage set to
+    Interested. Refused while the posting has a live Application. Queues an Evaluation
+    of a posting that has none done or under way."""
+    posting = await _job_posting(session, owner, job_posting_id)
+    if await applications.live(session, posting) is not None:
+        raise HTTPException(status_code=409, detail="The posting already has a live Application")
+    await triage.set_triage(session, posting, "interested")
+    application = applications.start(posting)
+    session.add(application)
+    runs = await evaluations.history(session, owner_id=owner, job_posting_id=posting.id)
+    run = evaluations.queued(posting) if evaluations.none_done_or_under_way(runs) else None
+    if run is not None:
+        session.add(run)
+    await session.commit()
+    if run is not None:
+        await queue.enqueue_evaluate(task_queue, run.id)
+    return ApplicationRead.of(application)
 
 
 @router.post("/job-postings/{job_posting_id}/close")
@@ -514,6 +631,57 @@ async def _job_posting(session: AsyncSession, owner: uuid.UUID, job_posting_id: 
     if posting is None:
         raise HTTPException(status_code=404, detail="No such Job Posting")
     return posting
+
+
+@router.get("/applications")
+async def list_applications(
+    session: Session, owner: Owner, closed: bool | None = None
+) -> list[ApplicationRead]:
+    """The live Applications by state, Preparing to No response, the latest move first
+    within a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No
+    response) or only those in flight."""
+    found = await applications.by_state(session, owner_id=owner, closed=closed)
+    return [ApplicationRead.of(application) for application in found]
+
+
+@router.get("/applications/{application_id}")
+async def get_application(application_id: int, session: Session, owner: Owner) -> ApplicationRead:
+    return ApplicationRead.of(await _application(session, owner, application_id))
+
+
+@router.put("/applications/{application_id}/state")
+async def set_application_state(
+    application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
+) -> ApplicationRead:
+    """Move the Application to any state, from any other; each move is kept, dated, in
+    its history."""
+    application = await _application(session, owner, application_id)
+    applications.set_state(application, body.state)
+    await session.commit()
+    return ApplicationRead.of(application)
+
+
+@router.delete("/applications/{application_id}", status_code=204)
+async def delete_application(application_id: int, session: Session, owner: Owner) -> None:
+    """Delete an Application while it is Preparing: it is hidden everywhere but kept, and
+    the posting's Triage stays Interested, changeable again. Past Preparing, an
+    Application is closed rather than deleted."""
+    application = await _application(session, owner, application_id)
+    if application.state != "preparing":
+        raise HTTPException(
+            status_code=409, detail="Only an Application in Preparing can be deleted"
+        )
+    applications.delete(application)
+    await session.commit()
+
+
+async def _application(session: AsyncSession, owner: uuid.UUID, application_id: int) -> Application:
+    application = await applications.application(
+        session, owner_id=owner, application_id=application_id
+    )
+    if application is None:
+        raise HTTPException(status_code=404, detail="No such Application")
+    return application
 
 
 @router.post("/clippings", status_code=201)

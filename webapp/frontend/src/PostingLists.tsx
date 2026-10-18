@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { age } from './age'
+import { STATE_LABELS } from './ApplicationPage'
 import {
   listJobPostingsOptions,
   listJobPostingsQueryKey,
@@ -84,6 +85,11 @@ function PostingRow({ posting }: { posting: JobPostingRead }) {
       <a href={`#/job-postings/${posting.id}`}>{posting.title}</a> · {posting.company} ·{' '}
       {age(posting.created_at)}
       {posting.closed_at && <span className="badge">Closed on {posting.closed_at.slice(0, 10)}</span>}
+      {posting.application && (
+        <a className="badge" href={`#/applications/${posting.application.id}`}>
+          Application: {STATE_LABELS[posting.application.state]}
+        </a>
+      )}
       {evaluation && (
         <>
           <span className="badge">Score {evaluation.score}</span>
