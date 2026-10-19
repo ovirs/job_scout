@@ -1,10 +1,11 @@
 """The fake LLM for tests: canned results or failures per step, and a record of the inputs."""
 
 from job_scout.config import Settings
+from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 from job_scout.llm.interface import Failure, Outcome
-from job_scout.prompts import EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 
 class FakeStep[I, T]:
@@ -57,6 +58,11 @@ NO_DEAL_BREAKERS_JUDGED = EvaluationResult(
     summary="A posting judged against no Deal Breakers.",
 )
 
+A_LETTER = CoverLetterResult(
+    letter="Dear hiring team,\n\nA letter written by the fake LLM.\n\nKind regards",
+    unsupported_requirements=[],
+)
+
 
 class FakeLlm:
     """Reports the models configured in `settings`, as the real adapter would."""
@@ -72,9 +78,17 @@ class FakeLlm:
             model=settings.evaluation_model,
             prompt=EVALUATION,
         )
+        self.cover_letter = FakeStep[CoverLetterPrompt, CoverLetterResult](
+            default=A_LETTER,
+            model=settings.cover_letter_model,
+            prompt=COVER_LETTER,
+        )
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         return self.manual_entry_extraction(pasted_text)
 
     async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
         return self.evaluation(prompt)
+
+    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
+        return self.cover_letter(prompt)

@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GenerateCoverLetterData, GenerateCoverLetterErrors, GenerateCoverLetterResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCoverLetterData, GetCoverLetterErrors, GetCoverLetterResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -170,6 +170,32 @@ export const listApplicationNotes = <ThrowOnError extends boolean = false>(optio
  */
 export const addApplicationNote = <ThrowOnError extends boolean = false>(options: Options<AddApplicationNoteData, ThrowOnError>): RequestResult<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError> => (options.client ?? client).post<AddApplicationNoteResponses, AddApplicationNoteErrors, ThrowOnError>({
     url: '/api/applications/{application_id}/notes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get Cover Letter
+ *
+ * The Application's Cover Letter, its latest generation request, and whether the
+ * posting's Evaluation is current, outdated or missing for the next one.
+ */
+export const getCoverLetter = <ThrowOnError extends boolean = false>(options: Options<GetCoverLetterData, ThrowOnError>): RequestResult<GetCoverLetterResponses, GetCoverLetterErrors, ThrowOnError> => (options.client ?? client).get<GetCoverLetterResponses, GetCoverLetterErrors, ThrowOnError>({ url: '/api/applications/{application_id}/cover-letter', ...options });
+
+/**
+ * Generate Cover Letter
+ *
+ * Queue a new draft written by the LLM from the posting, the Career Profile, the
+ * Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
+ * it. Also the retry of a failed one. Refused unless the Application is Preparing, while
+ * there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
+ * now (the user must confirm a missing or outdated one).
+ */
+export const generateCoverLetter = <ThrowOnError extends boolean = false>(options: Options<GenerateCoverLetterData, ThrowOnError>): RequestResult<GenerateCoverLetterResponses, GenerateCoverLetterErrors, ThrowOnError> => (options.client ?? client).post<GenerateCoverLetterResponses, GenerateCoverLetterErrors, ThrowOnError>({
+    url: '/api/applications/{application_id}/cover-letter/generations',
     ...options,
     headers: {
         'Content-Type': 'application/json',

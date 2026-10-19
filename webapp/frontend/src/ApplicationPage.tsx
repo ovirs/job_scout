@@ -4,6 +4,7 @@ import {
   deleteApplicationMutation,
   getApplicationOptions,
   getApplicationQueryKey,
+  getCoverLetterQueryKey,
   getJobPostingQueryKey,
   listApplicationsOptions,
   listApplicationsQueryKey,
@@ -12,6 +13,7 @@ import {
   startApplicationMutation,
 } from './api/@tanstack/react-query.gen'
 import type { ApplicationRead, ApplicationStateSet, JobPostingRead } from './api/types.gen'
+import { CoverLetter } from './CoverLetter'
 import { ApplicationNotes } from './Notes'
 
 type State = ApplicationStateSet['state']
@@ -29,7 +31,8 @@ export const STATE_LABELS: Record<State, string> = {
   no_response: 'No response',
 }
 
-/** Everything that shows an Application or its posting's Triage. */
+/** Everything that shows an Application, its Cover Letter (locked outside Preparing) or its
+ * posting's Triage. */
 async function refreshAfterChange(queryClient: QueryClient, application: ApplicationRead) {
   queryClient.setQueryData(
     getApplicationQueryKey({ path: { application_id: application.id } }),
@@ -41,6 +44,9 @@ async function refreshAfterChange(queryClient: QueryClient, application: Applica
     }),
     queryClient.invalidateQueries({ queryKey: listJobPostingsQueryKey() }),
     queryClient.invalidateQueries({ queryKey: listApplicationsQueryKey() }),
+    queryClient.invalidateQueries({
+      queryKey: getCoverLetterQueryKey({ path: { application_id: application.id } }),
+    }),
   ])
 }
 
@@ -156,6 +162,7 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
           </li>
         ))}
       </ol>
+      <CoverLetter applicationId={application.id} />
       <ApplicationNotes postingId={application.job_posting_id} applicationId={application.id} />
       {copy && (
         <>

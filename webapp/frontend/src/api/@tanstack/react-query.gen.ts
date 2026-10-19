@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, getApplication, getClipping, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -385,6 +385,50 @@ export const addApplicationNoteMutation = (options?: Partial<Options<AddApplicat
     const mutationOptions: UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await addApplicationNote({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getCoverLetterQueryKey = (options: Options<GetCoverLetterData>) => createQueryKey('getCoverLetter', options);
+
+/**
+ * Get Cover Letter
+ *
+ * The Application's Cover Letter, its latest generation request, and whether the
+ * posting's Evaluation is current, outdated or missing for the next one.
+ */
+export const getCoverLetterOptions = (options: Options<GetCoverLetterData>) => queryOptions<GetCoverLetterResponse, GetCoverLetterError, GetCoverLetterResponse, ReturnType<typeof getCoverLetterQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getCoverLetter({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getCoverLetterQueryKey(options)
+});
+
+/**
+ * Generate Cover Letter
+ *
+ * Queue a new draft written by the LLM from the posting, the Career Profile, the
+ * Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
+ * it. Also the retry of a failed one. Refused unless the Application is Preparing, while
+ * there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
+ * now (the user must confirm a missing or outdated one).
+ */
+export const generateCoverLetterMutation = (options?: Partial<Options<GenerateCoverLetterData>>): UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> => {
+    const mutationOptions: UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await generateCoverLetter({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

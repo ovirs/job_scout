@@ -9,6 +9,7 @@ it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 
@@ -40,4 +41,8 @@ class Llm(Protocol):
 
     async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
         """Judge one Job Posting against the user's inputs, as laid out in `prompt`."""
+        ...
+
+    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
+        """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`."""
         ...

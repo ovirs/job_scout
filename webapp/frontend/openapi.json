@@ -829,6 +829,96 @@
         }
       }
     },
+    "/api/applications/{application_id}/cover-letter": {
+      "get": {
+        "summary": "Get Cover Letter",
+        "description": "The Application's Cover Letter, its latest generation request, and whether the\nposting's Evaluation is current, outdated or missing for the next one.",
+        "operationId": "get_cover_letter",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/cover-letter/generations": {
+      "post": {
+        "summary": "Generate Cover Letter",
+        "description": "Queue a new draft written by the LLM from the posting, the Career Profile, the\nWriting Guide, the Evaluation's flags and the instruction; poll the Cover Letter for\nit. Also the retry of a failed one. Refused unless the Application is Preparing, while\nthere is no Career Profile, and when `evaluation_case` is not the Evaluation's case\nnow (the user must confirm a missing or outdated one).",
+        "operationId": "generate_cover_letter",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverLetterGenerate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/notes/{note_id}": {
       "delete": {
         "summary": "Delete Note",
@@ -1888,6 +1978,389 @@
           "pasted_text"
         ],
         "title": "ClippingSubmit"
+      },
+      "CoverLetterDraftRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "origin": {
+            "type": "string",
+            "enum": [
+              "generated",
+              "revised_in_words",
+              "edited_by_hand"
+            ],
+            "title": "Origin"
+          },
+          "text": {
+            "type": "string",
+            "title": "Text"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "unsupported_requirements": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Unsupported Requirements"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "career_profile_version_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Career Profile Version Id"
+          },
+          "career_profile_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Career Profile Version Number"
+          },
+          "writing_guide_version_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Guide Version Id"
+          },
+          "writing_guide_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Writing Guide Version Number"
+          },
+          "evaluation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Id"
+          },
+          "evaluation_case": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "current",
+                  "outdated",
+                  "missing"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Case"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "origin",
+          "text",
+          "instruction",
+          "unsupported_requirements",
+          "created_at",
+          "model",
+          "prompt_version",
+          "career_profile_version_id",
+          "career_profile_version_number",
+          "writing_guide_version_id",
+          "writing_guide_version_number",
+          "evaluation_id",
+          "evaluation_case"
+        ],
+        "title": "CoverLetterDraftRead"
+      },
+      "CoverLetterEvaluationRead": {
+        "properties": {
+          "case": {
+            "type": "string",
+            "enum": [
+              "current",
+              "outdated",
+              "missing"
+            ],
+            "title": "Case"
+          },
+          "evaluation_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "case",
+          "evaluation_id"
+        ],
+        "title": "CoverLetterEvaluationRead",
+        "description": "Which Evaluation's flags a draft generated now would use: the current one, an\noutdated one as it is, or none (missing). Ask the user to confirm the last two."
+      },
+      "CoverLetterGenerate": {
+        "properties": {
+          "evaluation_case": {
+            "type": "string",
+            "enum": [
+              "current",
+              "outdated",
+              "missing"
+            ],
+            "title": "Evaluation Case"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evaluation_case"
+        ],
+        "title": "CoverLetterGenerate",
+        "description": "A request for a new draft. `evaluation_case` is the case of the posting's Evaluation\nthe user was told of and agreed to; a request naming another case is refused."
+      },
+      "CoverLetterGenerationFailureRead": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "refusal",
+                  "malformed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "missing_input",
+                  "locked"
+                ]
+              }
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "CoverLetterGenerationFailureRead"
+      },
+      "CoverLetterGenerationRead": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "done",
+              "failed"
+            ],
+            "title": "Status"
+          },
+          "instruction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instruction"
+          },
+          "evaluation_case": {
+            "type": "string",
+            "enum": [
+              "current",
+              "outdated",
+              "missing"
+            ],
+            "title": "Evaluation Case"
+          },
+          "failure": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverLetterGenerationFailureRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "draft_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "status",
+          "instruction",
+          "evaluation_case",
+          "failure",
+          "created_at",
+          "finished_at",
+          "draft_id"
+        ],
+        "title": "CoverLetterGenerationRead"
+      },
+      "CoverLetterRead": {
+        "properties": {
+          "application_id": {
+            "type": "integer",
+            "title": "Application Id"
+          },
+          "editable": {
+            "type": "boolean",
+            "title": "Editable"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverLetterDraftRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "generation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverLetterGenerationRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/CoverLetterEvaluationRead"
+          }
+        },
+        "type": "object",
+        "required": [
+          "application_id",
+          "editable",
+          "draft",
+          "generation",
+          "evaluation"
+        ],
+        "title": "CoverLetterRead"
       },
       "DealBreakerRead": {
         "properties": {

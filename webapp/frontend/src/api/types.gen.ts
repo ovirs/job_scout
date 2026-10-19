@@ -223,6 +223,168 @@ export type ClippingSubmit = {
 };
 
 /**
+ * CoverLetterDraftRead
+ */
+export type CoverLetterDraftRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Origin
+     */
+    origin: 'generated' | 'revised_in_words' | 'edited_by_hand';
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Instruction
+     */
+    instruction: string | null;
+    /**
+     * Unsupported Requirements
+     */
+    unsupported_requirements: Array<string>;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Model
+     */
+    model: string | null;
+    /**
+     * Prompt Version
+     */
+    prompt_version: string | null;
+    /**
+     * Career Profile Version Id
+     */
+    career_profile_version_id: number | null;
+    /**
+     * Career Profile Version Number
+     */
+    career_profile_version_number: number | null;
+    /**
+     * Writing Guide Version Id
+     */
+    writing_guide_version_id: number | null;
+    /**
+     * Writing Guide Version Number
+     */
+    writing_guide_version_number: number | null;
+    /**
+     * Evaluation Id
+     */
+    evaluation_id: number | null;
+    /**
+     * Evaluation Case
+     */
+    evaluation_case: 'current' | 'outdated' | 'missing' | null;
+};
+
+/**
+ * CoverLetterEvaluationRead
+ *
+ * Which Evaluation's flags a draft generated now would use: the current one, an
+ * outdated one as it is, or none (missing). Ask the user to confirm the last two.
+ */
+export type CoverLetterEvaluationRead = {
+    /**
+     * Case
+     */
+    case: 'current' | 'outdated' | 'missing';
+    /**
+     * Evaluation Id
+     */
+    evaluation_id: number | null;
+};
+
+/**
+ * CoverLetterGenerate
+ *
+ * A request for a new draft. `evaluation_case` is the case of the posting's Evaluation
+ * the user was told of and agreed to; a request naming another case is refused.
+ */
+export type CoverLetterGenerate = {
+    /**
+     * Evaluation Case
+     */
+    evaluation_case: 'current' | 'outdated' | 'missing';
+    /**
+     * Instruction
+     */
+    instruction?: string | null;
+};
+
+/**
+ * CoverLetterGenerationFailureRead
+ */
+export type CoverLetterGenerationFailureRead = {
+    /**
+     * Kind
+     */
+    kind: 'error' | 'refusal' | 'malformed' | 'missing_input' | 'locked';
+    /**
+     * Reason
+     */
+    reason: string;
+};
+
+/**
+ * CoverLetterGenerationRead
+ */
+export type CoverLetterGenerationRead = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Status
+     */
+    status: 'queued' | 'running' | 'done' | 'failed';
+    /**
+     * Instruction
+     */
+    instruction: string | null;
+    /**
+     * Evaluation Case
+     */
+    evaluation_case: 'current' | 'outdated' | 'missing';
+    failure: CoverLetterGenerationFailureRead | null;
+    /**
+     * Created At
+     */
+    created_at: string;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
+     * Draft Id
+     */
+    draft_id: number | null;
+};
+
+/**
+ * CoverLetterRead
+ */
+export type CoverLetterRead = {
+    /**
+     * Application Id
+     */
+    application_id: number;
+    /**
+     * Editable
+     */
+    editable: boolean;
+    draft: CoverLetterDraftRead | null;
+    generation: CoverLetterGenerationRead | null;
+    evaluation: CoverLetterEvaluationRead;
+};
+
+/**
  * DealBreakerRead
  */
 export type DealBreakerRead = {
@@ -1371,6 +1533,66 @@ export type AddApplicationNoteResponses = {
 };
 
 export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];
+
+export type GetCoverLetterData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter';
+};
+
+export type GetCoverLetterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCoverLetterError = GetCoverLetterErrors[keyof GetCoverLetterErrors];
+
+export type GetCoverLetterResponses = {
+    /**
+     * Successful Response
+     */
+    200: CoverLetterRead;
+};
+
+export type GetCoverLetterResponse = GetCoverLetterResponses[keyof GetCoverLetterResponses];
+
+export type GenerateCoverLetterData = {
+    body: CoverLetterGenerate;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter/generations';
+};
+
+export type GenerateCoverLetterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GenerateCoverLetterError = GenerateCoverLetterErrors[keyof GenerateCoverLetterErrors];
+
+export type GenerateCoverLetterResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverLetterRead;
+};
+
+export type GenerateCoverLetterResponse = GenerateCoverLetterResponses[keyof GenerateCoverLetterResponses];
 
 export type DeleteNoteData = {
     body?: never;

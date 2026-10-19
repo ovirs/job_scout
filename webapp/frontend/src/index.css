@@ -196,3 +196,9 @@ button[aria-pressed='true'] {
   list-style: none;
   padding: 0;
 }
+
+.letter {
+  padding: 0.75rem;
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  border-radius: 0.25rem;
+}

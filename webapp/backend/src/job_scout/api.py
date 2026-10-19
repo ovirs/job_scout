@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout import (
     applications,
     clippings,
+    cover_letters,
     evaluations,
     job_postings,
     notes,
@@ -32,10 +33,16 @@ from job_scout.models import (
     ApplicationState,
     Clipping,
     ClippingStatus,
+    CoverLetterDraft,
+    CoverLetterDraftOrigin,
+    CoverLetterGeneration,
+    CoverLetterGenerationFailureKind,
+    CoverLetterGenerationStatus,
     DealBreakerSetVersion,
     DocumentKind,
     DocumentVersion,
     Evaluation,
+    EvaluationCase,
     EvaluationFailureKind,
     EvaluationStatus,
     JobPosting,
@@ -186,6 +193,101 @@ def _posting_copy(application: Application) -> PostingCopyRead | None:
         url=application.copy_url,
         copied_at=application.copied_at,
     )
+
+
+class CoverLetterGenerate(BaseModel):
+    """A request for a new draft. `evaluation_case` is the case of the posting's Evaluation
+    the user was told of and agreed to; a request naming another case is refused."""
+
+    evaluation_case: EvaluationCase
+    instruction: NonBlank | None = None  # what to stress, the language to write in
+
+
+class CoverLetterEvaluationRead(BaseModel):
+    """Which Evaluation's flags a draft generated now would use: the current one, an
+    outdated one as it is, or none (missing). Ask the user to confirm the last two."""
+
+    case: EvaluationCase
+    evaluation_id: int | None  # null when missing
+
+
+class CoverLetterDraftRead(BaseModel):
+    id: int
+    origin: CoverLetterDraftOrigin
+    text: str
+    instruction: str | None
+    unsupported_requirements: list[str]  # what the posting asks for that the profile lacks
+    created_at: datetime
+
+    # What an LLM draft was made with
+    model: str | None
+    prompt_version: str | None
+    career_profile_version_id: int | None
+    career_profile_version_number: int | None
+    writing_guide_version_id: int | None
+    writing_guide_version_number: int | None  # null when there was no Writing Guide
+    evaluation_id: int | None  # whose flags it used; null when there was none
+    evaluation_case: EvaluationCase | None
+
+    @classmethod
+    def of(cls, draft: CoverLetterDraft) -> "CoverLetterDraftRead":
+        return cls(
+            id=draft.id,
+            origin=draft.origin,
+            text=draft.text,
+            instruction=draft.instruction,
+            unsupported_requirements=draft.unsupported_requirements,
+            created_at=draft.created_at,
+            model=draft.model,
+            prompt_version=draft.prompt_version,
+            career_profile_version_id=draft.career_profile_version_id,
+            career_profile_version_number=_version_number(draft.career_profile_version),
+            writing_guide_version_id=draft.writing_guide_version_id,
+            writing_guide_version_number=_version_number(draft.writing_guide_version),
+            evaluation_id=draft.evaluation_id,
+            evaluation_case=draft.evaluation_case,
+        )
+
+
+class CoverLetterGenerationFailureRead(BaseModel):
+    kind: CoverLetterGenerationFailureKind
+    reason: str
+
+
+class CoverLetterGenerationRead(BaseModel):
+    id: int
+    status: CoverLetterGenerationStatus
+    instruction: str | None
+    evaluation_case: EvaluationCase
+    failure: CoverLetterGenerationFailureRead | None  # why it made no draft
+    created_at: datetime
+    finished_at: datetime | None
+    draft_id: int | None  # the draft it made, once done
+
+    @classmethod
+    def of(cls, generation: CoverLetterGeneration) -> "CoverLetterGenerationRead":
+        return cls(
+            id=generation.id,
+            status=generation.status,
+            instruction=generation.instruction,
+            evaluation_case=generation.evaluation_case,
+            failure=None
+            if generation.failure_kind is None or generation.failure_reason is None
+            else CoverLetterGenerationFailureRead(
+                kind=generation.failure_kind, reason=generation.failure_reason
+            ),
+            created_at=generation.created_at,
+            finished_at=generation.finished_at,
+            draft_id=generation.draft_id,
+        )
+
+
+class CoverLetterRead(BaseModel):
+    application_id: int
+    editable: bool  # only while the Application is Preparing
+    draft: CoverLetterDraftRead | None  # the letter: its latest draft; null before any
+    generation: CoverLetterGenerationRead | None  # the latest request, done or not
+    evaluation: CoverLetterEvaluationRead  # what generating now would take flags from
 
 
 class ViolatedDealBreakerRead(BaseModel):
@@ -748,6 +850,67 @@ async def add_application_note(
     session.add(note)
     await session.commit()
     return NoteRead.of(note)
+
+
+@router.get("/applications/{application_id}/cover-letter")
+async def get_cover_letter(application_id: int, session: Session, owner: Owner) -> CoverLetterRead:
+    """The Application's Cover Letter, its latest generation request, and whether the
+    posting's Evaluation is current, outdated or missing for the next one."""
+    application = await _application(session, owner, application_id)
+    return await _cover_letter_read(session, application)
+
+
+@router.post("/applications/{application_id}/cover-letter/generations", status_code=201)
+async def generate_cover_letter(
+    application_id: int,
+    body: CoverLetterGenerate,
+    session: Session,
+    task_queue: TaskQueue,
+    owner: Owner,
+) -> CoverLetterRead:
+    """Queue a new draft written by the LLM from the posting, the Career Profile, the
+    Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
+    it. Also the retry of a failed one. Refused unless the Application is Preparing, while
+    there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
+    now (the user must confirm a missing or outdated one)."""
+    application = await _application(session, owner, application_id)
+    if not cover_letters.editable(application):
+        raise HTTPException(
+            status_code=409,
+            detail="A Cover Letter is generated only while the Application is Preparing",
+        )
+    profile = await user_inputs.current_document(session, owner_id=owner, kind="career-profile")
+    missing = cover_letters.missing_input(profile)
+    if missing is not None:
+        raise HTTPException(status_code=409, detail=missing)
+    source = await cover_letters.flags_source(session, application)
+    if body.evaluation_case != source.case:
+        raise HTTPException(
+            status_code=409,
+            detail=f"The posting's Evaluation is {source.case}, not {body.evaluation_case}: "
+            "confirm that case to generate",
+        )
+    generation = cover_letters.queued(application, source, body.instruction)
+    session.add(generation)
+    await session.commit()
+    await queue.enqueue_generate_cover_letter(task_queue, generation.id)
+    return await _cover_letter_read(session, application)
+
+
+async def _cover_letter_read(session: AsyncSession, application: Application) -> CoverLetterRead:
+    draft = await cover_letters.latest_draft(session, application)
+    generation = await cover_letters.latest_generation(session, application)
+    source = await cover_letters.flags_source(session, application)
+    return CoverLetterRead(
+        application_id=application.id,
+        editable=cover_letters.editable(application),
+        draft=None if draft is None else CoverLetterDraftRead.of(draft),
+        generation=None if generation is None else CoverLetterGenerationRead.of(generation),
+        evaluation=CoverLetterEvaluationRead(
+            case=source.case,
+            evaluation_id=None if source.evaluation is None else source.evaluation.id,
+        ),
+    )
 
 
 async def _application(session: AsyncSession, owner: uuid.UUID, application_id: int) -> Application:

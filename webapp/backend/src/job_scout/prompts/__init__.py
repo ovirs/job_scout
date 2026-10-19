@@ -25,3 +25,4 @@ def load(name: str) -> Prompt:
 
 MANUAL_ENTRY_EXTRACTION = load("manual-entry-extraction")
 EVALUATION = load("evaluation")
+COVER_LETTER = load("cover-letter")

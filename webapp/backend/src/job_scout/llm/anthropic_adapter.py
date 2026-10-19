@@ -8,10 +8,11 @@ from anthropic.types import OutputConfigParam, TextBlockParam
 from pydantic import BaseModel, ValidationError
 
 from job_scout.config import Effort, Settings
+from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluation import EvaluationPrompt, EvaluationResult
 from job_scout.extraction import ManualEntryExtraction
 from job_scout.llm.interface import Failure, Outcome
-from job_scout.prompts import EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 MAX_TOKENS = 8192
 
@@ -28,6 +29,8 @@ class AnthropicLlm:
         self._extraction_effort = settings.extraction_effort
         self._evaluation_model = settings.evaluation_model
         self._evaluation_effort = settings.evaluation_effort
+        self._cover_letter_model = settings.cover_letter_model
+        self._cover_letter_effort = settings.cover_letter_effort
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         # For a manual entry the user block is the pasted text and nothing else
@@ -52,6 +55,21 @@ class AnthropicLlm:
             prompt=EVALUATION,
             content=content,
             schema=EvaluationResult,
+        )
+
+    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
+        # The Career Profile and Writing Guide change rarely, so they are cached with the
+        # instructions; the posting, flags and the letter's own instruction come after
+        content: list[TextBlockParam] = [
+            {"type": "text", "text": prompt.user_inputs, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": prompt.request},
+        ]
+        return await self._complete(
+            model=self._cover_letter_model,
+            effort=self._cover_letter_effort,
+            prompt=COVER_LETTER,
+            content=content,
+            schema=CoverLetterResult,
         )
 
     async def _complete[T: BaseModel](
