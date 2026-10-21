@@ -2,9 +2,10 @@
 
 The prompt puts the unchanging part first so it can be cached: the Career
 Profile and the Writing Guide, then the posting as untrusted third-party text,
-the Evaluation's flags when there are any, and the user's instruction for this
-one letter. Preferences and Deal Breakers are never sent, so the user's private
-reasons cannot leak into a letter a company reads.
+the Evaluation's flags when there are any, the draft to revise when revising in
+words, and the user's instruction for this one letter. Preferences and Deal
+Breakers are never sent, so the user's private reasons cannot leak into a letter
+a company reads.
 """
 
 from dataclasses import dataclass
@@ -35,7 +36,8 @@ class CoverLetterPrompt:
     """The two user blocks of a Cover Letter call, after the instructions."""
 
     user_inputs: str  # Career Profile and Writing Guide; cacheable
-    request: str  # the Job Posting, the flags if any and the instruction if any
+    # the Job Posting, the flags if any, the draft to revise if any and the instruction if any
+    request: str
 
     @property
     def blocks(self) -> list[str]:
@@ -49,9 +51,11 @@ def prompt(
     writing_guide: str | None,
     posting: PostingText,
     flags: Flags | None,
+    draft: str | None,
     instruction: str | None,
 ) -> CoverLetterPrompt:
-    """Lay out a Cover Letter's inputs; with no `flags`, the request says nothing of them."""
+    """Lay out a Cover Letter's inputs; with no `flags`, the request says nothing of them,
+    and with a `draft`, it asks for that text revised rather than a letter from scratch."""
     user_inputs = "\n\n".join(
         [
             _tagged("career_profile", career_profile),
@@ -78,6 +82,8 @@ def prompt(
                 ),
             )
         )
+    if draft is not None:
+        request.append(_tagged("draft_to_revise", draft))
     if instruction:
         request.append(_tagged("instructions_for_this_letter", instruction))
     return CoverLetterPrompt(user_inputs=user_inputs, request="\n\n".join(request))

@@ -76,16 +76,19 @@ async def application(
     )
 
 
-def set_state(application: Application, state: ApplicationState) -> None:
-    """Move the Application to any state, recording the move in its history; moving to
-    the state it is in records nothing. The first move to Applied copies the posting."""
+def set_state(application: Application, state: ApplicationState) -> ApplicationStateChange | None:
+    """Move the Application to any state, recording the move in its history and returning
+    it; moving to the state it is in records nothing. The first move to Applied copies the
+    posting."""
     if state == application.state:
-        return
+        return None
     now = datetime.now(UTC)
     application.state = state
-    application.history.append(ApplicationStateChange(state=state, changed_at=now))
+    change = ApplicationStateChange(state=state, changed_at=now)
+    application.history.append(change)
     if state == "applied" and application.copied_at is None:
         _copy_posting(application, now)
+    return change
 
 
 def _copy_posting(application: Application, now: datetime) -> None:

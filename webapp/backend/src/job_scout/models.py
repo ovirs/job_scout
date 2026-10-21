@@ -320,7 +320,8 @@ class Application(Base):
 
 class ApplicationStateChange(Base):
     """One entry in an Application's state history: the state it moved to, and when.
-    Starting an Application records its first entry, Preparing."""
+    Starting an Application records its first entry, Preparing. A move to Applied also
+    records the Cover Letter sent: the latest draft then, or none."""
 
     __tablename__ = "application_state_changes"
 
@@ -328,6 +329,9 @@ class ApplicationStateChange(Base):
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     state: Mapped[ApplicationState] = mapped_column(String)
     changed_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    # On a move to Applied, the draft locked as the letter sent; null when none was
+    sent_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
+    sent_draft: Mapped["CoverLetterDraft | None"] = relationship(lazy="selectin")
 
 
 class Note(Base):
@@ -368,7 +372,8 @@ class CoverLetterGeneration(Base):
     draft it made, or failed with the reason once every attempt failed; a failure makes
     no draft and leaves the Cover Letter as it was. The Evaluation whose flags it uses is
     fixed when requested, since the user confirmed that case; `evaluation_case` is the
-    case confirmed, while its draft records the case when it was written.
+    case confirmed, while its draft records the case when it was written. A revision in
+    words also fixes, when requested, the draft whose text it sends to be revised.
     """
 
     __tablename__ = "cover_letter_generations"
@@ -388,6 +393,11 @@ class CoverLetterGeneration(Base):
     instruction: Mapped[str | None]  # typed by the user for this one letter
     evaluation_id: Mapped[int | None] = mapped_column(ForeignKey("evaluations.id"))
     evaluation_case: Mapped[EvaluationCase] = mapped_column(String)
+    # The draft a revision in words revises; null when generating from scratch
+    revised_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
+    revised_draft: Mapped["CoverLetterDraft | None"] = relationship(
+        foreign_keys=[revised_draft_id], lazy="selectin"
+    )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     started_at: Mapped[datetime | None]
     finished_at: Mapped[datetime | None]
@@ -398,7 +408,9 @@ class CoverLetterGeneration(Base):
 
     # Once done
     draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
-    draft: Mapped["CoverLetterDraft | None"] = relationship(lazy="selectin")
+    draft: Mapped["CoverLetterDraft | None"] = relationship(
+        foreign_keys=[draft_id], lazy="selectin"
+    )
 
 
 CoverLetterDraftOrigin = Literal["generated", "revised_in_words", "edited_by_hand"]
@@ -409,7 +421,8 @@ class CoverLetterDraft(Base):
 
     A draft is never changed afterwards. One the LLM wrote records what it was made with:
     the model, the prompt and input versions, the Evaluation that supplied its flags (or
-    that none did) and the posting's content hash then. Deleting it only stamps
+    that none did) and the posting's content hash then. Restoring a draft copies all of
+    it into a new latest draft that points back to it. Deleting it only stamps
     `deleted_at`.
     """
 
@@ -442,3 +455,5 @@ class CoverLetterDraft(Base):
     evaluation_id: Mapped[int | None] = mapped_column(ForeignKey("evaluations.id"))
     evaluation_case: Mapped[EvaluationCase | None] = mapped_column(String)
     content_hash: Mapped[str]  # the posting's, when the draft was made
+    # The earlier draft this one restores, copying its text and record
+    restored_from_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))

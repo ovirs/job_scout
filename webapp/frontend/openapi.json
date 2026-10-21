@@ -691,7 +691,7 @@
     "/api/applications/{application_id}/state": {
       "put": {
         "summary": "Set Application State",
-        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history.",
+        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history. The Cover Letter is locked outside Preparing, and each move to Applied\nrecords its latest draft as the letter sent, or that no letter was sent.",
         "operationId": "set_application_state",
         "parameters": [
           {
@@ -897,6 +897,204 @@
         },
         "responses": {
           "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/cover-letter/revisions": {
+      "post": {
+        "summary": "Revise Cover Letter",
+        "description": "Queue a revision in words of the latest draft, hand edits included: the LLM gets its\ntext and the instruction with the same inputs as generating, and its answer is a new\ndraft. Refused as generating is, and while there is no draft to revise.",
+        "operationId": "revise_cover_letter",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverLetterRevise"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/cover-letter/drafts": {
+      "post": {
+        "summary": "Save Cover Letter Draft",
+        "description": "Save the user's hand edit as the new latest draft; the earlier drafts are kept.\nRefused unless the Application is Preparing.",
+        "operationId": "save_cover_letter_draft",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CoverLetterDraftSave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/cover-letter/drafts/{draft_id}/restore": {
+      "post": {
+        "summary": "Restore Cover Letter Draft",
+        "description": "Make an earlier draft the letter again: a new latest draft copies its text and its\nrecord. Refused unless the Application is Preparing.",
+        "operationId": "restore_cover_letter_draft",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverLetterRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/cover-letter/drafts/{draft_id}": {
+      "delete": {
+        "summary": "Delete Cover Letter Draft",
+        "description": "Delete a draft: it is hidden but kept, and the latest draft left is the letter.\nRefused unless the Application is Preparing.",
+        "operationId": "delete_cover_letter_draft",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          },
+          {
+            "name": "draft_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Draft Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Successful Response",
             "content": {
               "application/json": {
@@ -2113,6 +2311,17 @@
               }
             ],
             "title": "Evaluation Case"
+          },
+          "restored_from_draft_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restored From Draft Id"
           }
         },
         "type": "object",
@@ -2130,9 +2339,24 @@
           "writing_guide_version_id",
           "writing_guide_version_number",
           "evaluation_id",
-          "evaluation_case"
+          "evaluation_case",
+          "restored_from_draft_id"
         ],
         "title": "CoverLetterDraftRead"
+      },
+      "CoverLetterDraftSave": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "CoverLetterDraftSave"
       },
       "CoverLetterEvaluationRead": {
         "properties": {
@@ -2266,6 +2490,17 @@
             ],
             "title": "Evaluation Case"
           },
+          "revised_draft_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revised Draft Id"
+          },
           "failure": {
             "anyOf": [
               {
@@ -2311,6 +2546,7 @@
           "status",
           "instruction",
           "evaluation_case",
+          "revised_draft_id",
           "failure",
           "created_at",
           "finished_at",
@@ -2338,6 +2574,34 @@
               }
             ]
           },
+          "drafts": {
+            "items": {
+              "$ref": "#/components/schemas/CoverLetterDraftRead"
+            },
+            "type": "array",
+            "title": "Drafts"
+          },
+          "posting_edited_since_draft": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Posting Edited Since Draft"
+          },
+          "sent": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SentCoverLetterRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "generation": {
             "anyOf": [
               {
@@ -2357,10 +2621,38 @@
           "application_id",
           "editable",
           "draft",
+          "drafts",
+          "posting_edited_since_draft",
+          "sent",
           "generation",
           "evaluation"
         ],
         "title": "CoverLetterRead"
+      },
+      "CoverLetterRevise": {
+        "properties": {
+          "evaluation_case": {
+            "type": "string",
+            "enum": [
+              "current",
+              "outdated",
+              "missing"
+            ],
+            "title": "Evaluation Case"
+          },
+          "instruction": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Instruction"
+          }
+        },
+        "type": "object",
+        "required": [
+          "evaluation_case",
+          "instruction"
+        ],
+        "title": "CoverLetterRevise",
+        "description": "A request to revise the latest draft, hand edits included, as `instruction` says,\nfrom the same inputs as generating; `evaluation_case` as for generating."
       },
       "DealBreakerRead": {
         "properties": {
@@ -3417,6 +3709,32 @@
           "applies_to"
         ],
         "title": "SalaryRange"
+      },
+      "SentCoverLetterRead": {
+        "properties": {
+          "applied_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Applied At"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CoverLetterDraftRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "applied_at",
+          "draft"
+        ],
+        "title": "SentCoverLetterRead",
+        "description": "The Cover Letter sent on the latest move to Applied."
       },
       "Technology": {
         "properties": {

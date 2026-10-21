@@ -282,6 +282,20 @@ export type CoverLetterDraftRead = {
      * Evaluation Case
      */
     evaluation_case: 'current' | 'outdated' | 'missing' | null;
+    /**
+     * Restored From Draft Id
+     */
+    restored_from_draft_id: number | null;
+};
+
+/**
+ * CoverLetterDraftSave
+ */
+export type CoverLetterDraftSave = {
+    /**
+     * Text
+     */
+    text: string;
 };
 
 /**
@@ -352,6 +366,10 @@ export type CoverLetterGenerationRead = {
      * Evaluation Case
      */
     evaluation_case: 'current' | 'outdated' | 'missing';
+    /**
+     * Revised Draft Id
+     */
+    revised_draft_id: number | null;
     failure: CoverLetterGenerationFailureRead | null;
     /**
      * Created At
@@ -380,8 +398,34 @@ export type CoverLetterRead = {
      */
     editable: boolean;
     draft: CoverLetterDraftRead | null;
+    /**
+     * Drafts
+     */
+    drafts: Array<CoverLetterDraftRead>;
+    /**
+     * Posting Edited Since Draft
+     */
+    posting_edited_since_draft: boolean | null;
+    sent: SentCoverLetterRead | null;
     generation: CoverLetterGenerationRead | null;
     evaluation: CoverLetterEvaluationRead;
+};
+
+/**
+ * CoverLetterRevise
+ *
+ * A request to revise the latest draft, hand edits included, as `instruction` says,
+ * from the same inputs as generating; `evaluation_case` as for generating.
+ */
+export type CoverLetterRevise = {
+    /**
+     * Evaluation Case
+     */
+    evaluation_case: 'current' | 'outdated' | 'missing';
+    /**
+     * Instruction
+     */
+    instruction: string;
 };
 
 /**
@@ -878,6 +922,19 @@ export type SalaryRange = {
      * Applies To
      */
     applies_to: string | null;
+};
+
+/**
+ * SentCoverLetterRead
+ *
+ * The Cover Letter sent on the latest move to Applied.
+ */
+export type SentCoverLetterRead = {
+    /**
+     * Applied At
+     */
+    applied_at: string;
+    draft: CoverLetterDraftRead | null;
 };
 
 /**
@@ -1593,6 +1650,134 @@ export type GenerateCoverLetterResponses = {
 };
 
 export type GenerateCoverLetterResponse = GenerateCoverLetterResponses[keyof GenerateCoverLetterResponses];
+
+export type ReviseCoverLetterData = {
+    body: CoverLetterRevise;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter/revisions';
+};
+
+export type ReviseCoverLetterErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReviseCoverLetterError = ReviseCoverLetterErrors[keyof ReviseCoverLetterErrors];
+
+export type ReviseCoverLetterResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverLetterRead;
+};
+
+export type ReviseCoverLetterResponse = ReviseCoverLetterResponses[keyof ReviseCoverLetterResponses];
+
+export type SaveCoverLetterDraftData = {
+    body: CoverLetterDraftSave;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter/drafts';
+};
+
+export type SaveCoverLetterDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveCoverLetterDraftError = SaveCoverLetterDraftErrors[keyof SaveCoverLetterDraftErrors];
+
+export type SaveCoverLetterDraftResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverLetterRead;
+};
+
+export type SaveCoverLetterDraftResponse = SaveCoverLetterDraftResponses[keyof SaveCoverLetterDraftResponses];
+
+export type RestoreCoverLetterDraftData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+        /**
+         * Draft Id
+         */
+        draft_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter/drafts/{draft_id}/restore';
+};
+
+export type RestoreCoverLetterDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RestoreCoverLetterDraftError = RestoreCoverLetterDraftErrors[keyof RestoreCoverLetterDraftErrors];
+
+export type RestoreCoverLetterDraftResponses = {
+    /**
+     * Successful Response
+     */
+    201: CoverLetterRead;
+};
+
+export type RestoreCoverLetterDraftResponse = RestoreCoverLetterDraftResponses[keyof RestoreCoverLetterDraftResponses];
+
+export type DeleteCoverLetterDraftData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+        /**
+         * Draft Id
+         */
+        draft_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/cover-letter/drafts/{draft_id}';
+};
+
+export type DeleteCoverLetterDraftErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteCoverLetterDraftError = DeleteCoverLetterDraftErrors[keyof DeleteCoverLetterDraftErrors];
+
+export type DeleteCoverLetterDraftResponses = {
+    /**
+     * Successful Response
+     */
+    200: CoverLetterRead;
+};
+
+export type DeleteCoverLetterDraftResponse = DeleteCoverLetterDraftResponses[keyof DeleteCoverLetterDraftResponses];
 
 export type DeleteNoteData = {
     body?: never;

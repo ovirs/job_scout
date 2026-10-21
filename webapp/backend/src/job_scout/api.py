@@ -203,6 +203,14 @@ class CoverLetterGenerate(BaseModel):
     instruction: NonBlank | None = None  # what to stress, the language to write in
 
 
+class CoverLetterRevise(BaseModel):
+    """A request to revise the latest draft, hand edits included, as `instruction` says,
+    from the same inputs as generating; `evaluation_case` as for generating."""
+
+    evaluation_case: EvaluationCase
+    instruction: NonBlank  # what to change: "shorter, and lead with the Kafka migration"
+
+
 class CoverLetterEvaluationRead(BaseModel):
     """Which Evaluation's flags a draft generated now would use: the current one, an
     outdated one as it is, or none (missing). Ask the user to confirm the last two."""
@@ -228,6 +236,7 @@ class CoverLetterDraftRead(BaseModel):
     writing_guide_version_number: int | None  # null when there was no Writing Guide
     evaluation_id: int | None  # whose flags it used; null when there was none
     evaluation_case: EvaluationCase | None
+    restored_from_draft_id: int | None  # the earlier draft it copies, when restored
 
     @classmethod
     def of(cls, draft: CoverLetterDraft) -> "CoverLetterDraftRead":
@@ -246,6 +255,7 @@ class CoverLetterDraftRead(BaseModel):
             writing_guide_version_number=_version_number(draft.writing_guide_version),
             evaluation_id=draft.evaluation_id,
             evaluation_case=draft.evaluation_case,
+            restored_from_draft_id=draft.restored_from_draft_id,
         )
 
 
@@ -259,6 +269,7 @@ class CoverLetterGenerationRead(BaseModel):
     status: CoverLetterGenerationStatus
     instruction: str | None
     evaluation_case: EvaluationCase
+    revised_draft_id: int | None  # the draft a revision in words revises; null for generating
     failure: CoverLetterGenerationFailureRead | None  # why it made no draft
     created_at: datetime
     finished_at: datetime | None
@@ -271,6 +282,7 @@ class CoverLetterGenerationRead(BaseModel):
             status=generation.status,
             instruction=generation.instruction,
             evaluation_case=generation.evaluation_case,
+            revised_draft_id=generation.revised_draft_id,
             failure=None
             if generation.failure_kind is None or generation.failure_reason is None
             else CoverLetterGenerationFailureRead(
@@ -282,10 +294,24 @@ class CoverLetterGenerationRead(BaseModel):
         )
 
 
+class CoverLetterDraftSave(BaseModel):
+    text: NonBlank  # the whole letter, as the user edited it
+
+
+class SentCoverLetterRead(BaseModel):
+    """The Cover Letter sent on the latest move to Applied."""
+
+    applied_at: datetime
+    draft: CoverLetterDraftRead | None  # null when no Cover Letter was sent
+
+
 class CoverLetterRead(BaseModel):
     application_id: int
     editable: bool  # only while the Application is Preparing
     draft: CoverLetterDraftRead | None  # the letter: its latest draft; null before any
+    drafts: list[CoverLetterDraftRead]  # every live draft, the latest first
+    posting_edited_since_draft: bool | None  # the posting's text changed; null with no draft
+    sent: SentCoverLetterRead | None  # null until the Application first moves to Applied
     generation: CoverLetterGenerationRead | None  # the latest request, done or not
     evaluation: CoverLetterEvaluationRead  # what generating now would take flags from
 
@@ -810,9 +836,12 @@ async def set_application_state(
     application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
 ) -> ApplicationRead:
     """Move the Application to any state, from any other; each move is kept, dated, in
-    its history."""
+    its history. The Cover Letter is locked outside Preparing, and each move to Applied
+    records its latest draft as the letter sent, or that no letter was sent."""
     application = await _application(session, owner, application_id)
-    applications.set_state(application, body.state)
+    change = applications.set_state(application, body.state)
+    if change is not None:
+        await cover_letters.lock_sent(session, application, change)
     await session.commit()
     return ApplicationRead.of(application)
 
@@ -873,38 +902,146 @@ async def generate_cover_letter(
     it. Also the retry of a failed one. Refused unless the Application is Preparing, while
     there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
     now (the user must confirm a missing or outdated one)."""
-    application = await _application(session, owner, application_id)
-    if not cover_letters.editable(application):
+    application = await _editable_application(session, owner, application_id)
+    await _queue_generation(
+        session, task_queue, application, body.evaluation_case, body.instruction
+    )
+    return await _cover_letter_read(session, application)
+
+
+@router.post("/applications/{application_id}/cover-letter/revisions", status_code=201)
+async def revise_cover_letter(
+    application_id: int,
+    body: CoverLetterRevise,
+    session: Session,
+    task_queue: TaskQueue,
+    owner: Owner,
+) -> CoverLetterRead:
+    """Queue a revision in words of the latest draft, hand edits included: the LLM gets its
+    text and the instruction with the same inputs as generating, and its answer is a new
+    draft. Refused as generating is, and while there is no draft to revise."""
+    application = await _editable_application(session, owner, application_id)
+    latest = await cover_letters.latest_draft(session, application)
+    if latest is None:
         raise HTTPException(
-            status_code=409,
-            detail="A Cover Letter is generated only while the Application is Preparing",
+            status_code=409, detail="There is no draft to revise: generate or write one first"
         )
-    profile = await user_inputs.current_document(session, owner_id=owner, kind="career-profile")
+    await _queue_generation(
+        session, task_queue, application, body.evaluation_case, body.instruction, latest
+    )
+    return await _cover_letter_read(session, application)
+
+
+async def _queue_generation(
+    session: AsyncSession,
+    task_queue: procrastinate.App,
+    application: Application,
+    evaluation_case: EvaluationCase,
+    instruction: str | None,
+    revised: CoverLetterDraft | None = None,
+) -> None:
+    """Queue a generation, refused while there is no Career Profile and when
+    `evaluation_case` is not the Evaluation's case now."""
+    profile = await user_inputs.current_document(
+        session, owner_id=application.owner_id, kind="career-profile"
+    )
     missing = cover_letters.missing_input(profile)
     if missing is not None:
         raise HTTPException(status_code=409, detail=missing)
     source = await cover_letters.flags_source(session, application)
-    if body.evaluation_case != source.case:
+    if evaluation_case != source.case:
         raise HTTPException(
             status_code=409,
-            detail=f"The posting's Evaluation is {source.case}, not {body.evaluation_case}: "
+            detail=f"The posting's Evaluation is {source.case}, not {evaluation_case}: "
             "confirm that case to generate",
         )
-    generation = cover_letters.queued(application, source, body.instruction)
+    generation = cover_letters.queued(application, source, instruction, revised)
     session.add(generation)
     await session.commit()
     await queue.enqueue_generate_cover_letter(task_queue, generation.id)
+
+
+@router.post("/applications/{application_id}/cover-letter/drafts", status_code=201)
+async def save_cover_letter_draft(
+    application_id: int, body: CoverLetterDraftSave, session: Session, owner: Owner
+) -> CoverLetterRead:
+    """Save the user's hand edit as the new latest draft; the earlier drafts are kept.
+    Refused unless the Application is Preparing."""
+    application = await _editable_application(session, owner, application_id)
+    latest = await cover_letters.latest_draft(session, application)
+    session.add(cover_letters.edited_by_hand(application, latest, body.text))
+    await session.commit()
     return await _cover_letter_read(session, application)
 
 
+@router.post(
+    "/applications/{application_id}/cover-letter/drafts/{draft_id}/restore", status_code=201
+)
+async def restore_cover_letter_draft(
+    application_id: int, draft_id: int, session: Session, owner: Owner
+) -> CoverLetterRead:
+    """Make an earlier draft the letter again: a new latest draft copies its text and its
+    record. Refused unless the Application is Preparing."""
+    application = await _editable_application(session, owner, application_id)
+    session.add(cover_letters.restored(await _draft(session, application, draft_id)))
+    await session.commit()
+    return await _cover_letter_read(session, application)
+
+
+@router.delete("/applications/{application_id}/cover-letter/drafts/{draft_id}")
+async def delete_cover_letter_draft(
+    application_id: int, draft_id: int, session: Session, owner: Owner
+) -> CoverLetterRead:
+    """Delete a draft: it is hidden but kept, and the latest draft left is the letter.
+    Refused unless the Application is Preparing."""
+    application = await _editable_application(session, owner, application_id)
+    cover_letters.delete_draft(await _draft(session, application, draft_id))
+    await session.commit()
+    return await _cover_letter_read(session, application)
+
+
+async def _draft(
+    session: AsyncSession, application: Application, draft_id: int
+) -> CoverLetterDraft:
+    found = await cover_letters.draft(session, application, draft_id)
+    if found is None:
+        raise HTTPException(status_code=404, detail="Cover Letter draft not found")
+    return found
+
+
+async def _editable_application(
+    session: AsyncSession, owner: uuid.UUID, application_id: int
+) -> Application:
+    """The Application, if its Cover Letter can be changed now: only while Preparing."""
+    application = await _application(session, owner, application_id)
+    if not cover_letters.editable(application):
+        raise HTTPException(
+            status_code=409,
+            detail="The Cover Letter is locked: it changes only while the Application is Preparing",
+        )
+    return application
+
+
 async def _cover_letter_read(session: AsyncSession, application: Application) -> CoverLetterRead:
-    draft = await cover_letters.latest_draft(session, application)
+    drafts = await cover_letters.drafts(session, application)
+    draft = drafts[0] if drafts else None
+    applied = cover_letters.latest_move_to_applied(application)
     generation = await cover_letters.latest_generation(session, application)
     source = await cover_letters.flags_source(session, application)
     return CoverLetterRead(
         application_id=application.id,
         editable=cover_letters.editable(application),
         draft=None if draft is None else CoverLetterDraftRead.of(draft),
+        drafts=[CoverLetterDraftRead.of(d) for d in drafts],
+        posting_edited_since_draft=cover_letters.posting_edited_since(draft, application),
+        sent=None
+        if applied is None
+        else SentCoverLetterRead(
+            applied_at=applied.changed_at,
+            draft=None
+            if applied.sent_draft is None
+            else CoverLetterDraftRead.of(applied.sent_draft),
+        ),
         generation=None if generation is None else CoverLetterGenerationRead.of(generation),
         evaluation=CoverLetterEvaluationRead(
             case=source.case,

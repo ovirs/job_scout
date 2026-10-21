@@ -75,7 +75,7 @@ async def test_generating_while_preparing_makes_the_first_draft_with_its_record(
     assert draft["instruction"] == "Lead with Kafka."
     assert draft["unsupported_requirements"] == ["Five years of Scala"]
     assert draft["model"] == "claude-opus-5-5"
-    assert draft["prompt_version"] == "v1"
+    assert draft["prompt_version"] == "v2"
     assert draft["career_profile_version_id"] == profile_version
     assert draft["career_profile_version_number"] == 1
     assert draft["writing_guide_version_id"] == guide_version

@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, retryClipping, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -341,7 +341,8 @@ export const getApplicationOptions = (options: Options<GetApplicationData>) => q
  * Set Application State
  *
  * Move the Application to any state, from any other; each move is kept, dated, in
- * its history.
+ * its history. The Cover Letter is locked outside Preparing, and each move to Applied
+ * records its latest draft as the letter sent, or that no letter was sent.
  */
 export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
     const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
@@ -429,6 +430,87 @@ export const generateCoverLetterMutation = (options?: Partial<Options<GenerateCo
     const mutationOptions: UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await generateCoverLetter({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Revise Cover Letter
+ *
+ * Queue a revision in words of the latest draft, hand edits included: the LLM gets its
+ * text and the instruction with the same inputs as generating, and its answer is a new
+ * draft. Refused as generating is, and while there is no draft to revise.
+ */
+export const reviseCoverLetterMutation = (options?: Partial<Options<ReviseCoverLetterData>>): UseMutationOptions<ReviseCoverLetterResponse, ReviseCoverLetterError, Options<ReviseCoverLetterData>> => {
+    const mutationOptions: UseMutationOptions<ReviseCoverLetterResponse, ReviseCoverLetterError, Options<ReviseCoverLetterData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await reviseCoverLetter({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Save Cover Letter Draft
+ *
+ * Save the user's hand edit as the new latest draft; the earlier drafts are kept.
+ * Refused unless the Application is Preparing.
+ */
+export const saveCoverLetterDraftMutation = (options?: Partial<Options<SaveCoverLetterDraftData>>): UseMutationOptions<SaveCoverLetterDraftResponse, SaveCoverLetterDraftError, Options<SaveCoverLetterDraftData>> => {
+    const mutationOptions: UseMutationOptions<SaveCoverLetterDraftResponse, SaveCoverLetterDraftError, Options<SaveCoverLetterDraftData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveCoverLetterDraft({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Restore Cover Letter Draft
+ *
+ * Make an earlier draft the letter again: a new latest draft copies its text and its
+ * record. Refused unless the Application is Preparing.
+ */
+export const restoreCoverLetterDraftMutation = (options?: Partial<Options<RestoreCoverLetterDraftData>>): UseMutationOptions<RestoreCoverLetterDraftResponse, RestoreCoverLetterDraftError, Options<RestoreCoverLetterDraftData>> => {
+    const mutationOptions: UseMutationOptions<RestoreCoverLetterDraftResponse, RestoreCoverLetterDraftError, Options<RestoreCoverLetterDraftData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await restoreCoverLetterDraft({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Delete Cover Letter Draft
+ *
+ * Delete a draft: it is hidden but kept, and the latest draft left is the letter.
+ * Refused unless the Application is Preparing.
+ */
+export const deleteCoverLetterDraftMutation = (options?: Partial<Options<DeleteCoverLetterDraftData>>): UseMutationOptions<DeleteCoverLetterDraftResponse, DeleteCoverLetterDraftError, Options<DeleteCoverLetterDraftData>> => {
+    const mutationOptions: UseMutationOptions<DeleteCoverLetterDraftResponse, DeleteCoverLetterDraftError, Options<DeleteCoverLetterDraftData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteCoverLetterDraft({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
