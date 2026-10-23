@@ -12,7 +12,9 @@ import {
   submitClippingMutation,
 } from './api/@tanstack/react-query.gen'
 import type { ClippingConfirm, ClippingRead } from './api/types.gen'
+import { Badge } from './Badge'
 import { ExtractedFacts, WORKPLACE_TYPES } from './ExtractedFacts'
+import { Loading, Working } from './Waiting'
 
 /** The single paste box: submits a Clipping and opens it while the app reads it. */
 export function NewClippingForm() {
@@ -46,7 +48,11 @@ export function NewClippingForm() {
         Link to the posting (optional, kept for reference and never opened by the app)
         <input type="url" value={url} onChange={(event) => setUrl(event.target.value)} />
       </label>
-      <button type="submit" disabled={submit.isPending || pastedText.trim() === ''}>
+      <button
+        type="submit"
+        disabled={submit.isPending || pastedText.trim() === ''}
+        aria-busy={submit.isPending}
+      >
         {submit.isPending ? 'Sending…' : 'Read it'}
       </button>
       {submit.isError && <p role="alert">Could not send the pasted text. Try again.</p>}
@@ -62,7 +68,7 @@ export function ClippingPage({ id }: { id: number }) {
     refetchInterval: (query) => (query.state.data?.status === 'pending' ? 1000 : false),
   })
 
-  if (clipping.isPending) return <p>Loading…</p>
+  if (clipping.isPending) return <Loading />
   if (clipping.isError) return <p role="alert">Could not load the pasted text.</p>
   return <ClippingStatus clipping={clipping.data} />
 }
@@ -70,7 +76,7 @@ export function ClippingPage({ id }: { id: number }) {
 function ClippingStatus({ clipping }: { clipping: ClippingRead }) {
   switch (clipping.status) {
     case 'pending':
-      return <p role="status">Reading the pasted text…</p>
+      return <Working>Reading the pasted text…</Working>
     case 'failed':
       return <ExtractionFailed clipping={clipping} />
     case 'done':
@@ -101,6 +107,7 @@ function ExtractionFailed({ clipping }: { clipping: ClippingRead }) {
       <button
         type="button"
         disabled={retry.isPending}
+        aria-busy={retry.isPending}
         onClick={() => retry.mutate({ path: { clipping_id: clipping.id } })}
       >
         {retry.isPending ? 'Retrying…' : 'Try again'}
@@ -160,7 +167,7 @@ function ConfirmForm({ clipping }: { clipping: ClippingRead }) {
 
   return (
     <div className="confirmation">
-      <form onSubmit={save}>
+      <form className="panel" onSubmit={save}>
         <h2>Check what was found</h2>
         <p>Correct anything that is wrong before saving.</p>
         <label>
@@ -204,7 +211,7 @@ function ConfirmForm({ clipping }: { clipping: ClippingRead }) {
         </label>
         <h3>Facts found in the posting</h3>
         <ExtractedFacts facts={extraction.extracted_fields} />
-        <button type="submit" disabled={confirm.isPending}>
+        <button type="submit" disabled={confirm.isPending} aria-busy={confirm.isPending}>
           {confirm.isPending ? 'Saving…' : hasSimilar ? 'Save anyway' : 'Save'}
         </button>
         {confirm.isError && <p role="alert">Could not save the job posting. Try again.</p>}
@@ -247,13 +254,13 @@ function SimilarPostings({
 
   if (company.trim() === '' || !similar.data || similar.data.length === 0) return null
   return (
-    <aside>
+    <aside className="panel">
       <h3>Already stored from {company.trim()}</h3>
       <p>
         Is this one of them? Open it and nothing is saved from your pasted text, or save yours
         anyway as a separate posting. Saving never merges.
       </p>
-      <ul className="similar">
+      <ul className="rows">
         {similar.data.map((posting) => (
           <li key={posting.id}>
             <a href={`#/job-postings/${posting.id}`} target="_blank" rel="noreferrer">
@@ -263,7 +270,7 @@ function SimilarPostings({
               {[posting.company, posting.location_text, `added ${age(posting.created_at)}`]
                 .filter(Boolean)
                 .join(' · ')}
-              {posting.closed_at && <span className="badge">closed {age(posting.closed_at)}</span>}
+              {posting.closed_at && <Badge>closed {age(posting.closed_at)}</Badge>}
             </div>
             <button type="button" disabled={abandon.isPending} onClick={() => openInstead(posting.id)}>
               Open this one instead

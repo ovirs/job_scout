@@ -7,6 +7,7 @@ import {
 } from './api/@tanstack/react-query.gen'
 import type { DocumentVersionRead } from './api/types.gen'
 import { age } from './age'
+import { Loading } from './Waiting'
 
 export type DocumentKind = DocumentVersionRead['kind']
 
@@ -33,7 +34,7 @@ export function DocumentPage({ kind }: { kind: DocumentKind }) {
     <section>
       <h2>{title}</h2>
       <p>{hint}</p>
-      {current.isPending && <p>Loading…</p>}
+      {current.isPending && <Loading />}
       {current.isError && <p role="alert">Could not load the {title}.</p>}
       {current.isSuccess && (
         // A new key resets the form to the saved text after each save
@@ -59,19 +60,20 @@ function DocumentForm({ kind, current }: { kind: DocumentKind; current: Document
   }
 
   return (
-    <form onSubmit={submit}>
-      <p>
+    <form className="panel" onSubmit={submit}>
+      <p className="hint">
         {current
           ? `Version ${current.number}, saved ${age(current.created_at)}.`
           : 'Not written yet.'}
       </p>
       <textarea
+        className="document"
         aria-label={DOCUMENTS[kind].title}
         rows={24}
         value={text}
         onChange={(event) => setText(event.target.value)}
       />
-      <button type="submit" disabled={save.isPending || text === savedText}>
+      <button type="submit" disabled={save.isPending || text === savedText} aria-busy={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save as a new version'}
       </button>
       {save.isError && <p role="alert">Could not save. Try again.</p>}

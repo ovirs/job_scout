@@ -12,18 +12,43 @@ import type {
   EvaluationRead,
   EvidenceMatch,
 } from './api/types.gen'
+import { Badge, type Tone } from './Badge'
 import { type Highlight, type HighlightKind, quoteKey } from './Highlighted'
+import { Working } from './Waiting'
 
-const RECOMMENDATIONS: Record<NonNullable<EvaluationRead['recommendation']>, string> = {
+type Recommendation = NonNullable<EvaluationRead['recommendation']>
+
+const RECOMMENDATIONS: Record<Recommendation, string> = {
   apply: 'Apply',
   maybe: 'Maybe',
   skip: 'Skip',
+}
+
+const RECOMMENDATION_TONES: Record<Recommendation, Tone> = {
+  apply: 'good',
+  maybe: 'warn',
+  skip: 'bad',
+}
+
+export function RecommendationBadge({ recommendation }: { recommendation: Recommendation }) {
+  return <Badge tone={RECOMMENDATION_TONES[recommendation]}>{RECOMMENDATIONS[recommendation]}</Badge>
+}
+
+/** The score out of 10, uncoloured: it only orders postings, the recommendation judges them. */
+export function ScoreBadge({ score }: { score: number }) {
+  return <Badge>Score {score}/10</Badge>
 }
 
 const VERDICTS: Record<DealBreakerVerdictRead['verdict'], string> = {
   clear: 'Clear',
   violated: 'Violated',
   unknown: 'Unknown',
+}
+
+const VERDICT_TONES: Record<DealBreakerVerdictRead['verdict'], Tone> = {
+  clear: 'good',
+  violated: 'bad',
+  unknown: 'warn',
 }
 
 const STATUSES: Record<EvaluationRead['status'], string> = {
@@ -86,7 +111,7 @@ export function EvaluationPanel({
   const latest = runs.at(0)
 
   return (
-    <section className="evaluation">
+    <section className="evaluation panel">
       <h3>Evaluation</h3>
       <LatestRun postingId={postingId} latest={latest} />
       {current && (
@@ -124,7 +149,7 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
   return (
     <div>
       {latest === undefined && <p>This posting has not been evaluated yet.</p>}
-      {underWay && <p role="status">Evaluating the posting…</p>}
+      {underWay && <Working>Evaluating the posting…</Working>}
       {latest?.status === 'not_evaluated' && (
         <>
           <p>
@@ -138,6 +163,7 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
         <button
           type="button"
           disabled={rerun.isPending}
+          aria-busy={rerun.isPending}
           onClick={() => rerun.mutate({ path: { job_posting_id: postingId } })}
         >
           {rerun.isPending ? 'Queuing…' : label}
@@ -162,11 +188,11 @@ function CurrentEvaluation({
 
   return (
     <>
-      <p>
-        <strong>{RECOMMENDATIONS[evaluation.recommendation!]}</strong>
-        {' · '}scored {evaluation.score} out of 10
+      <p className="badges">
+        <RecommendationBadge recommendation={evaluation.recommendation!} />
+        <ScoreBadge score={evaluation.score!} />
         {evaluation.outdated && (
-          <span className="badge">Outdated: the posting changed since it was evaluated</span>
+          <Badge tone="warn">Outdated: the posting changed since it was evaluated</Badge>
         )}
       </p>
       <p>{evaluation.summary}</p>
@@ -216,7 +242,9 @@ function CurrentEvaluation({
           <ul>
             {evaluation.deal_breaker_verdicts.map((verdict) => (
               <li key={verdict.deal_breaker_id}>
-                <span className={`verdict ${verdict.verdict}`}>{VERDICTS[verdict.verdict]}</span>{' '}
+                <Badge tone={VERDICT_TONES[verdict.verdict]} dot>
+                  {VERDICTS[verdict.verdict]}
+                </Badge>{' '}
                 {verdict.deal_breaker_text}
                 <div className="hint">{verdict.explanation}</div>
                 <Quotes
@@ -254,8 +282,10 @@ function Flags({
   if (flags.length === 0) return null
   return (
     <>
-      <h4>{title}</h4>
-      <ul>
+      <h4>
+        {title} <Badge tone={colour === 'red' ? 'bad' : 'good'}>{flags.length}</Badge>
+      </h4>
+      <ul className={`flags ${colour}`}>
         {flags.map((flag, index) => (
           <li key={index}>
             {flag.point}
@@ -327,11 +357,16 @@ function History({ runs }: { runs: EvaluationRead[] }) {
             <tr key={run.id}>
               <td>{age(run.created_at)}</td>
               <td>
-                {run.status === 'done'
-                  ? `${RECOMMENDATIONS[run.recommendation!]}, ${run.score}/10`
-                  : STATUSES[run.status]}
+                {run.status === 'done' ? (
+                  <span className="badges">
+                    <RecommendationBadge recommendation={run.recommendation!} />
+                    <ScoreBadge score={run.score!} />
+                  </span>
+                ) : (
+                  STATUSES[run.status]
+                )}
                 {run.failure && <div className="hint">{run.failure.reason}</div>}
-                {run.outdated && <span className="badge">Outdated</span>}
+                {run.outdated && <Badge tone="warn">Outdated</Badge>}
               </td>
               <td>{run.model ?? '–'}</td>
               <td>{run.prompt_version ?? '–'}</td>

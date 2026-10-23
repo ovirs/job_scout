@@ -11,11 +11,13 @@ import {
   reopenJobPostingMutation,
 } from './api/@tanstack/react-query.gen'
 import type { EvaluationRead, EvidenceMatch, JobPostingRead } from './api/types.gen'
+import { Badge } from './Badge'
 import { currentOf, EvaluationPanel, highlightsOf } from './EvaluationPanel'
 import { ExtractedFacts, WORKPLACE_TYPES } from './ExtractedFacts'
 import { Highlighted, scrollToQuote } from './Highlighted'
 import { PostingNotes } from './Notes'
 import { TriageButtons } from './TriageButtons'
+import { Loading } from './Waiting'
 
 export function JobPostingPage({ id }: { id: number }) {
   const path = { job_posting_id: id }
@@ -29,7 +31,7 @@ export function JobPostingPage({ id }: { id: number }) {
     },
   })
 
-  if (posting.isPending || runs.isPending) return <p>Loading…</p>
+  if (posting.isPending || runs.isPending) return <Loading />
   if (posting.isError) return <p role="alert">Could not load the job posting.</p>
   // The posting stays readable when only its Evaluations could not be loaded
   return <JobPostingView posting={posting.data} runs={runs.isError ? null : runs.data} />
@@ -81,9 +83,11 @@ function JobPostingView({
           </>
         )}
       </p>
-      <TriageButtons posting={posting} />
-      <ApplicationAction posting={posting} />
-      <CloseOrReopen posting={posting} />
+      <div className="toolbar">
+        <TriageButtons posting={posting} />
+        <ApplicationAction posting={posting} />
+        <CloseOrReopen posting={posting} />
+      </div>
       <PostingNotes postingId={posting.id} applicationId={posting.application?.id ?? null} />
       {posting.extracted_fields && (
         <>
@@ -128,13 +132,23 @@ function CloseOrReopen({ posting }: { posting: JobPostingRead }) {
     <div className="actions">
       {posting.closed_at ? (
         <>
-          <span className="badge">Closed {age(posting.closed_at)}</span>
-          <button type="button" disabled={reopen.isPending} onClick={() => reopen.mutate({ path })}>
+          <Badge>Closed {age(posting.closed_at)}</Badge>
+          <button
+            type="button"
+            disabled={reopen.isPending}
+            aria-busy={reopen.isPending}
+            onClick={() => reopen.mutate({ path })}
+          >
             Reopen
           </button>
         </>
       ) : (
-        <button type="button" disabled={close.isPending} onClick={() => close.mutate({ path })}>
+        <button
+          type="button"
+          disabled={close.isPending}
+          aria-busy={close.isPending}
+          onClick={() => close.mutate({ path })}
+        >
           Close (the role is filled or the posting is gone)
         </button>
       )}

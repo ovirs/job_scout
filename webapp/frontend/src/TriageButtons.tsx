@@ -31,18 +31,21 @@ export function TriageButtons({ posting }: { posting: JobPostingRead }) {
   const locked = posting.application !== null
 
   return (
-    <div className="actions" role="group" aria-label="Triage">
-      {(Object.keys(TRIAGE_LABELS) as TriageSet['value'][]).map((value) => (
-        <button
-          key={value}
-          type="button"
-          aria-pressed={posting.triage?.value === value}
-          disabled={triage.isPending || locked}
-          onClick={() => triage.mutate({ path, body: { value } })}
-        >
-          {TRIAGE_LABELS[value]}
-        </button>
-      ))}
+    <div className="actions">
+      <div className="segmented" role="group" aria-label="Triage">
+        {(Object.keys(TRIAGE_LABELS) as TriageSet['value'][]).map((value) => (
+          <button
+            key={value}
+            type="button"
+            className={`triage ${value}`}
+            aria-pressed={posting.triage?.value === value}
+            disabled={triage.isPending || locked}
+            onClick={() => triage.mutate({ path, body: { value } })}
+          >
+            {TRIAGE_LABELS[value]}
+          </button>
+        ))}
+      </div>
       {locked && <span className="hint">Locked while you have an Application</span>}
       {triage.isError && <p role="alert">Could not save. Try again.</p>}
     </div>

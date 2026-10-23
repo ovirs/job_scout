@@ -10,6 +10,8 @@ import {
   listJobPostingNotesQueryKey,
 } from './api/@tanstack/react-query.gen'
 import type { NoteRead } from './api/types.gen'
+import { Badge } from './Badge'
+import { Loading } from './Waiting'
 
 /** The Application shows its posting's notes too, so a change to any note refreshes the
  * posting's list and, while it has one, its live Application's. */
@@ -113,17 +115,17 @@ function NoteList({
   return (
     <section>
       <h3>Notes</h3>
-      {notes.isPending && <p>Loading…</p>}
+      {notes.isPending && <Loading />}
       {notes.isError && <p role="alert">Could not load the notes.</p>}
       {notes.isSuccess && notes.data.length === 0 && <p>No notes yet.</p>}
       {notes.isSuccess && notes.data.length > 0 && (
-        <ul className="postings">
+        <ul className="rows">
           {notes.data.map((note) => (
             <li key={note.id}>
               <p className="hint">
                 {new Date(note.created_at).toLocaleString()}
                 {markPostingNotes && note.job_posting_id !== null && (
-                  <span className="badge">On the posting</span>
+                  <Badge>On the posting</Badge>
                 )}
               </p>
               <div className="description">{note.text}</div>
@@ -135,7 +137,7 @@ function NoteList({
         </ul>
       )}
       {remove.isError && <p role="alert">Could not delete. Try again.</p>}
-      <form onSubmit={submit}>
+      <form className="panel" onSubmit={submit}>
         <label>
           {label}
           <textarea
@@ -146,7 +148,7 @@ function NoteList({
             onChange={(event) => setText(event.target.value)}
           />
         </label>
-        <button type="submit" disabled={pending || text.trim() === ''}>
+        <button type="submit" disabled={pending || text.trim() === ''} aria-busy={pending}>
           {pending ? 'Adding…' : 'Add note'}
         </button>
         {failed && <p role="alert">Could not add the note. Try again.</p>}

@@ -1,103 +1,813 @@
+/* Atlas: zinc neutrals with a violet accent, light and dark after the system preference.
+   Screens use the elements and the shared classes below (.panel, .rows, .segmented, .actions,
+   .badge, .loading, .working); only a few screen-specific pieces come last. */
+
+/* ============================================================================================
+   Tokens
+   ============================================================================================ */
+
 :root {
-  font-family: system-ui, sans-serif;
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --sunken: #f4f4f5;
+  --text: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
+  --accent: #6d28d9;
+  --accent-soft: #ede9fe;
+  --on-accent: #ffffff;
+  --good: #15803d;
+  --good-soft: #dcfce7;
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
+  --bad: #b91c1c;
+  --bad-soft: #fee2e2;
+  --shadow: rgb(0 0 0 / 0.12);
+
+  --radius: 6px;
+  --radius-panel: 10px;
+  --sidebar: 15rem;
+
+  font-family: Inter, 'Segoe UI', system-ui, sans-serif;
+  font-size: 15px;
   line-height: 1.5;
-  color-scheme: light dark;
 }
 
-main {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: 1rem;
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #09090b;
+    --surface: #131316;
+    --sunken: #1c1c21;
+    --text: #f4f4f5;
+    --muted: #a1a1aa;
+    --line: #27272a;
+    --accent: #a78bfa;
+    --accent-soft: #2e1f5e;
+    --on-accent: #120a26;
+    --good: #4ade80;
+    --good-soft: #0f2e1b;
+    --warn: #fbbf24;
+    --warn-soft: #3a2a06;
+    --bad: #f87171;
+    --bad-soft: #3b1212;
+    --shadow: rgb(0 0 0 / 0.5);
+  }
+}
+
+/* ============================================================================================
+   Elements
+   ============================================================================================ */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+}
+
+a {
+  color: var(--accent);
+}
+
+h2 {
+  margin: 0 0 1rem;
+  font-size: 1.5rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+h3 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+h4 {
+  margin: 1.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+li {
+  margin-bottom: 0.4rem;
+}
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+  border-radius: var(--radius);
+}
+
+input,
+textarea,
+select {
+  box-sizing: border-box;
+  max-width: 100%;
+  padding: 0.45rem 0.6rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+:focus-visible,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+button[type='submit'] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* A button whose action is under way shows a spinner before its label */
+button[aria-busy='true'] {
+  opacity: 0.8;
+}
+
+button[aria-busy='true']::before {
+  content: '';
+  width: 0.8em;
+  height: 0.8em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 form {
   display: grid;
   gap: 0.75rem;
-  max-width: 40rem;
+  max-width: 48rem;
 }
 
 label {
   display: grid;
   gap: 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
-button {
-  justify-self: start;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  text-align: left;
-  padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-}
-
-nav a[aria-current='page'] {
-  font-weight: bold;
-  text-decoration: none;
-}
-
-li {
-  margin-bottom: 0.5rem;
-}
-
-.actions {
-  display: flex;
-  gap: 0.5rem;
+label > input,
+label > textarea,
+label > select {
+  font-weight: 400;
+  font-size: 0.9375rem;
 }
 
 select {
   justify-self: start;
 }
 
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+th,
+td {
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+details {
+  margin: 0.75rem 0;
+}
+
+details > summary {
+  cursor: pointer;
+  color: var(--muted);
+}
+
+details[open] > summary {
+  margin-bottom: 0.5rem;
+}
+
+[role='alert'] {
+  color: var(--bad);
+}
+
+mark {
+  color: inherit;
+  border-radius: 0.15rem;
+}
+
+/* ============================================================================================
+   The shell: a fixed sidebar with the grouped navigation, the content full width
+   ============================================================================================ */
+
+.shell {
+  display: grid;
+  grid-template-columns: var(--sidebar) minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 1.25rem 0.75rem;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.brand {
+  display: block;
+  padding: 0 0.6rem 1.25rem;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.brand-mark {
+  color: var(--accent);
+}
+
+.sidebar nav {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.nav-group {
+  display: grid;
+  gap: 1px;
+}
+
+.nav-group-label {
+  padding: 0 0.6rem 0.3rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.sidebar nav a {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: var(--radius);
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sidebar nav a:hover {
+  background: var(--sunken);
+  color: var(--text);
+}
+
+.sidebar nav a[aria-current='page'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-glyph {
+  width: 1.1rem;
+  text-align: center;
+}
+
+.content {
+  min-width: 0;
+  max-width: 80rem;
+  padding: 2rem 2.5rem 7rem; /* clear of the floating button */
+}
+
+@media (max-width: 48rem) {
+  /* On a phone the sidebar becomes a strip above the content */
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand {
+    padding: 0;
+  }
+
+  .brand-text {
+    display: none;
+  }
+
+  .sidebar nav {
+    display: flex;
+    gap: 0;
+    min-width: 0;
+    overflow-x: auto;
+  }
+
+  .nav-group {
+    display: flex;
+  }
+
+  .nav-group + .nav-group {
+    margin-left: 0.4rem;
+    padding-left: 0.4rem;
+    border-left: 1px solid var(--line);
+  }
+
+  .nav-group-label {
+    display: none;
+  }
+
+  .content {
+    padding: 1.25rem 1rem 6rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
+
+/* ============================================================================================
+   Shared pieces
+   ============================================================================================ */
+
+/* A soft rounded panel around a form or a block of results */
+.panel {
+  margin: 1rem 0;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+}
+
+ol.panel,
+ul.panel {
+  padding-left: 2.5rem;
+}
+
+.panel > :first-child,
+.panel > :first-child > :first-child {
+  margin-top: 0;
+}
+
+.panel > :last-child {
+  margin-bottom: 0;
+}
+
+/* Dense rows, like a table: a list of postings, Applications or notes */
+.rows {
+  margin: 0.75rem 0;
+  padding: 0;
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  overflow: hidden;
+}
+
+.rows > li {
+  margin: 0;
+  padding: 0.6rem 1rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.rows > li:last-child {
+  border-bottom: none;
+}
+
+.rows > li:hover {
+  background: var(--sunken);
+}
+
+.rows > li > a:first-child {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.rows > li > a:first-child:hover {
+  color: var(--accent);
+}
+
+.rows > li > p {
+  margin: 0.2rem 0 0.4rem;
+}
+
+.rows .actions {
+  margin-top: 0.3rem;
+}
+
+/* One line of a longer text; the whole of it shows on hover */
+.summary {
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* A row of buttons, and a row of such rows */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+  margin: 1rem 0;
+}
+
+.toolbar > * {
+  margin: 0;
+}
+
+/* Segmented control: tabs over a list, or a choice of one, pressed */
+.segmented {
+  display: inline-flex;
+  max-width: 100%;
+  overflow-x: auto;
+  gap: 2px;
+  padding: 2px;
+  background: var(--sunken);
+  border-radius: 8px;
+}
+
+.segmented > button {
+  flex: none;
+  border: none;
+  background: none;
+  color: var(--muted);
+}
+
+.segmented > [aria-selected='true'],
+.segmented > [aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--shadow);
+}
+
+/* A label beside its control rather than over it */
+label.inline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  color: var(--muted);
+  font-weight: 400;
+}
+
 .hint,
 .missing {
-  color: color-mix(in srgb, currentColor 65%, transparent);
+  color: var(--muted);
 }
 
 .missing {
   font-style: italic;
 }
 
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ============================================================================================
+   Badges: a soft tinted pill, toned by what it says
+   ============================================================================================ */
+
 .badge {
-  display: inline-block;
-  margin-left: 0.5rem;
-  padding: 0 0.4rem;
-  border: 1px solid currentColor;
-  border-radius: 0.25rem;
-  font-size: 0.85em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.5;
+  vertical-align: 0.1em;
+  text-decoration: none;
+  white-space: nowrap;
+  background: var(--sunken);
+  color: var(--muted);
+}
+
+.badge.accent {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.badge.good {
+  background: var(--good-soft);
+  color: var(--good);
+}
+
+.badge.warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.badge.bad {
+  background: var(--bad-soft);
+  color: var(--bad);
+}
+
+.badge.dot::before {
+  content: '';
+  flex: none;
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.badge.busy::before {
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+a.badge:hover {
+  box-shadow: inset 0 0 0 1px currentColor;
+}
+
+/* A long badge, such as the Deal Breakers a posting violates, wraps */
+.rows .badge {
+  white-space: normal;
+}
+
+/* Badges first in a line, or in a line of their own */
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.badges > .badge,
+li > .badge:first-child,
+p > .badge:first-child,
+h4 > .badge {
+  margin-left: 0;
+}
+
+h4 > .badge {
+  vertical-align: 0;
+  letter-spacing: 0;
+}
+
+/* ============================================================================================
+   Waits: skeleton lines while data loads, a moving bar while the work takes longer
+   ============================================================================================ */
+
+.loading {
+  display: grid;
+  gap: 0.6rem;
+  max-width: 32rem;
+  padding: 0.5rem 0;
+}
+
+.skeleton {
+  height: 0.75rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--sunken) 0%, var(--line) 50%, var(--sunken) 100%) 0 0 /
+    200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.skeleton.short {
+  width: 60%;
+}
+
+.working {
+  position: relative;
+  max-width: 22rem;
+  padding-bottom: 1rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.working::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.2rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, var(--accent) 50%, transparent 100%) 0 0 /
+      40% 100% no-repeat,
+    var(--accent-soft);
+  animation: scan 1.6s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes scan {
+  from {
+    background-position:
+      -60% 0,
+      0 0;
+  }
+  to {
+    background-position:
+      160% 0,
+      0 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+    transform: scale(0.7);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0s !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* ============================================================================================
+   Add posting: a floating button and its overlay
+   ============================================================================================ */
+
+.fab {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 20;
+  padding: 0.75rem 1.25rem 0.75rem 1rem;
+  border-radius: 999px;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  box-shadow: 0 6px 20px rgb(0 0 0 / 0.25);
+}
+
+.fab > span {
+  font-size: 1.5em;
+  line-height: 1;
+}
+
+.overlay {
+  width: min(42rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 4rem);
+  padding: 0;
+  overflow: auto;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgb(0 0 0 / 0.35);
+}
+
+.overlay[open] {
+  animation: rise 0.18s ease-out;
+}
+
+.overlay::backdrop {
+  background: rgb(0 0 0 / 0.45);
+  backdrop-filter: blur(3px);
+}
+
+.overlay-body {
+  padding: 1.5rem;
+}
+
+.overlay-body form {
+  max-width: none;
+}
+
+.overlay-close {
+  float: right;
+  padding: 0 0.25rem;
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+}
+
+/* ============================================================================================
+   Screen pieces
+   ============================================================================================ */
+
+/* A posting's Triage, pressed, in the colour of the call */
+.triage.interested[aria-pressed='true'] {
+  color: var(--good);
+}
+
+.triage.maybe[aria-pressed='true'] {
+  color: var(--warn);
 }
 
 .description {
+  max-width: 75ch;
   white-space: pre-wrap;
 }
 
+textarea.document {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.85rem;
+}
+
+/* A form beside what it is checked against */
 .confirmation {
   display: flex;
   flex-wrap: wrap;
-  gap: 2rem;
+  gap: 1.5rem;
   align-items: start;
 }
 
-.confirmation > form {
+.confirmation > :first-child {
   flex: 1 1 30rem;
+  min-width: 0;
 }
 
 .confirmation > aside {
   flex: 1 1 15rem;
+}
+
+.confirmation > .panel {
+  margin: 0;
 }
 
 .facts {
@@ -105,6 +815,10 @@ select {
   grid-template-columns: max-content 1fr;
   gap: 0.25rem 1rem;
   margin: 0;
+}
+
+.facts dt {
+  color: var(--muted);
 }
 
 .facts dd {
@@ -120,43 +834,23 @@ select {
   margin-bottom: 0;
 }
 
-.evaluation {
-  margin: 1rem 0;
-  padding: 0 1rem 0.5rem;
-  border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
-  border-radius: 0.25rem;
+.evaluation > h3:first-child {
+  margin-top: 0;
 }
 
-mark {
-  color: inherit;
-  border-radius: 0.15rem;
+.disqualified {
+  padding: 0.25rem 0.75rem;
+  border-left: 4px solid var(--bad);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: var(--bad-soft);
 }
 
-mark.violated,
-mark.red,
-.verdict.violated {
-  background: color-mix(in srgb, #e5484d 35%, transparent);
+.flags.red li::marker {
+  color: var(--bad);
 }
 
-mark.unknown,
-.verdict.unknown {
-  background: color-mix(in srgb, #f5a524 35%, transparent);
-}
-
-mark.clear,
-mark.green,
-.verdict.clear {
-  background: color-mix(in srgb, #30a46c 30%, transparent);
-}
-
-mark.active {
-  outline: 2px solid currentColor;
-}
-
-.verdict {
-  padding: 0 0.3rem;
-  border-radius: 0.25rem;
-  font-size: 0.85em;
+.flags.green li::marker {
+  color: var(--good);
 }
 
 .quotes {
@@ -170,6 +864,7 @@ mark.active {
 }
 
 button.quote {
+  display: inline;
   padding: 0;
   border: none;
   background: none;
@@ -178,27 +873,33 @@ button.quote {
   font-style: italic;
   text-align: left;
   text-decoration: underline dotted;
-  cursor: pointer;
 }
 
-.disqualified {
-  padding: 0 0.75rem;
-  border-left: 4px solid #e5484d;
+/* The posting's words an Evaluation rests on, coloured by what they support */
+mark.violated,
+mark.red {
+  background: var(--bad-soft);
+  box-shadow: inset 0 -2px var(--bad);
 }
 
-[role='tab'][aria-selected='true'],
-button[aria-pressed='true'] {
-  font-weight: bold;
-  text-decoration: underline;
+mark.unknown {
+  background: var(--warn-soft);
+  box-shadow: inset 0 -2px var(--warn);
 }
 
-.postings {
-  list-style: none;
-  padding: 0;
+mark.clear,
+mark.green {
+  background: var(--good-soft);
+  box-shadow: inset 0 -2px var(--good);
+}
+
+mark.active {
+  outline: 2px solid var(--accent);
 }
 
 .letter {
-  padding: 0.75rem;
-  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
-  border-radius: 0.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
 }

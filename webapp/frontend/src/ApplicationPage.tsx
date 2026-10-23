@@ -13,8 +13,10 @@ import {
   startApplicationMutation,
 } from './api/@tanstack/react-query.gen'
 import type { ApplicationRead, ApplicationStateSet, JobPostingRead } from './api/types.gen'
+import { Badge, type Tone } from './Badge'
 import { CoverLetter } from './CoverLetter'
 import { ApplicationNotes } from './Notes'
+import { Loading } from './Waiting'
 
 type State = ApplicationStateSet['state']
 
@@ -29,6 +31,37 @@ export const STATE_LABELS: Record<State, string> = {
   rejected: 'Rejected',
   withdrawn: 'Withdrawn',
   no_response: 'No response',
+}
+
+/** Under way in the accent, then how it ended. */
+const STATE_TONES: Record<State, Tone> = {
+  preparing: 'accent',
+  applied: 'accent',
+  screen_call: 'accent',
+  interview_loop: 'accent',
+  offer: 'good',
+  accepted: 'good',
+  rejected: 'bad',
+  withdrawn: 'neutral',
+  no_response: 'neutral',
+}
+
+/** An Application's state, as a link to it when `href` is given. */
+export function ApplicationStateBadge({
+  state,
+  href,
+  prefix = '',
+}: {
+  state: State
+  href?: string
+  prefix?: string
+}) {
+  return (
+    <Badge tone={STATE_TONES[state]} dot href={href}>
+      {prefix}
+      {STATE_LABELS[state]}
+    </Badge>
+  )
 }
 
 /** Everything that shows an Application, its Cover Letter (locked outside Preparing) or its
@@ -65,8 +98,8 @@ export function ApplicationAction({ posting }: { posting: JobPostingRead }) {
   if (posting.application) {
     return (
       <p>
-        <a href={`#/applications/${posting.application.id}`}>Your Application</a>:{' '}
-        <span className="badge">{STATE_LABELS[posting.application.state]}</span>
+        <a href={`#/applications/${posting.application.id}`}>Your Application</a>{' '}
+        <ApplicationStateBadge state={posting.application.state} />
       </p>
     )
   }
@@ -75,6 +108,7 @@ export function ApplicationAction({ posting }: { posting: JobPostingRead }) {
       <button
         type="button"
         disabled={start.isPending}
+        aria-busy={start.isPending}
         onClick={() => start.mutate({ path: { job_posting_id: posting.id } })}
       >
         Start application
@@ -86,7 +120,7 @@ export function ApplicationAction({ posting }: { posting: JobPostingRead }) {
 
 export function ApplicationPage({ id }: { id: number }) {
   const application = useQuery(getApplicationOptions({ path: { application_id: id } }))
-  if (application.isPending) return <p>Loading…</p>
+  if (application.isPending) return <Loading />
   if (application.isError) return <p role="alert">Could not load the Application.</p>
   return <ApplicationView application={application.data} />
 }
@@ -120,11 +154,11 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
       <p>
         {application.job_posting_company}
         {application.job_posting_closed_at && (
-          <span className="badge">Posting closed on {application.job_posting_closed_at.slice(0, 10)}</span>
+          <Badge>Posting closed on {application.job_posting_closed_at.slice(0, 10)}</Badge>
         )}
       </p>
       <div className="actions">
-        <label>
+        <label className="inline">
           State{' '}
           <select
             value={application.state}
@@ -138,11 +172,12 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
             ))}
           </select>
         </label>
-        {application.closed && <span className="badge">Closed</span>}
+        {application.closed && <Badge>Closed</Badge>}
         {application.state === 'preparing' && (
           <button
             type="button"
             disabled={remove.isPending}
+            aria-busy={remove.isPending}
             onClick={() => {
               if (window.confirm(deleteQuestion(application))) {
                 remove.mutate({ path })
@@ -155,10 +190,11 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
       </div>
       {(setState.isError || remove.isError) && <p role="alert">Could not save. Try again.</p>}
       <h3>History</h3>
-      <ol>
+      <ol className="panel">
         {application.history.map((change, i) => (
           <li key={i}>
-            {STATE_LABELS[change.state]}, {new Date(change.changed_at).toLocaleString()}
+            <ApplicationStateBadge state={change.state} />{' '}
+            {new Date(change.changed_at).toLocaleString()}
           </li>
         ))}
       </ol>
@@ -169,7 +205,7 @@ function ApplicationView({ application }: { application: ApplicationRead }) {
           <h3>What you applied to</h3>
           {application.posting_changed_since_copy && (
             <p>
-              <span className="badge">The posting has changed since you applied</span>
+              <Badge tone="warn">The posting has changed since you applied</Badge>
             </p>
           )}
           <p className="hint">
@@ -225,17 +261,17 @@ export function ApplicationsPage() {
 /** The live Applications, closed or in flight, by state. */
 function ApplicationList({ closed, empty }: { closed: boolean; empty: string }) {
   const query = useQuery(listApplicationsOptions({ query: { closed } }))
-  if (query.isPending) return <p>Loading…</p>
+  if (query.isPending) return <Loading />
   if (query.isError) return <p role="alert">Could not load the Applications.</p>
   if (query.data.length === 0) return <p>{empty}</p>
   return (
-    <ul className="postings">
+    <ul className="rows">
       {query.data.map((application) => (
         <li key={application.id}>
-          <span className="badge">{STATE_LABELS[application.state]}</span>{' '}
           <a href={`#/applications/${application.id}`}>{application.job_posting_title}</a> ·{' '}
           {application.job_posting_company} · moved {age(application.state_changed_at)}
-          {application.job_posting_closed_at && <span className="badge">Posting closed</span>}
+          <ApplicationStateBadge state={application.state} />
+          {application.job_posting_closed_at && <Badge>Posting closed</Badge>}
         </li>
       ))}
     </ul>

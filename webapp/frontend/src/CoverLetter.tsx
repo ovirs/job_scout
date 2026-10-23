@@ -10,6 +10,8 @@ import {
   saveCoverLetterDraftMutation,
 } from './api/@tanstack/react-query.gen'
 import type { CoverLetterDraftRead, CoverLetterRead } from './api/types.gen'
+import { Badge } from './Badge'
+import { Loading, Working } from './Waiting'
 
 type EvaluationCase = CoverLetterRead['evaluation']['case']
 
@@ -69,7 +71,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
   const remove = useMutation({ ...deleteCoverLetterDraftMutation(), ...handlers })
   const [instruction, setInstruction] = useState('')
 
-  if (letter.isPending) return <p>Loading the Cover Letter…</p>
+  if (letter.isPending) return <Loading label="Loading the Cover Letter…" />
   if (letter.isError) return <p role="alert">Could not load the Cover Letter.</p>
   const { draft, drafts, generation, evaluation, editable, posting_edited_since_draft, sent } =
     letter.data
@@ -109,7 +111,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
   return (
     <section>
       <h3>Cover Letter</h3>
-      {posting_edited_since_draft && <span className="badge">Posting edited since this draft</span>}
+      {posting_edited_since_draft && <Badge tone="warn">Posting edited since this draft</Badge>}
       {draft ? (
         <Draft
           key={draft.id}
@@ -120,7 +122,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
       ) : (
         <p className="missing">No Cover Letter yet.</p>
       )}
-      {underWay && <p>Writing a draft…</p>}
+      {underWay && <Working>Writing a draft…</Working>}
       {generation?.status === 'failed' && (
         <div role="alert">
           <p>
@@ -143,7 +145,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
         </div>
       )}
       {editable ? (
-        <form onSubmit={(e) => e.preventDefault()}>
+        <form className="panel" onSubmit={(e) => e.preventDefault()}>
           <label>
             Instructions (optional when generating)
             <textarea
@@ -162,6 +164,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
               <button
                 type="button"
                 disabled={busy || !instruction.trim()}
+                aria-busy={revise.isPending}
                 onClick={() => reviseDraft(instruction)}
               >
                 Revise this draft
@@ -170,6 +173,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
             <button
               type="button"
               disabled={busy}
+              aria-busy={generate.isPending}
               onClick={() => generateDraft(instruction)}
             >
               {draft ? 'Regenerate from scratch' : 'Generate cover letter'}
@@ -299,7 +303,7 @@ function Draft({
           </>
         )}
       </div>
-      <aside>
+      <aside className="panel">
         <h4>Not supported by your Career Profile</h4>
         {draft.unsupported_requirements.length === 0 ? (
           <p className="missing">Nothing: the profile supports every requirement found.</p>

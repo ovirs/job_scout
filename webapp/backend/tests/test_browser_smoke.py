@@ -96,8 +96,11 @@ async def test_paste_confirm_and_save_a_manual_entry(
     fake_llm.manual_entry_extraction.respond_with(an_extraction())
 
     await page.goto("/")
-    await page.get_by_label("Paste the whole page").fill(PASTED_TEXT)
-    await page.get_by_role("button", name="Read it").click()
+    await page.get_by_role("button", name="Add posting", exact=True).click()
+    overlay = page.get_by_role("dialog", name="Add a job posting")
+    await overlay.get_by_label("Paste the whole page").fill(PASTED_TEXT)
+    await overlay.get_by_role("button", name="Read it").click()
+    await expect(overlay).to_be_hidden()
     await expect(page.get_by_role("status")).to_have_text("Reading the pasted text…")
 
     await run_queued_tasks()

@@ -9,6 +9,7 @@ import {
 } from './api/@tanstack/react-query.gen'
 import type { DealBreakerRead, DealBreakerSetVersionRead } from './api/types.gen'
 import { age } from './age'
+import { Loading } from './Waiting'
 
 export function DealBreakersPage() {
   const current = useQuery(getCurrentDealBreakersOptions())
@@ -21,7 +22,7 @@ export function DealBreakersPage() {
         Each one a line you will not cross, in one sentence and in your own words. A Job Posting
         that shows it crosses the line is disqualified; one that is silent on it is not.
       </p>
-      {current.isPending && <p>Loading…</p>}
+      {current.isPending && <Loading />}
       {current.isError && <p role="alert">Could not load the Deal Breakers.</p>}
       {current.data && (
         <p>
@@ -30,7 +31,7 @@ export function DealBreakersPage() {
       )}
       {current.isSuccess && dealBreakers.length === 0 && <p>No Deal Breakers yet.</p>}
       {dealBreakers.length > 0 && (
-        <ol>
+        <ol className="panel">
           {dealBreakers.map((dealBreaker) => (
             <DealBreakerItem key={dealBreaker.id} dealBreaker={dealBreaker} />
           ))}
@@ -81,7 +82,11 @@ function DealBreakerItem({ dealBreaker }: { dealBreaker: DealBreakerRead }) {
             onChange={(event) => setEditedText(event.target.value)}
           />
           <div className="actions">
-            <button type="submit" disabled={edit.isPending || editedText.trim() === dealBreaker.text}>
+            <button
+              type="submit"
+              disabled={edit.isPending || editedText.trim() === dealBreaker.text}
+              aria-busy={edit.isPending}
+            >
               {edit.isPending ? 'Saving…' : 'Save'}
             </button>
             <button type="button" onClick={() => setEditedText(null)}>
@@ -101,7 +106,12 @@ function DealBreakerItem({ dealBreaker }: { dealBreaker: DealBreakerRead }) {
         <button type="button" onClick={() => setEditedText(dealBreaker.text)}>
           Edit
         </button>
-        <button type="button" onClick={confirmDelete} disabled={remove.isPending}>
+        <button
+          type="button"
+          onClick={confirmDelete}
+          disabled={remove.isPending}
+          aria-busy={remove.isPending}
+        >
           Delete
         </button>
       </div>
@@ -127,7 +137,7 @@ function AddDealBreakerForm() {
   }
 
   return (
-    <form onSubmit={submit}>
+    <form className="panel" onSubmit={submit}>
       <label>
         New Deal Breaker
         <input
@@ -137,7 +147,7 @@ function AddDealBreakerForm() {
           onChange={(event) => setText(event.target.value)}
         />
       </label>
-      <button type="submit" disabled={add.isPending || text.trim() === ''}>
+      <button type="submit" disabled={add.isPending || text.trim() === ''} aria-busy={add.isPending}>
         {add.isPending ? 'Adding…' : 'Add'}
       </button>
       {add.isError && <p role="alert">Could not add the Deal Breaker. Try again.</p>}
