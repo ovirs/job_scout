@@ -1,0 +1,182 @@
+/* The Markdown editor: a bar with the mode and the formatting tools, over the text or its preview.
+   Colours come from the Atlas tokens in index.css, so light and dark follow them. */
+
+.markdown-editor {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.markdown-editor-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.markdown-editor-bar button {
+  margin: 0;
+}
+
+.markdown-editor-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.markdown-editor-tools > button {
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
+  background: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+}
+
+.markdown-editor-tools > button:hover {
+  background: var(--sunken);
+  border-color: var(--line);
+  color: var(--text);
+}
+
+.markdown-editor-tools > .tool-bold {
+  font-weight: 700;
+}
+
+.markdown-editor-tools > .tool-italic {
+  font-style: italic;
+}
+
+.markdown-editor > textarea {
+  width: 100%;
+  resize: vertical;
+}
+
+.markdown-editor > textarea[hidden] {
+  display: none;
+}
+
+.markdown-editor-preview {
+  min-height: 12rem;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 0.25rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Rendered Markdown */
+.markdown-prose {
+  max-width: 75ch;
+  line-height: 1.6;
+  overflow-wrap: break-word;
+}
+
+.markdown-prose > :first-child {
+  margin-top: 1rem;
+}
+
+.markdown-prose h1,
+.markdown-prose h2,
+.markdown-prose h3,
+.markdown-prose h4,
+.markdown-prose h5,
+.markdown-prose h6 {
+  margin: 1.5rem 0 0.5rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  text-transform: none;
+  color: var(--text);
+}
+
+.markdown-prose h1 {
+  font-size: 1.45rem;
+}
+
+.markdown-prose h2 {
+  font-size: 1.2rem;
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.markdown-prose h3 {
+  font-size: 1.05rem;
+}
+
+.markdown-prose h4,
+.markdown-prose h5,
+.markdown-prose h6 {
+  font-size: 0.95rem;
+}
+
+.markdown-prose p,
+.markdown-prose ul,
+.markdown-prose ol,
+.markdown-prose blockquote,
+.markdown-prose pre,
+.markdown-prose table {
+  margin: 0 0 1rem;
+}
+
+.markdown-prose ul,
+.markdown-prose ol {
+  padding-left: 1.5rem;
+}
+
+.markdown-prose li {
+  margin-bottom: 0.2rem;
+}
+
+.markdown-prose li > ul,
+.markdown-prose li > ol {
+  margin: 0.2rem 0 0;
+}
+
+.markdown-prose a {
+  color: var(--accent);
+  text-underline-offset: 2px;
+}
+
+.markdown-prose code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.85em;
+  padding: 0.1em 0.3em;
+  background: var(--sunken);
+  border-radius: 4px;
+}
+
+.markdown-prose pre {
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  background: var(--sunken);
+  border-radius: var(--radius);
+}
+
+.markdown-prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.markdown-prose blockquote {
+  padding: 0 0 0 1rem;
+  margin-left: 0;
+  border-left: 3px solid var(--accent-soft);
+  color: var(--muted);
+}
+
+.markdown-prose hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 1.5rem 0;
+}
+
+.markdown-prose th,
+.markdown-prose td {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--line);
+}
+
+.markdown-prose img {
+  max-width: 100%;
+}

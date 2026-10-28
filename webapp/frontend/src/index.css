@@ -1,6 +1,7 @@
 /* Atlas: zinc neutrals with a violet accent, light and dark after the system preference.
    Screens use the elements and the shared classes below (.panel, .rows, .segmented, .actions,
-   .badge, .loading, .working); only a few screen-specific pieces come last. */
+   .badge, .loading, .working); only a few screen-specific pieces come last. The Markdown editor
+   keeps its styles beside it, in markdown-editor/, so it can be replaced whole. */
 
 /* ============================================================================================
    Tokens

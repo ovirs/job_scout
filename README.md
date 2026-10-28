@@ -38,7 +38,7 @@ uv run mypy src tests  # type checks
 uv run ruff check .    # lint
 ```
 
-One browser smoke test pastes, confirms and saves a posting through the React app, in headless Chromium, against the API and the fake LLM. It needs the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave it out with `uv run pytest -m "not browser"`.
+The browser tests drive the React app in headless Chromium, against the API and the fake LLM: a smoke test that pastes, confirms and saves a posting, and tests of the Markdown editor on the Document pages. They need the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave them out with `uv run pytest -m "not browser"`.
 
 Type-check the frontend with `npm run typecheck` in `webapp/frontend`.
 

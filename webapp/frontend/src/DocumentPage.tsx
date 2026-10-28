@@ -7,6 +7,7 @@ import {
 } from './api/@tanstack/react-query.gen'
 import type { DocumentVersionRead } from './api/types.gen'
 import { age } from './age'
+import { MarkdownEditor } from './markdown-editor/MarkdownEditor'
 import { Loading } from './Waiting'
 
 export type DocumentKind = DocumentVersionRead['kind']
@@ -66,13 +67,7 @@ function DocumentForm({ kind, current }: { kind: DocumentKind; current: Document
           ? `Version ${current.number}, saved ${age(current.created_at)}.`
           : 'Not written yet.'}
       </p>
-      <textarea
-        className="document"
-        aria-label={DOCUMENTS[kind].title}
-        rows={24}
-        value={text}
-        onChange={(event) => setText(event.target.value)}
-      />
+      <MarkdownEditor label={DOCUMENTS[kind].title} value={text} onChange={setText} />
       <button type="submit" disabled={save.isPending || text === savedText} aria-busy={save.isPending}>
         {save.isPending ? 'Saving…' : 'Save as a new version'}
       </button>
