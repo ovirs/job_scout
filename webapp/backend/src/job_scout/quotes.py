@@ -2,15 +2,17 @@
 
 A quote matches when it occurs in one of the posting's fields once both are
 normalised: whitespace collapsed, case ignored, curly and straight quotes the
-same, and bullet characters dropped. The match is reported as a position in the
-field's original text, so the posting view can highlight it.
+same, and bullet characters dropped. A quote may also start with the label the
+prompt gives a field (`Location: New York, NY`); it then matches when the rest is
+in that same field. The match is reported as a position in the field's original
+text, so the posting view can highlight it.
 """
 
 from typing import Literal
 
 from pydantic import BaseModel
 
-from job_scout.evaluation import PostingText
+from job_scout.evaluation import POSTING_LABELS, PostingText
 
 PostingField = Literal["description", "title", "location_text", "company"]
 
@@ -41,12 +43,23 @@ def find(quote: str, posting: PostingText) -> EvidenceMatch | None:
         if text is None:
             continue
         haystack, positions = _normalise(text)
-        at = haystack.find(needle)
-        if at >= 0:
-            return EvidenceMatch(
-                field=field, start=positions[at], end=positions[at + len(needle) - 1] + 1
-            )
+        for wanted in [needle, _without_label(needle, field)]:
+            if not wanted:
+                continue
+            at = haystack.find(wanted)
+            if at >= 0:
+                return EvidenceMatch(
+                    field=field, start=positions[at], end=positions[at + len(wanted) - 1] + 1
+                )
     return None
+
+
+def _without_label(needle: str, field: PostingField) -> str | None:
+    """The normalised quote after the field's own label, if it starts with that label."""
+    label, _ = _normalise(POSTING_LABELS[field])
+    if not needle.startswith(label):
+        return None
+    return needle[len(label) :].lstrip(" ") or None
 
 
 def _normalise(text: str) -> tuple[str, list[int]]:

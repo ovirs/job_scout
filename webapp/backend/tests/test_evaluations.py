@@ -179,6 +179,39 @@ ROMANIA = "Fully remote from Romania."
 
 
 @pytest.mark.parametrize(
+    ("evidence", "field", "value"),
+    [
+        ("Title: Senior Data Engineer", "title", "Senior Data Engineer"),
+        ("Company: Acme", "company", "Acme"),
+        ("location:  bucharest, romania", "location_text", "Bucharest, Romania"),
+        ("Description: About the job", "description", "About the job"),
+    ],
+)
+async def test_a_quote_with_the_label_the_prompt_gives_its_field_matches_that_field(
+    client: httpx.AsyncClient,
+    fake_llm: FakeLlm,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    evidence: str,
+    field: str,
+    value: str,
+) -> None:
+    await write_career_profile(client)
+    fake_llm.evaluation.respond_with(
+        a_result(green_flags=[{"point": "Where it is.", "evidence": [evidence]}])
+    )
+
+    posting = await evaluated_posting(client, run_queued_tasks)
+
+    assert posting["evaluation_status"] == "done"
+    evaluation = await current_evaluation(client, posting["id"])
+    assert evaluation["green_flags"][0]["evidence"] == [evidence]
+    # Highlights the value, not the label the posting does not contain
+    assert evaluation["green_flags"][0]["evidence_matches"] == [
+        {"field": field, "start": 0, "end": len(value)}
+    ]
+
+
+@pytest.mark.parametrize(
     ("changes", "reason"),
     [
         (
@@ -191,6 +224,11 @@ ROMANIA = "Fully remote from Romania."
                 ]
             },
             "quotes words the posting does not contain: 'unpaid weekend on-call'",
+        ),
+        # A label only matches with its own field's text after it
+        (
+            {"red_flags": [{"point": "Mislabelled.", "evidence": ["Company: Senior Data"]}]},
+            "quotes words the posting does not contain: 'Company: Senior Data'",
         ),
         ({"verdicts": "first only"}, "no verdict for Deal Breaker"),
         ({"verdicts": "first twice"}, "more than one verdict for Deal Breaker"),
@@ -404,8 +442,8 @@ async def test_rerunning_a_posting_adds_an_evaluation_and_keeps_the_earlier_ones
         )
         for e in history
     ] == [
-        (settings.evaluation_model, "v1", second_profile, preferences, second_set, False),
-        (settings.evaluation_model, "v1", first_profile, preferences, first_set, False),
+        (settings.evaluation_model, "v2", second_profile, preferences, second_set, False),
+        (settings.evaluation_model, "v2", first_profile, preferences, first_set, False),
     ]
     # Numbered as the user sees the versions on the pages that edit them
     assert [
