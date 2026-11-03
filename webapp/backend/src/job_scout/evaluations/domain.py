@@ -15,8 +15,10 @@ from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import evaluation, quotes, user_inputs
-from job_scout.evaluation import (
+from job_scout.evaluations import prompt as evaluation
+from job_scout.evaluations import quotes
+from job_scout.evaluations.models import Evaluation, EvaluationFailureKind
+from job_scout.evaluations.prompt import (
     DealBreakerVerdict,
     EvaluationPrompt,
     EvaluationResult,
@@ -25,15 +27,11 @@ from job_scout.evaluation import (
     Recommendation,
     Verdict,
 )
-from job_scout.llm import Failure, Outcome
-from job_scout.models import (
-    DealBreakerSetVersion,
-    DocumentVersion,
-    Evaluation,
-    EvaluationFailureKind,
-    JobPosting,
-)
-from job_scout.quotes import EvidenceMatch
+from job_scout.evaluations.quotes import EvidenceMatch
+from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import Failure, Outcome
+from job_scout.user_inputs import domain as user_inputs
+from job_scout.user_inputs.models import DealBreakerSetVersion, DocumentVersion
 
 # At most this many flags of each colour
 MAX_FLAGS = 5

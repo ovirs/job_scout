@@ -26,6 +26,7 @@ build-backend = "uv_build"
 dev = [
     "asgi-lifespan>=2.1.0",
     "httpx>=0.28.1",
+    "import-linter>=2.15",
     "mypy>=2.4.0",
     "playwright>=1.64.0",
     "pytest>=9.1.1",
@@ -54,3 +55,38 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+# Packages import only from the layers below them (ADR-0004); `tests/test_architecture.py`
+# runs this. Keep the order in step with "Backend layout" in the README.
+[tool.importlinter]
+root_package = "job_scout"
+# A relationship to a higher package names its class under TYPE_CHECKING only
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "Packages depend downward only"
+type = "layers"
+containers = ["job_scout"]
+exhaustive = true
+# Not code the layers order: Alembic's scripts, and the LLM package, whose modules sit in
+# different layers below
+exhaustive_ignores = ["alembic", "llm"]
+layers = [
+    # Wiring: builds the app and the worker, and hands in the LLM
+    "app : worker : openapi : runtime : tables : llm.anthropic_adapter : llm.fake",
+    "posting_view",
+    "notes | cover_letters",
+    "clippings | applications",
+    "triage | evaluations",
+    "user_inputs | job_postings",
+    "queue : routing : fields : owners : llm.interface : prompts : migrations : db : config",
+]
+ignore_imports = [
+    # A route may build its response from the posting view: no domain module imports a
+    # route module, so this never brings a higher concept into a package's rules
+    "job_scout.*.routes -> job_scout.posting_view.*",
+    # The Triage lock, checked in the Triage route; removed by #43
+    "job_scout.triage.routes -> job_scout.applications.domain",
+    # Locking the Cover Letter sent, in the Application state route; removed by #42
+    "job_scout.applications.routes -> job_scout.cover_letters.domain",
+]

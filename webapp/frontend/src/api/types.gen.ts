@@ -1191,6 +1191,128 @@ export type StartApplicationResponses = {
 
 export type StartApplicationResponse = StartApplicationResponses[keyof StartApplicationResponses];
 
+export type ListApplicationsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Closed
+         */
+        closed?: boolean | null;
+    };
+    url: '/api/applications';
+};
+
+export type ListApplicationsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListApplicationsError = ListApplicationsErrors[keyof ListApplicationsErrors];
+
+export type ListApplicationsResponses = {
+    /**
+     * Response List Applications
+     *
+     * Successful Response
+     */
+    200: Array<ApplicationRead>;
+};
+
+export type ListApplicationsResponse = ListApplicationsResponses[keyof ListApplicationsResponses];
+
+export type DeleteApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}';
+};
+
+export type DeleteApplicationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteApplicationError = DeleteApplicationErrors[keyof DeleteApplicationErrors];
+
+export type DeleteApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteApplicationResponse = DeleteApplicationResponses[keyof DeleteApplicationResponses];
+
+export type GetApplicationData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}';
+};
+
+export type GetApplicationErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetApplicationError = GetApplicationErrors[keyof GetApplicationErrors];
+
+export type GetApplicationResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApplicationRead;
+};
+
+export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
+
+export type SetApplicationStateData = {
+    body: ApplicationStateSet;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/state';
+};
+
+export type SetApplicationStateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetApplicationStateError = SetApplicationStateErrors[keyof SetApplicationStateErrors];
+
+export type SetApplicationStateResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApplicationRead;
+};
+
+export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
+
 export type ListJobPostingNotesData = {
     body?: never;
     path: {
@@ -1252,6 +1374,98 @@ export type AddJobPostingNoteResponses = {
 };
 
 export type AddJobPostingNoteResponse = AddJobPostingNoteResponses[keyof AddJobPostingNoteResponses];
+
+export type ListApplicationNotesData = {
+    body?: never;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/notes';
+};
+
+export type ListApplicationNotesErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListApplicationNotesError = ListApplicationNotesErrors[keyof ListApplicationNotesErrors];
+
+export type ListApplicationNotesResponses = {
+    /**
+     * Response List Application Notes
+     *
+     * Successful Response
+     */
+    200: Array<NoteRead>;
+};
+
+export type ListApplicationNotesResponse = ListApplicationNotesResponses[keyof ListApplicationNotesResponses];
+
+export type AddApplicationNoteData = {
+    body: NoteAdd;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/notes';
+};
+
+export type AddApplicationNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddApplicationNoteError = AddApplicationNoteErrors[keyof AddApplicationNoteErrors];
+
+export type AddApplicationNoteResponses = {
+    /**
+     * Successful Response
+     */
+    201: NoteRead;
+};
+
+export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];
+
+export type DeleteNoteData = {
+    body?: never;
+    path: {
+        /**
+         * Note Id
+         */
+        note_id: number;
+    };
+    query?: never;
+    url: '/api/notes/{note_id}';
+};
+
+export type DeleteNoteErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteNoteError = DeleteNoteErrors[keyof DeleteNoteErrors];
+
+export type DeleteNoteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteNoteResponse = DeleteNoteResponses[keyof DeleteNoteResponses];
 
 export type CloseJobPostingData = {
     body?: never;
@@ -1406,190 +1620,6 @@ export type GetCurrentEvaluationResponses = {
 };
 
 export type GetCurrentEvaluationResponse = GetCurrentEvaluationResponses[keyof GetCurrentEvaluationResponses];
-
-export type ListApplicationsData = {
-    body?: never;
-    path?: never;
-    query?: {
-        /**
-         * Closed
-         */
-        closed?: boolean | null;
-    };
-    url: '/api/applications';
-};
-
-export type ListApplicationsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListApplicationsError = ListApplicationsErrors[keyof ListApplicationsErrors];
-
-export type ListApplicationsResponses = {
-    /**
-     * Response List Applications
-     *
-     * Successful Response
-     */
-    200: Array<ApplicationRead>;
-};
-
-export type ListApplicationsResponse = ListApplicationsResponses[keyof ListApplicationsResponses];
-
-export type DeleteApplicationData = {
-    body?: never;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}';
-};
-
-export type DeleteApplicationErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteApplicationError = DeleteApplicationErrors[keyof DeleteApplicationErrors];
-
-export type DeleteApplicationResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DeleteApplicationResponse = DeleteApplicationResponses[keyof DeleteApplicationResponses];
-
-export type GetApplicationData = {
-    body?: never;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}';
-};
-
-export type GetApplicationErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type GetApplicationError = GetApplicationErrors[keyof GetApplicationErrors];
-
-export type GetApplicationResponses = {
-    /**
-     * Successful Response
-     */
-    200: ApplicationRead;
-};
-
-export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
-
-export type SetApplicationStateData = {
-    body: ApplicationStateSet;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}/state';
-};
-
-export type SetApplicationStateErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type SetApplicationStateError = SetApplicationStateErrors[keyof SetApplicationStateErrors];
-
-export type SetApplicationStateResponses = {
-    /**
-     * Successful Response
-     */
-    200: ApplicationRead;
-};
-
-export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
-
-export type ListApplicationNotesData = {
-    body?: never;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}/notes';
-};
-
-export type ListApplicationNotesErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListApplicationNotesError = ListApplicationNotesErrors[keyof ListApplicationNotesErrors];
-
-export type ListApplicationNotesResponses = {
-    /**
-     * Response List Application Notes
-     *
-     * Successful Response
-     */
-    200: Array<NoteRead>;
-};
-
-export type ListApplicationNotesResponse = ListApplicationNotesResponses[keyof ListApplicationNotesResponses];
-
-export type AddApplicationNoteData = {
-    body: NoteAdd;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}/notes';
-};
-
-export type AddApplicationNoteErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type AddApplicationNoteError = AddApplicationNoteErrors[keyof AddApplicationNoteErrors];
-
-export type AddApplicationNoteResponses = {
-    /**
-     * Successful Response
-     */
-    201: NoteRead;
-};
-
-export type AddApplicationNoteResponse = AddApplicationNoteResponses[keyof AddApplicationNoteResponses];
 
 export type GetCoverLetterData = {
     body?: never;
@@ -1778,36 +1808,6 @@ export type DeleteCoverLetterDraftResponses = {
 };
 
 export type DeleteCoverLetterDraftResponse = DeleteCoverLetterDraftResponses[keyof DeleteCoverLetterDraftResponses];
-
-export type DeleteNoteData = {
-    body?: never;
-    path: {
-        /**
-         * Note Id
-         */
-        note_id: number;
-    };
-    query?: never;
-    url: '/api/notes/{note_id}';
-};
-
-export type DeleteNoteErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DeleteNoteError = DeleteNoteErrors[keyof DeleteNoteErrors];
-
-export type DeleteNoteResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DeleteNoteResponse = DeleteNoteResponses[keyof DeleteNoteResponses];
 
 export type SubmitClippingData = {
     body: ClippingSubmit;

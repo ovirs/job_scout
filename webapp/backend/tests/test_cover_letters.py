@@ -7,7 +7,7 @@ from test_evaluations import a_result, current_evaluation, write_career_profile
 from test_triage import add_posting
 
 from job_scout.config import Settings
-from job_scout.cover_letter import CoverLetterResult
+from job_scout.cover_letters.prompt import CoverLetterResult
 from job_scout.llm import Failure
 from job_scout.llm.fake import FakeLlm
 

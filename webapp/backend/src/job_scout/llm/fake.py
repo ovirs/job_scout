@@ -1,9 +1,9 @@
 """The fake LLM for tests: canned results or failures per step, and a record of the inputs."""
 
+from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Settings
-from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
-from job_scout.evaluation import EvaluationPrompt, EvaluationResult
-from job_scout.extraction import ManualEntryExtraction
+from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
+from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 from job_scout.llm.interface import Failure, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 

@@ -142,6 +142,88 @@ export const startApplicationMutation = (options?: Partial<Options<StartApplicat
     return mutationOptions;
 };
 
+export const listApplicationsQueryKey = (options?: Options<ListApplicationsData>) => createQueryKey('listApplications', options);
+
+/**
+ * List Applications
+ *
+ * The live Applications by state, Preparing to No response, the latest move first
+ * within a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No
+ * response) or only those in flight.
+ */
+export const listApplicationsOptions = (options?: Options<ListApplicationsData>) => queryOptions<ListApplicationsResponse, ListApplicationsError, ListApplicationsResponse, ReturnType<typeof listApplicationsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listApplications({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listApplicationsQueryKey(options)
+});
+
+/**
+ * Delete Application
+ *
+ * Delete an Application while it is Preparing: it is hidden everywhere but kept, and
+ * the posting's Triage stays Interested, changeable again. Past Preparing, an
+ * Application is closed rather than deleted.
+ */
+export const deleteApplicationMutation = (options?: Partial<Options<DeleteApplicationData>>): UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> => {
+    const mutationOptions: UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteApplication({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getApplicationQueryKey = (options: Options<GetApplicationData>) => createQueryKey('getApplication', options);
+
+/**
+ * Get Application
+ */
+export const getApplicationOptions = (options: Options<GetApplicationData>) => queryOptions<GetApplicationResponse, GetApplicationError, GetApplicationResponse, ReturnType<typeof getApplicationQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getApplication({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getApplicationQueryKey(options)
+});
+
+/**
+ * Set Application State
+ *
+ * Move the Application to any state, from any other; each move is kept, dated, in
+ * its history. The Cover Letter is locked outside Preparing, and each move to Applied
+ * records its latest draft as the letter sent, or that no letter was sent.
+ */
+export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
+    const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await setApplicationState({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 export const listJobPostingNotesQueryKey = (options: Options<ListJobPostingNotesData>) => createQueryKey('listJobPostingNotes', options);
 
 /**
@@ -169,6 +251,63 @@ export const addJobPostingNoteMutation = (options?: Partial<Options<AddJobPostin
     const mutationOptions: UseMutationOptions<AddJobPostingNoteResponse, AddJobPostingNoteError, Options<AddJobPostingNoteData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await addJobPostingNote({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listApplicationNotesQueryKey = (options: Options<ListApplicationNotesData>) => createQueryKey('listApplicationNotes', options);
+
+/**
+ * List Application Notes
+ *
+ * The Application's notes and its posting's, together, the first first; each says
+ * which of the two it is on.
+ */
+export const listApplicationNotesOptions = (options: Options<ListApplicationNotesData>) => queryOptions<ListApplicationNotesResponse, ListApplicationNotesError, ListApplicationNotesResponse, ReturnType<typeof listApplicationNotesQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listApplicationNotes({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listApplicationNotesQueryKey(options)
+});
+
+/**
+ * Add Application Note
+ */
+export const addApplicationNoteMutation = (options?: Partial<Options<AddApplicationNoteData>>): UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> => {
+    const mutationOptions: UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addApplicationNote({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Delete Note
+ *
+ * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
+ */
+export const deleteNoteMutation = (options?: Partial<Options<DeleteNoteData>>): UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> => {
+    const mutationOptions: UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteNote({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -275,126 +414,6 @@ export const getCurrentEvaluationOptions = (options: Options<GetCurrentEvaluatio
     },
     queryKey: getCurrentEvaluationQueryKey(options)
 });
-
-export const listApplicationsQueryKey = (options?: Options<ListApplicationsData>) => createQueryKey('listApplications', options);
-
-/**
- * List Applications
- *
- * The live Applications by state, Preparing to No response, the latest move first
- * within a state; with `closed`, only the closed ones (Accepted, Rejected, Withdrawn, No
- * response) or only those in flight.
- */
-export const listApplicationsOptions = (options?: Options<ListApplicationsData>) => queryOptions<ListApplicationsResponse, ListApplicationsError, ListApplicationsResponse, ReturnType<typeof listApplicationsQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listApplications({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listApplicationsQueryKey(options)
-});
-
-/**
- * Delete Application
- *
- * Delete an Application while it is Preparing: it is hidden everywhere but kept, and
- * the posting's Triage stays Interested, changeable again. Past Preparing, an
- * Application is closed rather than deleted.
- */
-export const deleteApplicationMutation = (options?: Partial<Options<DeleteApplicationData>>): UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> => {
-    const mutationOptions: UseMutationOptions<DeleteApplicationResponse, DeleteApplicationError, Options<DeleteApplicationData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await deleteApplication({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-export const getApplicationQueryKey = (options: Options<GetApplicationData>) => createQueryKey('getApplication', options);
-
-/**
- * Get Application
- */
-export const getApplicationOptions = (options: Options<GetApplicationData>) => queryOptions<GetApplicationResponse, GetApplicationError, GetApplicationResponse, ReturnType<typeof getApplicationQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await getApplication({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: getApplicationQueryKey(options)
-});
-
-/**
- * Set Application State
- *
- * Move the Application to any state, from any other; each move is kept, dated, in
- * its history. The Cover Letter is locked outside Preparing, and each move to Applied
- * records its latest draft as the letter sent, or that no letter was sent.
- */
-export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
-    const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await setApplicationState({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-export const listApplicationNotesQueryKey = (options: Options<ListApplicationNotesData>) => createQueryKey('listApplicationNotes', options);
-
-/**
- * List Application Notes
- *
- * The Application's notes and its posting's, together, the first first; each says
- * which of the two it is on.
- */
-export const listApplicationNotesOptions = (options: Options<ListApplicationNotesData>) => queryOptions<ListApplicationNotesResponse, ListApplicationNotesError, ListApplicationNotesResponse, ReturnType<typeof listApplicationNotesQueryKey>>({
-    queryFn: async ({ queryKey, signal }) => {
-        const { data } = await listApplicationNotes({
-            ...options,
-            ...queryKey[0],
-            signal,
-            throwOnError: true
-        });
-        return data;
-    },
-    queryKey: listApplicationNotesQueryKey(options)
-});
-
-/**
- * Add Application Note
- */
-export const addApplicationNoteMutation = (options?: Partial<Options<AddApplicationNoteData>>): UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> => {
-    const mutationOptions: UseMutationOptions<AddApplicationNoteResponse, AddApplicationNoteError, Options<AddApplicationNoteData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await addApplicationNote({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
 
 export const getCoverLetterQueryKey = (options: Options<GetCoverLetterData>) => createQueryKey('getCoverLetter', options);
 
@@ -511,25 +530,6 @@ export const deleteCoverLetterDraftMutation = (options?: Partial<Options<DeleteC
     const mutationOptions: UseMutationOptions<DeleteCoverLetterDraftResponse, DeleteCoverLetterDraftError, Options<DeleteCoverLetterDraftData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await deleteCoverLetterDraft({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
-/**
- * Delete Note
- *
- * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
- */
-export const deleteNoteMutation = (options?: Partial<Options<DeleteNoteData>>): UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> => {
-    const mutationOptions: UseMutationOptions<DeleteNoteResponse, DeleteNoteError, Options<DeleteNoteData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await deleteNote({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

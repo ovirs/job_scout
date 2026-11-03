@@ -12,7 +12,8 @@ from typing import get_args
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.models import Application, ApplicationState, ApplicationStateChange, JobPosting
+from job_scout.applications.models import Application, ApplicationState, ApplicationStateChange
+from job_scout.job_postings.models import JobPosting
 
 # The usual progression, Preparing to No response; lists follow it
 STATES: tuple[ApplicationState, ...] = get_args(ApplicationState)

@@ -12,7 +12,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from job_scout.evaluation import POSTING_LABELS, PostingText
+from job_scout.evaluations.prompt import POSTING_LABELS, PostingText
 
 PostingField = Literal["description", "title", "location_text", "company"]
 

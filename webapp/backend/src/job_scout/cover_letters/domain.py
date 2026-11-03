@@ -15,21 +15,22 @@ from datetime import UTC, datetime
 from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import cover_letter, evaluations, user_inputs
-from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult, Flags
-from job_scout.evaluation import PostingText
-from job_scout.llm import Failure, Outcome
-from job_scout.models import (
-    Application,
-    ApplicationStateChange,
+from job_scout.applications.models import Application, ApplicationStateChange
+from job_scout.cover_letters import prompt as cover_letter
+from job_scout.cover_letters.models import (
     CoverLetterDraft,
     CoverLetterGeneration,
     CoverLetterGenerationFailureKind,
-    DocumentVersion,
-    Evaluation,
     EvaluationCase,
-    JobPosting,
 )
+from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult, Flags
+from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.models import Evaluation
+from job_scout.evaluations.prompt import PostingText
+from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import Failure, Outcome
+from job_scout.user_inputs import domain as user_inputs
+from job_scout.user_inputs.models import DocumentVersion
 
 
 @dataclass(frozen=True)

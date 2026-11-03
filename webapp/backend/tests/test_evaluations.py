@@ -6,7 +6,7 @@ import pytest
 from clipping_helpers import an_extraction, save_manual_entry
 
 from job_scout.config import Settings
-from job_scout.evaluation import EvaluationResult
+from job_scout.evaluations.prompt import EvaluationResult
 from job_scout.llm import Failure
 from job_scout.llm.fake import FakeLlm
 

@@ -9,10 +9,12 @@ import uuid
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import job_postings
-from job_scout.extraction import ManualEntryExtraction, WorkplaceType
-from job_scout.llm import Failure, Outcome
-from job_scout.models import Clipping, JobPosting
+from job_scout.clippings.extraction import ManualEntryExtraction
+from job_scout.clippings.models import Clipping
+from job_scout.job_postings import domain as job_postings
+from job_scout.job_postings.extraction import WorkplaceType
+from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import Failure, Outcome
 
 
 def submit(*, owner_id: uuid.UUID, pasted_text: str, url: str | None) -> Clipping:

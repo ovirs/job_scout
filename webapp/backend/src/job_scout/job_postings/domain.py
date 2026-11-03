@@ -7,8 +7,8 @@ from difflib import SequenceMatcher
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.extraction import ExtractedFields, WorkplaceType
-from job_scout.models import JobPosting
+from job_scout.job_postings.extraction import ExtractedFields, WorkplaceType
+from job_scout.job_postings.models import JobPosting
 
 
 def new_manual_entry(

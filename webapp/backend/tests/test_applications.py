@@ -5,11 +5,12 @@ import httpx
 from test_evaluations import DESCRIPTION, write_career_profile
 from test_triage import add_posting, triage
 
-from job_scout import db, job_postings
+from job_scout import db
 from job_scout.config import Settings
+from job_scout.job_postings import domain as job_postings
+from job_scout.job_postings.models import JobPosting
 from job_scout.llm import Failure
 from job_scout.llm.fake import FakeLlm
-from job_scout.models import JobPosting
 
 RunTasks = Callable[[], Awaitable[None]]
 QueuedTasks = Callable[[], Awaitable[list[str]]]

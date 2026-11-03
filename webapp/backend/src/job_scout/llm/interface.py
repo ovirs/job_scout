@@ -6,12 +6,16 @@ it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
 `FakeLlm` replaces it in tests.
 """
 
-from dataclasses import dataclass
-from typing import Literal, Protocol
+from __future__ import annotations
 
-from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
-from job_scout.evaluation import EvaluationPrompt, EvaluationResult
-from job_scout.extraction import ManualEntryExtraction
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Literal, Protocol
+
+if TYPE_CHECKING:
+    # Only named in the signatures: the steps' packages sit above this interface
+    from job_scout.clippings.extraction import ManualEntryExtraction
+    from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
+    from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 
 FailureKind = Literal["error", "refusal", "malformed"]
 

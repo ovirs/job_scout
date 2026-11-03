@@ -25,7 +25,7 @@ from playwright.async_api import Page, async_playwright
 from testcontainers.community.postgres import PostgresContainer
 
 from job_scout import migrations, queue, worker
-from job_scout.api import create_app
+from job_scout.app import create_app
 from job_scout.config import Settings
 from job_scout.llm.fake import FakeLlm
 

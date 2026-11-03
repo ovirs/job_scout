@@ -2,7 +2,7 @@
 
 import json
 
-from job_scout.api import create_app
+from job_scout.app import create_app
 
 if __name__ == "__main__":
     print(json.dumps(create_app().openapi(), indent=2))

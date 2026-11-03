@@ -66,60 +66,6 @@ export const setJobPostingTriage = <ThrowOnError extends boolean = false>(option
 export const startApplication = <ThrowOnError extends boolean = false>(options: Options<StartApplicationData, ThrowOnError>): RequestResult<StartApplicationResponses, StartApplicationErrors, ThrowOnError> => (options.client ?? client).post<StartApplicationResponses, StartApplicationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/applications', ...options });
 
 /**
- * List Job Posting Notes
- *
- * The posting's notes, the first first.
- */
-export const listJobPostingNotes = <ThrowOnError extends boolean = false>(options: Options<ListJobPostingNotesData, ThrowOnError>): RequestResult<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError> => (options.client ?? client).get<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/notes', ...options });
-
-/**
- * Add Job Posting Note
- */
-export const addJobPostingNote = <ThrowOnError extends boolean = false>(options: Options<AddJobPostingNoteData, ThrowOnError>): RequestResult<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError> => (options.client ?? client).post<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError>({
-    url: '/api/job-postings/{job_posting_id}/notes',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
- * Close Job Posting
- *
- * Close a posting, keeping it: a Manual Entry is closed only by the user.
- */
-export const closeJobPosting = <ThrowOnError extends boolean = false>(options: Options<CloseJobPostingData, ThrowOnError>): RequestResult<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError> => (options.client ?? client).post<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/close', ...options });
-
-/**
- * Reopen Job Posting
- */
-export const reopenJobPosting = <ThrowOnError extends boolean = false>(options: Options<ReopenJobPostingData, ThrowOnError>): RequestResult<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError> => (options.client ?? client).post<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/reopen', ...options });
-
-/**
- * List Evaluations
- *
- * Every Evaluation of the posting, the latest first, each with what it was made with.
- */
-export const listEvaluations = <ThrowOnError extends boolean = false>(options: Options<ListEvaluationsData, ThrowOnError>): RequestResult<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError> => (options.client ?? client).get<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
-
-/**
- * Rerun Evaluation
- *
- * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
- * are kept as history. Also the retry of one that was not evaluated, and allowed while
- * another is under way, so one stuck by a crashed worker never blocks it.
- */
-export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: Options<RerunEvaluationData, ThrowOnError>): RequestResult<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError> => (options.client ?? client).post<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
-
-/**
- * Get Current Evaluation
- *
- * The posting's latest done Evaluation, or null while it has none.
- */
-export const getCurrentEvaluation = <ThrowOnError extends boolean = false>(options: Options<GetCurrentEvaluationData, ThrowOnError>): RequestResult<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations/current', ...options });
-
-/**
  * List Applications
  *
  * The live Applications by state, Preparing to No response, the latest move first
@@ -159,6 +105,25 @@ export const setApplicationState = <ThrowOnError extends boolean = false>(option
 });
 
 /**
+ * List Job Posting Notes
+ *
+ * The posting's notes, the first first.
+ */
+export const listJobPostingNotes = <ThrowOnError extends boolean = false>(options: Options<ListJobPostingNotesData, ThrowOnError>): RequestResult<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError> => (options.client ?? client).get<ListJobPostingNotesResponses, ListJobPostingNotesErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/notes', ...options });
+
+/**
+ * Add Job Posting Note
+ */
+export const addJobPostingNote = <ThrowOnError extends boolean = false>(options: Options<AddJobPostingNoteData, ThrowOnError>): RequestResult<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError> => (options.client ?? client).post<AddJobPostingNoteResponses, AddJobPostingNoteErrors, ThrowOnError>({
+    url: '/api/job-postings/{job_posting_id}/notes',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * List Application Notes
  *
  * The Application's notes and its posting's, together, the first first; each says
@@ -177,6 +142,48 @@ export const addApplicationNote = <ThrowOnError extends boolean = false>(options
         ...options.headers
     }
 });
+
+/**
+ * Delete Note
+ *
+ * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
+ */
+export const deleteNote = <ThrowOnError extends boolean = false>(options: Options<DeleteNoteData, ThrowOnError>): RequestResult<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError>({ url: '/api/notes/{note_id}', ...options });
+
+/**
+ * Close Job Posting
+ *
+ * Close a posting, keeping it: a Manual Entry is closed only by the user.
+ */
+export const closeJobPosting = <ThrowOnError extends boolean = false>(options: Options<CloseJobPostingData, ThrowOnError>): RequestResult<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError> => (options.client ?? client).post<CloseJobPostingResponses, CloseJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/close', ...options });
+
+/**
+ * Reopen Job Posting
+ */
+export const reopenJobPosting = <ThrowOnError extends boolean = false>(options: Options<ReopenJobPostingData, ThrowOnError>): RequestResult<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError> => (options.client ?? client).post<ReopenJobPostingResponses, ReopenJobPostingErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/reopen', ...options });
+
+/**
+ * List Evaluations
+ *
+ * Every Evaluation of the posting, the latest first, each with what it was made with.
+ */
+export const listEvaluations = <ThrowOnError extends boolean = false>(options: Options<ListEvaluationsData, ThrowOnError>): RequestResult<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError> => (options.client ?? client).get<ListEvaluationsResponses, ListEvaluationsErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
+
+/**
+ * Rerun Evaluation
+ *
+ * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
+ * are kept as history. Also the retry of one that was not evaluated, and allowed while
+ * another is under way, so one stuck by a crashed worker never blocks it.
+ */
+export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: Options<RerunEvaluationData, ThrowOnError>): RequestResult<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError> => (options.client ?? client).post<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
+
+/**
+ * Get Current Evaluation
+ *
+ * The posting's latest done Evaluation, or null while it has none.
+ */
+export const getCurrentEvaluation = <ThrowOnError extends boolean = false>(options: Options<GetCurrentEvaluationData, ThrowOnError>): RequestResult<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations/current', ...options });
 
 /**
  * Get Cover Letter
@@ -250,13 +257,6 @@ export const restoreCoverLetterDraft = <ThrowOnError extends boolean = false>(op
  * Refused unless the Application is Preparing.
  */
 export const deleteCoverLetterDraft = <ThrowOnError extends boolean = false>(options: Options<DeleteCoverLetterDraftData, ThrowOnError>): RequestResult<DeleteCoverLetterDraftResponses, DeleteCoverLetterDraftErrors, ThrowOnError> => (options.client ?? client).delete<DeleteCoverLetterDraftResponses, DeleteCoverLetterDraftErrors, ThrowOnError>({ url: '/api/applications/{application_id}/cover-letter/drafts/{draft_id}', ...options });
-
-/**
- * Delete Note
- *
- * Delete a note, on a posting or on an Application: it is hidden everywhere but kept.
- */
-export const deleteNote = <ThrowOnError extends boolean = false>(options: Options<DeleteNoteData, ThrowOnError>): RequestResult<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteNoteResponses, DeleteNoteErrors, ThrowOnError>({ url: '/api/notes/{note_id}', ...options });
 
 /**
  * Submit Clipping

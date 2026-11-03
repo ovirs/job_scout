@@ -3,9 +3,10 @@
 import asyncio
 import logging
 
-from job_scout import queue
+from job_scout import queue, tables  # noqa: F401  # tables: registers every table
 from job_scout.config import Settings
-from job_scout.llm import AnthropicLlm, Llm
+from job_scout.llm.anthropic_adapter import AnthropicLlm
+from job_scout.llm.interface import Llm
 from job_scout.runtime import open_runtime
 
 

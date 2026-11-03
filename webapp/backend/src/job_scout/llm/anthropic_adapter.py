@@ -7,10 +7,10 @@ import anthropic
 from anthropic.types import OutputConfigParam, TextBlockParam
 from pydantic import BaseModel, ValidationError
 
+from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Effort, Settings
-from job_scout.cover_letter import CoverLetterPrompt, CoverLetterResult
-from job_scout.evaluation import EvaluationPrompt, EvaluationResult
-from job_scout.extraction import ManualEntryExtraction
+from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
+from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 from job_scout.llm.interface import Failure, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 

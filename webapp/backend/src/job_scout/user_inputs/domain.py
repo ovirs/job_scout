@@ -10,7 +10,7 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.models import (
+from job_scout.user_inputs.models import (
     DealBreaker,
     DealBreakerSetItem,
     DealBreakerSetVersion,

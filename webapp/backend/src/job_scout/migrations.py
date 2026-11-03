@@ -12,6 +12,12 @@ def upgrade(database_url: str) -> None:
     command.upgrade(_config(Settings(database_url=database_url)), "head")
 
 
+def include_name(name: str | None, type_: str, parent_names: object) -> bool:
+    """Whether Alembic compares a database object with the models."""
+    # Procrastinate's tables come from its own vendored schema, not from our models
+    return not (type_ == "table" and name is not None and name.startswith("procrastinate_"))
+
+
 def _config(settings: Settings) -> Config:
     config = Config()
     config.set_main_option("script_location", str(Path(__file__).parent / "alembic"))

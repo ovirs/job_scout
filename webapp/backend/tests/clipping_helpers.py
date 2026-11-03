@@ -5,7 +5,7 @@ from typing import Any
 
 import httpx
 
-from job_scout.extraction import ManualEntryExtraction
+from job_scout.clippings.extraction import ManualEntryExtraction
 
 PASTED_TEXT = """Home  Jobs  Messaging  Notifications
 Senior Data Engineer

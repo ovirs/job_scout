@@ -9,7 +9,9 @@ from datetime import UTC, datetime
 from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.models import Application, JobPosting, Note
+from job_scout.applications.models import Application
+from job_scout.job_postings.models import JobPosting
+from job_scout.notes.models import Note
 
 
 def on_posting(posting: JobPosting, text: str) -> Note:

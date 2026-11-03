@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from job_scout.evaluation import PostingText
+from job_scout.evaluations.prompt import PostingText
 
 
 class CoverLetterResult(BaseModel):

@@ -1,49 +1,28 @@
-"""Triage and the lists that follow from it.
+"""How a Job Posting appears in lists and on its page: with its Triage, its Evaluations
+and its live Application.
 
-A posting's Triage is the user's own call (Interested, Maybe, Ignored); untriaged is
-the absence of one. The lists are views over the user's postings, decided by the
-Triage, whether the posting is closed and its Evaluations.
+The lists are views over the user's postings, decided by the Triage, whether the
+posting is closed and its Evaluations.
 """
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from typing import Literal
 
-from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import applications, evaluations
-from job_scout.evaluation import Recommendation
-from job_scout.models import Application, Evaluation, JobPosting, Triage, TriageValue
+from job_scout.applications import domain as applications
+from job_scout.applications.models import Application
+from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.models import Evaluation
+from job_scout.evaluations.prompt import Recommendation
+from job_scout.job_postings.models import JobPosting
+from job_scout.posting_view.schemas import JobPostingRead
+from job_scout.triage import domain as triage
+from job_scout.triage.models import Triage
 
 ListName = Literal["inbox", "skip", "not-evaluated", "shortlist", "later", "ignored"]
 Sort = Literal["score", "age"]
-
-
-async def set_triage(session: AsyncSession, posting: JobPosting, value: TriageValue) -> Triage:
-    """The user's Triage of the posting: the first creates it, later ones change its value.
-
-    Any posting can be triaged, whatever its Evaluation. While the posting has a live
-    Application its Triage is locked at Interested: the caller refuses the change.
-    """
-    triage = await session.scalar(select(Triage).where(Triage.job_posting_id == posting.id))
-    now = datetime.now(UTC)
-    if triage is None:
-        triage = Triage(
-            owner_id=posting.owner_id,
-            job_posting_id=posting.id,
-            value=value,
-            origin="user",
-            created_at=now,
-            changed_at=now,
-        )
-        session.add(triage)
-    else:
-        triage.value = value
-        triage.origin = "user"
-        triage.changed_at = now
-    return triage
 
 
 @dataclass(frozen=True)
@@ -57,22 +36,11 @@ class Entry:
     application: Application | None  # the live one
 
 
-async def triages_by_posting(
-    session: AsyncSession, *, owner_id: uuid.UUID, job_posting_ids: list[int]
-) -> dict[int, Triage]:
-    triages = await session.scalars(
-        select(Triage).where(
-            Triage.owner_id == owner_id, Triage.job_posting_id.in_(job_posting_ids)
-        )
-    )
-    return {triage.job_posting_id: triage for triage in triages}
-
-
 async def entries(
     session: AsyncSession, *, owner_id: uuid.UUID, postings: list[JobPosting]
 ) -> list[Entry]:
     ids = [posting.id for posting in postings]
-    triages = await triages_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
+    triages = await triage.triages_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
     latest = await evaluations.latest_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
     current = await evaluations.current_by_posting(session, owner_id=owner_id, job_posting_ids=ids)
     live_applications = await applications.live_by_posting(
@@ -88,6 +56,29 @@ async def entries(
         )
         for posting in postings
     ]
+
+
+async def reads(
+    session: AsyncSession, *, owner_id: uuid.UUID, postings: list[JobPosting]
+) -> list[JobPostingRead]:
+    """The postings as the API returns them."""
+    found = await entries(session, owner_id=owner_id, postings=postings)
+    return [read_of(entry) for entry in found]
+
+
+async def read(session: AsyncSession, posting: JobPosting) -> JobPostingRead:
+    """The posting as the API returns it."""
+    return (await reads(session, owner_id=posting.owner_id, postings=[posting]))[0]
+
+
+def read_of(entry: Entry) -> JobPostingRead:
+    return JobPostingRead.of(
+        entry.posting,
+        entry.latest_evaluation,
+        current_evaluation=entry.current_evaluation,
+        triage=entry.triage,
+        application=entry.application,
+    )
 
 
 def routed(entry: Entry) -> Recommendation | None:
