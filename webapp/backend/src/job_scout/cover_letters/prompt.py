@@ -12,7 +12,8 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from job_scout.evaluations.prompt import PostingText
+from job_scout.posting_text import PostingText
+from job_scout.prompts import tagged
 
 
 class CoverLetterResult(BaseModel):
@@ -58,21 +59,17 @@ def prompt(
     and with a `draft`, it asks for that text revised rather than a letter from scratch."""
     user_inputs = "\n\n".join(
         [
-            _tagged("career_profile", career_profile),
-            _tagged(
+            tagged("career_profile", career_profile),
+            tagged(
                 "writing_guide",
                 (writing_guide or "").strip() or "(The person has written no Writing Guide.)",
             ),
         ]
     )
-    lines = [f"Title: {posting.title}", f"Company: {posting.company}"]
-    if posting.location_text:
-        lines.append(f"Location: {posting.location_text}")
-    lines += ["Description:", posting.description]
-    request = [_tagged("job_posting", "\n".join(lines))]
+    request = [posting.render()]
     if flags is not None:
         request.append(
-            _tagged(
+            tagged(
                 "evaluation_flags",
                 "\n".join(
                     ["Green flags (strengths to stress):"]
@@ -83,15 +80,11 @@ def prompt(
             )
         )
     if draft is not None:
-        request.append(_tagged("draft_to_revise", draft))
+        request.append(tagged("draft_to_revise", draft))
     if instruction:
-        request.append(_tagged("instructions_for_this_letter", instruction))
+        request.append(tagged("instructions_for_this_letter", instruction))
     return CoverLetterPrompt(user_inputs=user_inputs, request="\n\n".join(request))
 
 
 def _bullets(points: list[str]) -> list[str]:
     return [f"- {point}" for point in points] or ["(none)"]
-
-
-def _tagged(tag: str, text: str) -> str:
-    return f"<{tag}>\n{text.strip()}\n</{tag}>"

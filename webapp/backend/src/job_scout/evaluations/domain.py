@@ -16,20 +16,18 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.evaluations import prompt as evaluation
-from job_scout.evaluations import quotes
 from job_scout.evaluations.models import Evaluation, EvaluationFailureKind
 from job_scout.evaluations.prompt import (
     DealBreakerVerdict,
     EvaluationPrompt,
     EvaluationResult,
     Flag,
-    PostingText,
     Recommendation,
     Verdict,
 )
-from job_scout.evaluations.quotes import EvidenceMatch
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm.interface import Failure, Outcome
+from job_scout.posting_text import EvidenceMatch, PostingText
 from job_scout.user_inputs import domain as user_inputs
 from job_scout.user_inputs.models import DealBreakerSetVersion, DocumentVersion
 
@@ -106,12 +104,7 @@ async def start(session: AsyncSession, run: Evaluation) -> Inputs:
             session, owner_id=owner_id, kind="preferences"
         ),
         deal_breakers=await user_inputs.current_deal_breaker_set(session, owner_id=owner_id),
-        posting=PostingText(
-            title=posting.title,
-            company=posting.company,
-            location_text=posting.location_text,
-            description=posting.description,
-        ),
+        posting=PostingText.of(posting),
         content_hash=posting.content_hash,
     )
 
@@ -183,7 +176,7 @@ def _find_all(what: str, passages: list[str], inputs: Inputs) -> list[EvidenceMa
     """Where each passage is in the posting; a malformed failure for the first that is not."""
     matches = []
     for passage in passages:
-        match = quotes.find(passage, inputs.posting)
+        match = inputs.posting.find(passage)
         if match is None:
             return Failure(
                 "malformed", f"{what} quotes words the posting does not contain: {passage!r}"

@@ -23,6 +23,11 @@ def load(name: str) -> Prompt:
     return Prompt(version=version, text=text.strip())
 
 
+def tagged(tag: str, text: str) -> str:
+    """A block of a prompt: the text, stripped, between an opening and a closing tag."""
+    return f"<{tag}>\n{text.strip()}\n</{tag}>"
+
+
 MANUAL_ENTRY_EXTRACTION = load("manual-entry-extraction")
 EVALUATION = load("evaluation")
 COVER_LETTER = load("cover-letter")

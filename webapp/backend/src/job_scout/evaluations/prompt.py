@@ -1,16 +1,17 @@
 """What the LLM judges a Job Posting with, and the shape of its judgement.
 
 The prompt puts the unchanging part first so it can be cached: the user's
-inputs, then the posting, last, as untrusted third-party text. The posting is
-its own text only: title, company, location and description, the text every
-quote must come from. Extracted fields never feed the Evaluation (ADR 0003),
-nor does the workplace type, which is one of them.
+inputs, then the posting, last, as untrusted third-party text, laid out by
+`posting_text`, which also checks every quote against it.
 """
 
 from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel
+
+from job_scout.posting_text import PostingText
+from job_scout.prompts import tagged
 
 Verdict = Literal["clear", "violated", "unknown"]
 Recommendation = Literal["apply", "maybe", "skip"]
@@ -42,26 +43,6 @@ class EvaluationResult(BaseModel):
 
 
 @dataclass(frozen=True)
-class PostingText:
-    """The part of a Job Posting the Evaluation reads, and the text its quotes must come from."""
-
-    title: str
-    company: str
-    location_text: str | None
-    description: str
-
-
-# The label each field gets in the prompt. The posting does not contain these words, but
-# a model may quote a field with its label, so the quote check accepts it (see `quotes`).
-POSTING_LABELS = {
-    "title": "Title:",
-    "company": "Company:",
-    "location_text": "Location:",
-    "description": "Description:",
-}
-
-
-@dataclass(frozen=True)
 class EvaluationPrompt:
     """The two user blocks of an Evaluation call, after the instructions."""
 
@@ -85,25 +66,12 @@ def prompt(
     numbered = "\n".join(f"[{id}] {text}" for id, text in sorted(deal_breakers.items()))
     user_inputs = "\n\n".join(
         [
-            _tagged("career_profile", career_profile),
-            _tagged(
+            tagged("career_profile", career_profile),
+            tagged(
                 "preferences",
                 (preferences or "").strip() or "(The person has written no Preferences.)",
             ),
-            _tagged("deal_breakers", numbered or "(The person has written no Deal Breakers.)"),
+            tagged("deal_breakers", numbered or "(The person has written no Deal Breakers.)"),
         ]
     )
-    lines = [
-        f"{POSTING_LABELS['title']} {posting.title}",
-        f"{POSTING_LABELS['company']} {posting.company}",
-    ]
-    if posting.location_text:
-        lines.append(f"{POSTING_LABELS['location_text']} {posting.location_text}")
-    lines += [POSTING_LABELS["description"], posting.description]
-    return EvaluationPrompt(
-        user_inputs=user_inputs, posting=_tagged("job_posting", "\n".join(lines))
-    )
-
-
-def _tagged(tag: str, text: str) -> str:
-    return f"<{tag}>\n{text.strip()}\n</{tag}>"
+    return EvaluationPrompt(user_inputs=user_inputs, posting=posting.render())
