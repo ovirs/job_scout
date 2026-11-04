@@ -6,8 +6,8 @@ from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.domain import CheckedFlag
 from job_scout.evaluations.models import Evaluation, EvaluationFailureKind, EvaluationStatus
 from job_scout.evaluations.prompt import Recommendation, Verdict
-from job_scout.evaluations.quotes import EvidenceMatch
 from job_scout.job_postings.models import JobPosting
+from job_scout.posting_text import EvidenceMatch
 from job_scout.user_inputs.schemas import version_number
 
 

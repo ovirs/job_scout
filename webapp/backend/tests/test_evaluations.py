@@ -86,74 +86,6 @@ async def test_saving_a_confirmed_entry_produces_a_done_evaluation(
     assert len(fake_llm.evaluation.calls) == 1
 
 
-@pytest.mark.parametrize(
-    ("evidence", "starts_with", "ends_with"),
-    [
-        # Case and whitespace, including a line break in the quote
-        (
-            "you will design   BATCH and\nstreaming pipelines in python.",
-            "You will design",
-            "in Python.",
-        ),
-        # Straight quotes for the posting's curly ones
-        ('works "remote-first" from', "works “remote-first”", "from"),
-        # Across two bulleted lines, the bullets dropped
-        ("pipelines in Python. The team works", "pipelines in Python.", "The team works"),
-        # The quote keeps a bullet the posting has
-        ("- The team works", "The team works", "The team works"),
-        ("• You will design", "You will design", "You will design"),
-    ],
-)
-async def test_a_quote_matches_the_posting_ignoring_whitespace_case_quote_styles_and_bullets(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-    evidence: str,
-    starts_with: str,
-    ends_with: str,
-) -> None:
-    await write_career_profile(client)
-    fake_llm.evaluation.respond_with(
-        a_result(red_flags=[{"point": "Worth a look.", "evidence": [evidence]}])
-    )
-
-    posting = await evaluated_posting(client, run_queued_tasks)
-
-    evaluation = await current_evaluation(client, posting["id"])
-    start = DESCRIPTION.index(starts_with)
-    end = DESCRIPTION.index(ends_with, start) + len(ends_with)
-    assert evaluation["red_flags"][0]["evidence"] == [evidence]
-    assert evaluation["red_flags"][0]["evidence_matches"] == [
-        {
-            "field": "description",
-            "start": start,
-            "end": end,
-        }
-    ]
-
-
-async def test_a_quote_from_the_title_matches_there(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    await write_career_profile(client)
-    fake_llm.evaluation.respond_with(
-        a_result(green_flags=[{"point": "The level they want.", "evidence": ["senior data"]}])
-    )
-
-    posting = await evaluated_posting(client, run_queued_tasks)
-
-    evaluation = await current_evaluation(client, posting["id"])
-    assert evaluation["green_flags"][0]["evidence_matches"] == [
-        {
-            "field": "title",
-            "start": 0,
-            "end": len("Senior Data"),
-        }
-    ]
-
-
 async def add_deal_breaker(client: httpx.AsyncClient, text: str) -> int:
     """Add a Deal Breaker; returns its id."""
     deal_breakers = (await client.post("/api/deal-breakers", json={"text": text})).json()
@@ -178,36 +110,25 @@ SPARK = "Spark is a required skill."
 ROMANIA = "Fully remote from Romania."
 
 
-@pytest.mark.parametrize(
-    ("evidence", "field", "value"),
-    [
-        ("Title: Senior Data Engineer", "title", "Senior Data Engineer"),
-        ("Company: Acme", "company", "Acme"),
-        ("location:  bucharest, romania", "location_text", "Bucharest, Romania"),
-        ("Description: About the job", "description", "About the job"),
-    ],
-)
-async def test_a_quote_with_the_label_the_prompt_gives_its_field_matches_that_field(
+async def test_a_quote_is_stored_with_where_it_is_in_the_posting(
     client: httpx.AsyncClient,
     fake_llm: FakeLlm,
     run_queued_tasks: Callable[[], Awaitable[None]],
-    evidence: str,
-    field: str,
-    value: str,
 ) -> None:
+    """End to end, with a labelled quote; how quotes match is tested on `PostingText`."""
     await write_career_profile(client)
     fake_llm.evaluation.respond_with(
-        a_result(green_flags=[{"point": "Where it is.", "evidence": [evidence]}])
+        a_result(green_flags=[{"point": "Where it is.", "evidence": ["Location: Bucharest"]}])
     )
 
     posting = await evaluated_posting(client, run_queued_tasks)
 
     assert posting["evaluation_status"] == "done"
     evaluation = await current_evaluation(client, posting["id"])
-    assert evaluation["green_flags"][0]["evidence"] == [evidence]
-    # Highlights the value, not the label the posting does not contain
+    assert evaluation["green_flags"][0]["evidence"] == ["Location: Bucharest"]
+    # Highlights the value in the field, not the label the posting does not contain
     assert evaluation["green_flags"][0]["evidence_matches"] == [
-        {"field": field, "start": 0, "end": len(value)}
+        {"field": "location_text", "start": 0, "end": len("Bucharest")}
     ]
 
 
@@ -224,11 +145,6 @@ async def test_a_quote_with_the_label_the_prompt_gives_its_field_matches_that_fi
                 ]
             },
             "quotes words the posting does not contain: 'unpaid weekend on-call'",
-        ),
-        # A label only matches with its own field's text after it
-        (
-            {"red_flags": [{"point": "Mislabelled.", "evidence": ["Company: Senior Data"]}]},
-            "quotes words the posting does not contain: 'Company: Senior Data'",
         ),
         ({"verdicts": "first only"}, "no verdict for Deal Breaker"),
         ({"verdicts": "first twice"}, "more than one verdict for Deal Breaker"),

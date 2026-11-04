@@ -64,6 +64,14 @@ _Avoid_: File, Note (which the user writes on a Job Posting or an Application)
 A judgement of one Job Posting against the Career Profile, Deal Breakers and Preferences, made to help the user decide whether applying is worth it. It holds a verdict per Deal Breaker, red and green flags, a score used only for ordering, and a recommendation.
 _Avoid_: Match, Matching, Assessment
 
+**Posting Text**:
+The part of a Job Posting the LLM reads: its title, company, location and description, as published. It never includes the facts the LLM read out of the description, and every passage the LLM quotes must come from it.
+_Avoid_: Posting body, Prompt text, Envelope (which also holds the source, link and dates)
+
+**Evidence Match**:
+Where a passage the LLM quotes as evidence occurs in the Posting Text, ignoring differences of spacing, case, quote marks and bullets. A quote with no Evidence Match is treated as invented, and the answer quoting it is rejected.
+_Avoid_: Highlight, Citation, Quote location
+
 **Screening Rule**:
 A cheap user-defined criterion on a Job Posting's title or location that decides whether the posting is worth evaluating at all. A screened-out Job Posting is kept, not discarded.
 _Avoid_: Filter, Pre-filter, Deal Breaker (which is judged on the full posting)
