@@ -1,50 +1,36 @@
 import uuid
 from datetime import datetime
-from typing import Any, Literal
+from typing import Any
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from job_scout.db import Base
 from job_scout.evaluations.prompt import Recommendation
-from job_scout.llm.interface import FailureKind
+from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
 from job_scout.user_inputs.models import DealBreakerSetVersion, DocumentVersion
 
-EvaluationStatus = Literal["queued", "running", "done", "not_evaluated"]
 
-# Why an Evaluation was not made: its LLM call failed, or an input it needs is missing
-EvaluationFailureKind = FailureKind | Literal["missing_input"]
-
-
-class Evaluation(Base):
+class Evaluation(Base, LlmRun):
     """One Evaluation of a Job Posting: a row per run, kept as history.
 
-    Queued when enqueued, running while the worker calls the LLM, then done with
-    the checked result, or not evaluated with the reason once every attempt
-    failed. The current Evaluation of a posting is its latest done one. What it
+    Each is an LLM run (see `llm_runs`): queued, running while the worker calls
+    the LLM, then done with the checked result, or failed (not evaluated) with the
+    reason. The current Evaluation of a posting is its latest done one. What it
     was made with (model, prompt and input versions, the posting's content hash)
     is recorded when it runs.
     """
 
     __tablename__ = "evaluations"
-    __table_args__ = (
-        CheckConstraint(
-            "(failure_kind IS NULL) = (failure_reason IS NULL)", name="failure_complete"
-        ),
-    )
+    __table_args__ = (failure_complete(),)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     job_posting_id: Mapped[int] = mapped_column(ForeignKey("job_postings.id"), index=True)
-    status: Mapped[EvaluationStatus] = mapped_column(String)
+    status: Mapped[RunStatus] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    started_at: Mapped[datetime | None]
-    finished_at: Mapped[datetime | None]
 
-    # What it was made with
-    model: Mapped[str | None]
-    prompt_version: Mapped[str | None]
+    # What it was made with, besides the model and prompt
     career_profile_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("document_versions.id")
     )
@@ -60,10 +46,6 @@ class Evaluation(Base):
     )
     deal_breaker_set_version: Mapped[DealBreakerSetVersion | None] = relationship(lazy="selectin")
     content_hash: Mapped[str | None]  # the posting's, when it was evaluated
-
-    # Once not evaluated
-    failure_kind: Mapped[EvaluationFailureKind | None] = mapped_column(String)
-    failure_reason: Mapped[str | None]
 
     # Once done: the checked result, with where each quote was found, and the hard gate
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

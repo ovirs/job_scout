@@ -7,7 +7,8 @@ from job_scout.clippings import domain as clippings
 from job_scout.clippings.models import Clipping, ClippingStatus
 from job_scout.fields import NonBlank
 from job_scout.job_postings.extraction import ExtractedFields, WorkplaceType
-from job_scout.llm.interface import FailureKind
+from job_scout.llm_runs import domain as llm_runs
+from job_scout.llm_runs.schemas import LlmRunFailureRead
 
 
 class ClippingConfirm(BaseModel):
@@ -25,11 +26,6 @@ class ClippingSubmit(BaseModel):
     url: NonBlank | None = None
 
 
-class ExtractionFailureRead(BaseModel):
-    kind: FailureKind
-    reason: str
-
-
 class ClippingExtractionRead(BaseModel):
     title: str | None
     company: str | None
@@ -42,12 +38,15 @@ class ClippingExtractionRead(BaseModel):
 class ClippingRead(BaseModel):
     id: int
     status: ClippingStatus
+    stuck: bool  # queued or running for too long: retry it
     pasted_text: str
     url: str | None
     created_at: datetime
+    started_at: datetime | None  # when its extraction first started
+    finished_at: datetime | None
     model: str | None
     prompt_version: str | None
-    failure: ExtractionFailureRead | None
+    failure: LlmRunFailureRead | None
     extraction: ClippingExtractionRead | None
     job_posting_id: int | None  # the Manual Entry it was confirmed as
 
@@ -56,14 +55,15 @@ class ClippingRead(BaseModel):
         return cls(
             id=clipping.id,
             status=clipping.status,
+            stuck=llm_runs.stuck(clipping),
             pasted_text=clipping.pasted_text,
             url=clipping.url,
             created_at=clipping.created_at,
+            started_at=clipping.started_at,
+            finished_at=clipping.finished_at,
             model=clipping.model,
             prompt_version=clipping.prompt_version,
-            failure=None
-            if clipping.failure_kind is None or clipping.failure_reason is None
-            else ExtractionFailureRead(kind=clipping.failure_kind, reason=clipping.failure_reason),
+            failure=LlmRunFailureRead.of(clipping),
             extraction=None if clipping.extraction is None else _extraction_read(clipping),
             job_posting_id=clipping.job_posting_id,
         )

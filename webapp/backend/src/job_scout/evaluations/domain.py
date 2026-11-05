@@ -8,7 +8,6 @@ violated Deal Breaker stores skip, whatever the LLM recommended.
 
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -16,7 +15,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.evaluations import prompt as evaluation
-from job_scout.evaluations.models import Evaluation, EvaluationFailureKind
+from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.prompt import (
     DealBreakerVerdict,
     EvaluationPrompt,
@@ -27,6 +26,7 @@ from job_scout.evaluations.prompt import (
 )
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm.interface import Failure, Outcome
+from job_scout.llm_runs import domain as llm_runs
 from job_scout.posting_text import EvidenceMatch, PostingText
 from job_scout.user_inputs import domain as user_inputs
 from job_scout.user_inputs.models import DealBreakerSetVersion, DocumentVersion
@@ -55,8 +55,23 @@ class CheckedResult(BaseModel):
 
 
 def queued(posting: JobPosting) -> Evaluation:
-    """A new queued Evaluation of the posting; the caller enqueues its task."""
+    """A new queued Evaluation of a posting that has none under way; the caller adds it
+    and enqueues its task."""
     return Evaluation(owner_id=posting.owner_id, job_posting_id=posting.id, status="queued")
+
+
+async def rerun(session: AsyncSession, posting: JobPosting) -> Evaluation:
+    """A new queued Evaluation of the posting, with the current user inputs, added to the
+    session; the caller enqueues its task. Earlier ones are kept as history. Raises
+    `llm_runs.RunUnderWay` while another is under way, unless that one is stuck: it is
+    then failed and replaced."""
+    await session.refresh(posting, with_for_update=True)  # one rerun at a time
+    llm_runs.clear_the_way(
+        await history(session, owner_id=posting.owner_id, job_posting_id=posting.id)
+    )
+    run = queued(posting)
+    session.add(run)
+    return run
 
 
 @dataclass(frozen=True)
@@ -90,13 +105,11 @@ class Inputs:
         )
 
 
-async def start(session: AsyncSession, run: Evaluation) -> Inputs:
-    """Mark the Evaluation running and gather what it is made from."""
-    run.status = "running"
-    run.started_at = run.started_at or datetime.now(UTC)
+async def gather(session: AsyncSession, run: Evaluation) -> Inputs:
+    """What the Evaluation is made from now, recorded on it."""
     posting = await session.get_one(JobPosting, run.job_posting_id)
     owner_id = run.owner_id
-    return Inputs(
+    inputs = Inputs(
         career_profile=await user_inputs.current_document(
             session, owner_id=owner_id, kind="career-profile"
         ),
@@ -107,6 +120,11 @@ async def start(session: AsyncSession, run: Evaluation) -> Inputs:
         posting=PostingText.of(posting),
         content_hash=posting.content_hash,
     )
+    run.career_profile_version_id = _id(inputs.career_profile)
+    run.preferences_version_id = _id(inputs.preferences)
+    run.deal_breaker_set_version_id = _id(inputs.deal_breakers)
+    run.content_hash = inputs.content_hash
+    return inputs
 
 
 def check(outcome: Outcome[EvaluationResult], inputs: Inputs) -> Outcome[CheckedResult]:
@@ -185,18 +203,8 @@ def _find_all(what: str, passages: list[str], inputs: Inputs) -> list[EvidenceMa
     return matches
 
 
-def record(run: Evaluation, inputs: Inputs, outcome: Outcome[CheckedResult]) -> None:
-    """Store a run's outcome: done with the gated result, or not evaluated."""
-    run.model = outcome.model
-    run.prompt_version = outcome.prompt_version
-    _record_inputs(run, inputs)
-    result = outcome.result
-    if isinstance(result, Failure):
-        _fail(run, result.kind, result.reason)
-        return
-    run.status = "done"
-    run.finished_at = datetime.now(UTC)
-    run.failure_kind = run.failure_reason = None
+def record(run: Evaluation, result: CheckedResult) -> None:
+    """Store a checked result, applying the hard gate."""
     run.result = result.model_dump(mode="json")
     # The hard gate: a violated Deal Breaker means skip, whatever the LLM recommended
     disqualified = any(v.verdict == "violated" for v in result.deal_breaker_verdicts)
@@ -205,34 +213,8 @@ def record(run: Evaluation, inputs: Inputs, outcome: Outcome[CheckedResult]) -> 
     run.disqualified_but_recommended = disqualified and result.recommendation != "skip"
 
 
-def record_missing_input(run: Evaluation, inputs: Inputs, reason: str) -> None:
-    """Store a run that had nothing to judge the posting against; no LLM was called."""
-    _record_inputs(run, inputs)
-    _fail(run, "missing_input", reason)
-
-
-def record_failure(run: Evaluation, failure: Failure) -> None:
-    """Store an error outside the LLM call, which used no model or prompt."""
-    run.model = run.prompt_version = None
-    _fail(run, failure.kind, failure.reason)
-
-
-def _record_inputs(run: Evaluation, inputs: Inputs) -> None:
-    run.career_profile_version_id = _id(inputs.career_profile)
-    run.preferences_version_id = _id(inputs.preferences)
-    run.deal_breaker_set_version_id = _id(inputs.deal_breakers)
-    run.content_hash = inputs.content_hash
-
-
 def _id(version: DocumentVersion | DealBreakerSetVersion | None) -> int | None:
     return None if version is None else version.id
-
-
-def _fail(run: Evaluation, kind: EvaluationFailureKind, reason: str) -> None:
-    run.status = "not_evaluated"
-    run.finished_at = datetime.now(UTC)
-    run.failure_kind = kind
-    run.failure_reason = reason
 
 
 def deal_breaker_texts(version: DealBreakerSetVersion | None) -> dict[int, str]:
@@ -296,10 +278,21 @@ async def current_by_posting(
     return {run.job_posting_id: run for run in runs}
 
 
-def none_done_or_under_way(runs: list[Evaluation]) -> bool:
-    """Whether a posting with this history has no Evaluation, done or under way; one
-    that was not evaluated does not count."""
-    return all(run.status == "not_evaluated" for run in runs)
+async def queued_unless_evaluated(session: AsyncSession, posting: JobPosting) -> Evaluation | None:
+    """A new queued Evaluation of a posting with none done or under way, added to the
+    session; the caller enqueues its task. A failed one does not count, and a stuck one
+    is failed and replaced."""
+    await session.refresh(posting, with_for_update=True)
+    runs = await history(session, owner_id=posting.owner_id, job_posting_id=posting.id)
+    if any(run.status == "done" for run in runs):
+        return None
+    try:
+        llm_runs.clear_the_way(runs)
+    except llm_runs.RunUnderWay:
+        return None
+    run = queued(posting)
+    session.add(run)
+    return run
 
 
 def current(runs: list[Evaluation]) -> Evaluation | None:

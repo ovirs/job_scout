@@ -1,9 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 
-from job_scout import queue
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.schemas import EvaluationRead
+from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings.routes import job_posting_or_404
+from job_scout.llm_runs import domain as llm_runs
 from job_scout.routing import Owner, Session, TaskQueue
 
 router = APIRouter(prefix="/api")
@@ -35,11 +36,14 @@ async def rerun_evaluation(
     job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> EvaluationRead:
     """Queue a new Evaluation of the posting, with the current user inputs; earlier ones
-    are kept as history. Also the retry of one that was not evaluated, and allowed while
-    another is under way, so one stuck by a crashed worker never blocks it."""
+    are kept as history. Also the retry of one that failed. Refused while another is
+    under way, unless that one is stuck: it is then failed and replaced."""
     posting = await job_posting_or_404(session, owner, job_posting_id)
-    run = evaluations.queued(posting)
-    session.add(run)
-    await session.commit()
-    await queue.enqueue_evaluate(task_queue, run.id)
+    try:
+        run = await evaluations.rerun(session, posting)
+    except llm_runs.RunUnderWay:
+        raise HTTPException(
+            status_code=409, detail="An Evaluation of this posting is already under way"
+        ) from None
+    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, run)
     return EvaluationRead.of(run, posting)

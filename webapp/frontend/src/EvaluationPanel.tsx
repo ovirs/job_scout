@@ -55,7 +55,7 @@ const STATUSES: Record<EvaluationRead['status'], string> = {
   queued: 'Queued',
   running: 'Evaluating',
   done: 'Done',
-  not_evaluated: 'Not evaluated',
+  failed: 'Not evaluated',
 }
 
 /** Shows one quote in the posting; null while the quotes cannot be placed there. */
@@ -138,11 +138,11 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
       ])
     },
   })
-  const underWay = latest?.status === 'queued' || latest?.status === 'running'
+  const underWay = (latest?.status === 'queued' || latest?.status === 'running') && !latest.stuck
   const label =
     latest === undefined
       ? 'Evaluate'
-      : latest.status === 'not_evaluated'
+      : latest.status === 'failed' || latest.stuck
         ? 'Try again'
         : 'Run the Evaluation again'
 
@@ -150,7 +150,10 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
     <div>
       {latest === undefined && <p>This posting has not been evaluated yet.</p>}
       {underWay && <Working>Evaluating the posting…</Working>}
-      {latest?.status === 'not_evaluated' && (
+      {latest?.stuck && (
+        <p role="alert">The Evaluation got stuck and never finished. Try again to replace it.</p>
+      )}
+      {latest?.status === 'failed' && (
         <>
           <p>
             <strong>Not evaluated.</strong>
@@ -159,17 +162,16 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
         </>
       )}
       <div className="actions">
-        {/* Allowed while one is under way, so a run stuck by a crashed worker never blocks it */}
         <button
           type="button"
-          disabled={rerun.isPending}
+          disabled={rerun.isPending || underWay}
           aria-busy={rerun.isPending}
           onClick={() => rerun.mutate({ path: { job_posting_id: postingId } })}
         >
           {rerun.isPending ? 'Queuing…' : label}
         </button>
         {underWay && (
-          <span className="hint">The Evaluation runs with your current inputs.</span>
+          <span className="hint">Wait for this Evaluation to finish to run it again.</span>
         )}
       </div>
       {rerun.isError && <p role="alert">Could not start the Evaluation. Try again.</p>}

@@ -7,45 +7,37 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from job_scout.db import Base
-from job_scout.llm.interface import FailureKind
+from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
 from job_scout.user_inputs.models import DocumentVersion
 
 # Which Evaluation supplied a Cover Letter's flags: the current one, an outdated one used
 # as it was, or none, when the posting had no done Evaluation
 EvaluationCase = Literal["current", "outdated", "missing"]
 
-CoverLetterGenerationStatus = Literal["queued", "running", "done", "failed"]
 
-# Why a generation made no draft: its LLM call failed, an input it needs is missing, or
-# the Application left Preparing before it ran
-CoverLetterGenerationFailureKind = FailureKind | Literal["missing_input", "locked"]
-
-
-class CoverLetterGeneration(Base):
+class CoverLetterGeneration(Base, LlmRun):
     """One request to write a Cover Letter draft with the LLM: a row per request.
 
-    Queued when requested, running while the worker calls the LLM, then done with the
-    draft it made, or failed with the reason once every attempt failed; a failure makes
-    no draft and leaves the Cover Letter as it was. The Evaluation whose flags it uses is
-    fixed when requested, since the user confirmed that case; `evaluation_case` is the
+    Each is an LLM run (see `llm_runs`): queued, running while the worker calls the
+    LLM, then done with the draft it made, or failed with the reason (locked when the
+    Application left Preparing before the draft was stored); a failure makes no draft
+    and leaves the Cover Letter as it was. The Evaluation whose flags it uses is fixed
+    when requested, since the user confirmed that case; `evaluation_case` is the
     case confirmed, while its draft records the case when it was written. A revision in
     words also fixes, when requested, the draft whose text it sends to be revised.
     """
 
     __tablename__ = "cover_letter_generations"
     __table_args__ = (
-        CheckConstraint(
-            "(failure_kind IS NULL) = (failure_reason IS NULL)", name="failure_complete"
-        ),
+        failure_complete(),
         CheckConstraint(
             "(evaluation_case = 'missing') = (evaluation_id IS NULL)", name="evaluation_case"
         ),
     )
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
-    status: Mapped[CoverLetterGenerationStatus] = mapped_column(String)
+    status: Mapped[RunStatus] = mapped_column(String)
     instruction: Mapped[str | None]  # typed by the user for this one letter
     evaluation_id: Mapped[int | None] = mapped_column(ForeignKey("evaluations.id"))
     evaluation_case: Mapped[EvaluationCase] = mapped_column(String)
@@ -55,12 +47,6 @@ class CoverLetterGeneration(Base):
         foreign_keys=[revised_draft_id], lazy="selectin"
     )
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    started_at: Mapped[datetime | None]
-    finished_at: Mapped[datetime | None]
-
-    # Once failed
-    failure_kind: Mapped[CoverLetterGenerationFailureKind | None] = mapped_column(String)
-    failure_reason: Mapped[str | None]
 
     # Once done
     draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))

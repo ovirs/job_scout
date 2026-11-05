@@ -6,11 +6,12 @@ from job_scout.cover_letters.models import (
     CoverLetterDraft,
     CoverLetterDraftOrigin,
     CoverLetterGeneration,
-    CoverLetterGenerationFailureKind,
-    CoverLetterGenerationStatus,
     EvaluationCase,
 )
 from job_scout.fields import NonBlank
+from job_scout.llm_runs import domain as llm_runs
+from job_scout.llm_runs.models import RunStatus
+from job_scout.llm_runs.schemas import LlmRunFailureRead
 from job_scout.user_inputs.schemas import version_number
 
 
@@ -78,18 +79,14 @@ class CoverLetterDraftRead(BaseModel):
         )
 
 
-class CoverLetterGenerationFailureRead(BaseModel):
-    kind: CoverLetterGenerationFailureKind
-    reason: str
-
-
 class CoverLetterGenerationRead(BaseModel):
     id: int
-    status: CoverLetterGenerationStatus
+    status: RunStatus
+    stuck: bool  # queued or running for too long: request it again
     instruction: str | None
     evaluation_case: EvaluationCase
     revised_draft_id: int | None  # the draft a revision in words revises; null for generating
-    failure: CoverLetterGenerationFailureRead | None  # why it made no draft
+    failure: LlmRunFailureRead | None  # why it made no draft
     created_at: datetime
     finished_at: datetime | None
     draft_id: int | None  # the draft it made, once done
@@ -99,14 +96,11 @@ class CoverLetterGenerationRead(BaseModel):
         return cls(
             id=generation.id,
             status=generation.status,
+            stuck=llm_runs.stuck(generation),
             instruction=generation.instruction,
             evaluation_case=generation.evaluation_case,
             revised_draft_id=generation.revised_draft_id,
-            failure=None
-            if generation.failure_kind is None or generation.failure_reason is None
-            else CoverLetterGenerationFailureRead(
-                kind=generation.failure_kind, reason=generation.failure_reason
-            ),
+            failure=LlmRunFailureRead.of(generation),
             created_at=generation.created_at,
             finished_at=generation.finished_at,
             draft_id=generation.draft_id,

@@ -5,11 +5,12 @@ from pydantic import BaseModel
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationBriefRead
 from job_scout.evaluations import domain as evaluations
-from job_scout.evaluations.models import Evaluation, EvaluationStatus
+from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.prompt import Recommendation
-from job_scout.evaluations.schemas import EvaluationFailureRead
 from job_scout.job_postings.extraction import ExtractedFields, WorkplaceType
 from job_scout.job_postings.models import JobPosting
+from job_scout.llm_runs.models import RunStatus
+from job_scout.llm_runs.schemas import LlmRunFailureRead
 from job_scout.triage.models import Triage
 from job_scout.triage.schemas import TriageRead
 
@@ -68,8 +69,8 @@ class JobPostingRead(BaseModel):
     created_at: datetime
     closed_at: datetime | None
     extracted_fields: ExtractedFields | None
-    evaluation_status: EvaluationStatus | None  # the latest Evaluation's; null before any
-    evaluation_failure: EvaluationFailureRead | None  # why the latest was not evaluated
+    evaluation_status: RunStatus | None  # the latest Evaluation's; null before any
+    evaluation_failure: LlmRunFailureRead | None  # why the latest was not evaluated
     evaluation: EvaluationBriefRead | None  # the current one; null until one is done
     triage: TriageRead | None  # null while untriaged
     application: ApplicationBriefRead | None  # the live one; null while there is none
@@ -99,9 +100,7 @@ class JobPostingRead(BaseModel):
             closed_at=posting.closed_at,
             extracted_fields=posting.extracted_fields,
             evaluation_status=None if latest is None else latest.status,
-            evaluation_failure=None
-            if latest is None or latest.failure_kind is None or latest.failure_reason is None
-            else EvaluationFailureRead(kind=latest.failure_kind, reason=latest.failure_reason),
+            evaluation_failure=None if latest is None else LlmRunFailureRead.of(latest),
             evaluation=None
             if current_evaluation is None
             else EvaluationBriefRead.of(current_evaluation, posting),

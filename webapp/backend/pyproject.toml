@@ -78,8 +78,8 @@ layers = [
     "notes | cover_letters",
     "clippings | applications",
     "triage | evaluations",
-    # The posting text the LLM reads, shared by the prompts
-    "posting_text",
+    # The posting text the LLM reads, shared by the prompts; the LLM job run lifecycle
+    "posting_text | llm_runs",
     "user_inputs | job_postings",
     "queue : routing : fields : owners : llm.interface : prompts : migrations : db : config",
 ]

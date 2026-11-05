@@ -777,7 +777,7 @@
       },
       "post": {
         "summary": "Rerun Evaluation",
-        "description": "Queue a new Evaluation of the posting, with the current user inputs; earlier ones\nare kept as history. Also the retry of one that was not evaluated, and allowed while\nanother is under way, so one stuck by a crashed worker never blocks it.",
+        "description": "Queue a new Evaluation of the posting, with the current user inputs; earlier ones\nare kept as history. Also the retry of one that failed. Refused while another is\nunder way, unless that one is stuck: it is then failed and replaced.",
         "operationId": "rerun_evaluation",
         "parameters": [
           {
@@ -905,7 +905,7 @@
     "/api/applications/{application_id}/cover-letter/generations": {
       "post": {
         "summary": "Generate Cover Letter",
-        "description": "Queue a new draft written by the LLM from the posting, the Career Profile, the\nWriting Guide, the Evaluation's flags and the instruction; poll the Cover Letter for\nit. Also the retry of a failed one. Refused unless the Application is Preparing, while\nthere is no Career Profile, and when `evaluation_case` is not the Evaluation's case\nnow (the user must confirm a missing or outdated one).",
+        "description": "Queue a new draft written by the LLM from the posting, the Career Profile, the\nWriting Guide, the Evaluation's flags and the instruction; poll the Cover Letter for\nit. Also the retry of a failed one. Refused unless the Application is Preparing, while\nthere is no Career Profile, when `evaluation_case` is not the Evaluation's case now\n(the user must confirm a missing or outdated one), and while another request is under\nway, unless that one is stuck.",
         "operationId": "generate_cover_letter",
         "parameters": [
           {
@@ -1153,7 +1153,7 @@
     "/api/clippings": {
       "post": {
         "summary": "Submit Clipping",
-        "description": "Store the pasted text as a pending Clipping and queue its extraction; poll it for\nthe result.",
+        "description": "Store the pasted text as a Clipping and queue its extraction; poll it for the\nresult.",
         "operationId": "submit_clipping",
         "requestBody": {
           "content": {
@@ -1231,7 +1231,7 @@
     "/api/clippings/{clipping_id}/retry": {
       "post": {
         "summary": "Retry Clipping",
-        "description": "Queue the extraction of a failed clipping again.",
+        "description": "Queue the extraction of a failed Clipping again, or of one stuck being read.",
         "operationId": "retry_clipping",
         "parameters": [
           {
@@ -2051,15 +2051,29 @@
             "title": "Id"
           },
           "status": {
-            "type": "string",
-            "enum": [
-              "pending",
-              "done",
-              "failed",
-              "confirmed",
-              "abandoned"
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "queued",
+                  "running",
+                  "done",
+                  "failed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "confirmed",
+                  "abandoned"
+                ]
+              }
             ],
             "title": "Status"
+          },
+          "stuck": {
+            "type": "boolean",
+            "title": "Stuck"
           },
           "pasted_text": {
             "type": "string",
@@ -2080,6 +2094,30 @@
             "type": "string",
             "format": "date-time",
             "title": "Created At"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
           },
           "model": {
             "anyOf": [
@@ -2106,7 +2144,7 @@
           "failure": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ExtractionFailureRead"
+                "$ref": "#/components/schemas/LlmRunFailureRead"
               },
               {
                 "type": "null"
@@ -2139,9 +2177,12 @@
         "required": [
           "id",
           "status",
+          "stuck",
           "pasted_text",
           "url",
           "created_at",
+          "started_at",
+          "finished_at",
           "model",
           "prompt_version",
           "failure",
@@ -2420,40 +2461,6 @@
         "title": "CoverLetterGenerate",
         "description": "A request for a new draft. `evaluation_case` is the case of the posting's Evaluation\nthe user was told of and agreed to; a request naming another case is refused."
       },
-      "CoverLetterGenerationFailureRead": {
-        "properties": {
-          "kind": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "error",
-                  "refusal",
-                  "malformed"
-                ]
-              },
-              {
-                "type": "string",
-                "enum": [
-                  "missing_input",
-                  "locked"
-                ]
-              }
-            ],
-            "title": "Kind"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "reason"
-        ],
-        "title": "CoverLetterGenerationFailureRead"
-      },
       "CoverLetterGenerationRead": {
         "properties": {
           "id": {
@@ -2469,6 +2476,10 @@
               "failed"
             ],
             "title": "Status"
+          },
+          "stuck": {
+            "type": "boolean",
+            "title": "Stuck"
           },
           "instruction": {
             "anyOf": [
@@ -2504,7 +2515,7 @@
           "failure": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CoverLetterGenerationFailureRead"
+                "$ref": "#/components/schemas/LlmRunFailureRead"
               },
               {
                 "type": "null"
@@ -2544,6 +2555,7 @@
         "required": [
           "id",
           "status",
+          "stuck",
           "instruction",
           "evaluation_case",
           "revised_draft_id",
@@ -2876,37 +2888,6 @@
         "title": "EvaluationBriefRead",
         "description": "What a list row shows of a posting's current (latest done) Evaluation."
       },
-      "EvaluationFailureRead": {
-        "properties": {
-          "kind": {
-            "anyOf": [
-              {
-                "type": "string",
-                "enum": [
-                  "error",
-                  "refusal",
-                  "malformed"
-                ]
-              },
-              {
-                "type": "string",
-                "const": "missing_input"
-              }
-            ],
-            "title": "Kind"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "reason"
-        ],
-        "title": "EvaluationFailureRead"
-      },
       "EvaluationRead": {
         "properties": {
           "id": {
@@ -2923,14 +2904,18 @@
               "queued",
               "running",
               "done",
-              "not_evaluated"
+              "failed"
             ],
             "title": "Status"
+          },
+          "stuck": {
+            "type": "boolean",
+            "title": "Stuck"
           },
           "failure": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EvaluationFailureRead"
+                "$ref": "#/components/schemas/LlmRunFailureRead"
               },
               {
                 "type": "null"
@@ -3164,6 +3149,7 @@
           "id",
           "job_posting_id",
           "status",
+          "stuck",
           "failure",
           "created_at",
           "started_at",
@@ -3318,29 +3304,6 @@
         ],
         "title": "ExtractedFields"
       },
-      "ExtractionFailureRead": {
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "error",
-              "refusal",
-              "malformed"
-            ],
-            "title": "Kind"
-          },
-          "reason": {
-            "type": "string",
-            "title": "Reason"
-          }
-        },
-        "type": "object",
-        "required": [
-          "kind",
-          "reason"
-        ],
-        "title": "ExtractionFailureRead"
-      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3460,7 +3423,7 @@
                   "queued",
                   "running",
                   "done",
-                  "not_evaluated"
+                  "failed"
                 ]
               },
               {
@@ -3472,7 +3435,7 @@
           "evaluation_failure": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/EvaluationFailureRead"
+                "$ref": "#/components/schemas/LlmRunFailureRead"
               },
               {
                 "type": "null"
@@ -3531,6 +3494,42 @@
           "application"
         ],
         "title": "JobPostingRead"
+      },
+      "LlmRunFailureRead": {
+        "properties": {
+          "kind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "refusal",
+                  "malformed"
+                ]
+              },
+              {
+                "type": "string",
+                "enum": [
+                  "missing_input",
+                  "locked",
+                  "stuck"
+                ]
+              }
+            ],
+            "title": "Kind"
+          },
+          "reason": {
+            "type": "string",
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "LlmRunFailureRead",
+        "description": "Why an LLM job run failed."
       },
       "NoteAdd": {
         "properties": {

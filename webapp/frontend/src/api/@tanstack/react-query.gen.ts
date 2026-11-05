@@ -378,8 +378,8 @@ export const listEvaluationsOptions = (options: Options<ListEvaluationsData>) =>
  * Rerun Evaluation
  *
  * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
- * are kept as history. Also the retry of one that was not evaluated, and allowed while
- * another is under way, so one stuck by a crashed worker never blocks it.
+ * are kept as history. Also the retry of one that failed. Refused while another is
+ * under way, unless that one is stuck: it is then failed and replaced.
  */
 export const rerunEvaluationMutation = (options?: Partial<Options<RerunEvaluationData>>): UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> => {
     const mutationOptions: UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> = {
@@ -442,8 +442,9 @@ export const getCoverLetterOptions = (options: Options<GetCoverLetterData>) => q
  * Queue a new draft written by the LLM from the posting, the Career Profile, the
  * Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
  * it. Also the retry of a failed one. Refused unless the Application is Preparing, while
- * there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
- * now (the user must confirm a missing or outdated one).
+ * there is no Career Profile, when `evaluation_case` is not the Evaluation's case now
+ * (the user must confirm a missing or outdated one), and while another request is under
+ * way, unless that one is stuck.
  */
 export const generateCoverLetterMutation = (options?: Partial<Options<GenerateCoverLetterData>>): UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> => {
     const mutationOptions: UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> = {
@@ -543,8 +544,8 @@ export const deleteCoverLetterDraftMutation = (options?: Partial<Options<DeleteC
 /**
  * Submit Clipping
  *
- * Store the pasted text as a pending Clipping and queue its extraction; poll it for
- * the result.
+ * Store the pasted text as a Clipping and queue its extraction; poll it for the
+ * result.
  */
 export const submitClippingMutation = (options?: Partial<Options<SubmitClippingData>>): UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> => {
     const mutationOptions: UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> = {
@@ -581,7 +582,7 @@ export const getClippingOptions = (options: Options<GetClippingData>) => queryOp
 /**
  * Retry Clipping
  *
- * Queue the extraction of a failed clipping again.
+ * Queue the extraction of a failed Clipping again, or of one stuck being read.
  */
 export const retryClippingMutation = (options?: Partial<Options<RetryClippingData>>): UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> => {
     const mutationOptions: UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> = {

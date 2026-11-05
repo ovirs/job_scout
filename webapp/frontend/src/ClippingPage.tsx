@@ -65,7 +65,7 @@ export function ClippingPage({ id }: { id: number }) {
   const clipping = useQuery({
     ...options,
     // Poll while the worker is still reading the pasted text
-    refetchInterval: (query) => (query.state.data?.status === 'pending' ? 1000 : false),
+    refetchInterval: (query) => (readingNow(query.state.data) ? 1000 : false),
   })
 
   if (clipping.isPending) return <Loading />
@@ -73,10 +73,20 @@ export function ClippingPage({ id }: { id: number }) {
   return <ClippingStatus clipping={clipping.data} />
 }
 
+/** Whether the worker is reading the pasted text now; a stuck reading is not. */
+function readingNow(clipping: ClippingRead | undefined) {
+  return (clipping?.status === 'queued' || clipping?.status === 'running') && !clipping.stuck
+}
+
 function ClippingStatus({ clipping }: { clipping: ClippingRead }) {
   switch (clipping.status) {
-    case 'pending':
-      return <Working>Reading the pasted text…</Working>
+    case 'queued':
+    case 'running':
+      return clipping.stuck ? (
+        <ExtractionFailed clipping={clipping} />
+      ) : (
+        <Working>Reading the pasted text…</Working>
+      )
     case 'failed':
       return <ExtractionFailed clipping={clipping} />
     case 'done':
@@ -103,7 +113,9 @@ function ExtractionFailed({ clipping }: { clipping: ClippingRead }) {
   return (
     <section>
       <h2>Could not read the pasted text</h2>
-      <p role="alert">{clipping.failure?.reason}</p>
+      <p role="alert">
+        {clipping.stuck ? 'Reading it got stuck and never finished.' : clipping.failure?.reason}
+      </p>
       <button
         type="button"
         disabled={retry.isPending}
