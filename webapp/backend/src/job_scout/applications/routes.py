@@ -3,13 +3,14 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import queue
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
 from job_scout.cover_letters import domain as cover_letters
 from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings.routes import job_posting_or_404
+from job_scout.llm_runs import domain as llm_runs
 from job_scout.routing import Owner, Session, TaskQueue
 from job_scout.triage import domain as triage
 
@@ -29,13 +30,10 @@ async def start_application(
     await triage.set_triage(session, posting, "interested")
     application = applications.start(posting)
     session.add(application)
-    runs = await evaluations.history(session, owner_id=owner, job_posting_id=posting.id)
-    run = evaluations.queued(posting) if evaluations.none_done_or_under_way(runs) else None
-    if run is not None:
-        session.add(run)
-    await session.commit()
-    if run is not None:
-        await queue.enqueue_evaluate(task_queue, run.id)
+    run = await evaluations.queued_unless_evaluated(session, posting)
+    await llm_runs.commit_and_enqueue(
+        session, task_queue, EVALUATION, *([] if run is None else [run])
+    )
     return ApplicationRead.of(application)
 
 

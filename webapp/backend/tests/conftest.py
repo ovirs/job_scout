@@ -28,6 +28,7 @@ from job_scout import migrations, queue, worker
 from job_scout.app import create_app
 from job_scout.config import Settings
 from job_scout.llm.fake import FakeLlm
+from job_scout.llm_runs.domain import STUCK_AFTER
 
 TEMPLATE_DATABASE = "job_scout_template"
 FRONTEND = Path(__file__).parents[2] / "frontend"
@@ -89,6 +90,22 @@ def queued_tasks(settings: Settings) -> Callable[[], Awaitable[list[str]]]:
         return [job.task_name for job in jobs]
 
     return list_queued
+
+
+@pytest.fixture
+def make_stuck(settings: Settings) -> Callable[[str, int], None]:
+    """Make an LLM run, by its table and id, look queued or running for longer than
+    any run takes, as if its worker died."""
+
+    def make(table: str, run_id: int) -> None:
+        with psycopg.connect(settings.database_url) as conn:
+            conn.execute(
+                f"UPDATE {table} SET queued_at = queued_at - %(by)s,"
+                " started_at = started_at - %(by)s WHERE id = %(id)s",
+                {"by": STUCK_AFTER * 2, "id": run_id},
+            )
+
+    return make
 
 
 @pytest.fixture

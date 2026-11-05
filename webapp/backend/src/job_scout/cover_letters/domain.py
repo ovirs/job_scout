@@ -17,17 +17,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications.models import Application, ApplicationStateChange
 from job_scout.cover_letters import prompt as cover_letter
-from job_scout.cover_letters.models import (
-    CoverLetterDraft,
-    CoverLetterGeneration,
-    CoverLetterGenerationFailureKind,
-    EvaluationCase,
-)
+from job_scout.cover_letters.models import CoverLetterDraft, CoverLetterGeneration, EvaluationCase
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult, Flags
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.models import Evaluation
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm.interface import Failure, Outcome
+from job_scout.llm_runs import domain as llm_runs
 from job_scout.posting_text import PostingText
 from job_scout.user_inputs import domain as user_inputs
 from job_scout.user_inputs.models import DocumentVersion
@@ -51,15 +47,26 @@ async def flags_source(session: AsyncSession, application: Application) -> Flags
     return FlagsSource("outdated" if evaluations.outdated(current, posting) else "current", current)
 
 
-def queued(
+async def queued(
+    session: AsyncSession,
     application: Application,
     source: FlagsSource,
     instruction: str | None,
     revised: CoverLetterDraft | None = None,
 ) -> CoverLetterGeneration:
     """A new queued generation for the Application, a revision in words of `revised` when
-    given; the caller enqueues its task."""
-    return CoverLetterGeneration(
+    given, added to the session; the caller enqueues its task. Raises
+    `llm_runs.RunUnderWay` while another generation is under way, unless that one is
+    stuck: it is then failed and replaced."""
+    await session.refresh(application, with_for_update=True)  # one request at a time
+    under_way = await session.scalars(
+        select(CoverLetterGeneration).where(
+            CoverLetterGeneration.application_id == application.id,
+            CoverLetterGeneration.status.in_(llm_runs.UNDER_WAY),
+        )
+    )
+    llm_runs.clear_the_way(list(under_way))
+    generation = CoverLetterGeneration(
         owner_id=application.owner_id,
         application_id=application.id,
         status="queued",
@@ -68,6 +75,8 @@ def queued(
         evaluation_case=source.case,
         revised_draft=revised,
     )
+    session.add(generation)
+    return generation
 
 
 @dataclass(frozen=True)
@@ -107,6 +116,15 @@ def editable(application: Application) -> bool:
     return application.deleted_at is None and application.state == "preparing"
 
 
+def locked_reason(application: Application) -> str | None:
+    """Why the Application's Cover Letter takes no new draft, if it does not."""
+    if editable(application):
+        return None
+    if application.deleted_at is not None:
+        return "The Application was deleted"
+    return "The Application is no longer Preparing, so its Cover Letter is locked"
+
+
 def missing_input(career_profile: DocumentVersion | None) -> str | None:
     """Why there is nothing to write a Cover Letter from, if there is not; the Career
     Profile is the only input required."""
@@ -115,10 +133,8 @@ def missing_input(career_profile: DocumentVersion | None) -> str | None:
     return None
 
 
-async def start(session: AsyncSession, generation: CoverLetterGeneration) -> Inputs:
-    """Mark the generation running and gather what it is made from."""
-    generation.status = "running"
-    generation.started_at = generation.started_at or datetime.now(UTC)
+async def gather(session: AsyncSession, generation: CoverLetterGeneration) -> Inputs:
+    """What the generation is made from now."""
     application = await session.get_one(Application, generation.application_id)
     posting: JobPosting = application.job_posting
     owner_id = generation.owner_id
@@ -166,13 +182,9 @@ def record(
     session: AsyncSession,
     generation: CoverLetterGeneration,
     inputs: Inputs,
-    outcome: Outcome[CoverLetterResult],
+    result: CoverLetterResult,
 ) -> None:
-    """Store a run's outcome: done with a new generated draft, or failed with no draft."""
-    result = outcome.result
-    if isinstance(result, Failure):
-        record_failure(generation, result.kind, result.reason)
-        return
+    """Store the letter written as a new generated draft, made with the generation's call."""
     draft = CoverLetterDraft(
         owner_id=generation.owner_id,
         application_id=generation.application_id,
@@ -180,8 +192,8 @@ def record(
         text=result.letter,
         instruction=generation.instruction,
         unsupported_requirements=result.unsupported_requirements,
-        model=outcome.model,
-        prompt_version=outcome.prompt_version,
+        model=generation.model,
+        prompt_version=generation.prompt_version,
         career_profile_version_id=_id(inputs.career_profile),
         writing_guide_version_id=_id(inputs.writing_guide),
         evaluation_id=generation.evaluation_id,
@@ -189,20 +201,7 @@ def record(
         content_hash=inputs.content_hash,
     )
     session.add(draft)
-    generation.status = "done"
-    generation.finished_at = datetime.now(UTC)
-    generation.failure_kind = generation.failure_reason = None
     generation.draft = draft
-
-
-def record_failure(
-    generation: CoverLetterGeneration, kind: CoverLetterGenerationFailureKind, reason: str
-) -> None:
-    """Store a run that made no draft; the Cover Letter stays as it was."""
-    generation.status = "failed"
-    generation.finished_at = datetime.now(UTC)
-    generation.failure_kind = kind
-    generation.failure_reason = reason
 
 
 def _id(version: DocumentVersion | None) -> int | None:

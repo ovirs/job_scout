@@ -157,7 +157,7 @@ async def test_a_failed_evaluation_is_in_not_evaluated_and_never_in_skip(
     assert await titles(client, "skip") == []
     assert await titles(client, "inbox") == []
     [row] = (await client.get("/api/job-postings", params={"list": "not-evaluated"})).json()
-    assert row["evaluation_status"] == "not_evaluated"
+    assert row["evaluation_status"] == "failed"
     assert row["evaluation_failure"] == {
         "kind": "error",
         "reason": "The Anthropic API is overloaded",

@@ -232,7 +232,6 @@ async def test_a_failed_generation_leaves_the_letter_unchanged_shows_why_and_can
     assert letter["generation"]["failure"] == {"kind": "error", "reason": "Overloaded"}
     assert letter["generation"]["instruction"] == "Shorter."
     assert letter["generation"]["draft_id"] is None
-    assert len(fake_llm.cover_letter.calls) == 1 + 3  # the queue retried before giving up
 
     fake_llm.cover_letter.respond_with(a_letter(letter="The retried draft."))
     retried = await generate(client, application["id"], instruction="Shorter.")
@@ -261,20 +260,28 @@ async def test_a_blank_letter_is_a_malformed_answer(
     assert letter["generation"]["failure"]["kind"] == "malformed"
 
 
-async def test_an_unexpected_error_fails_the_generation_after_retries(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+async def test_generating_is_refused_while_a_request_is_under_way_unless_it_is_stuck(
+    client: httpx.AsyncClient,
+    fake_llm: FakeLlm,
+    run_queued_tasks: RunTasks,
+    make_stuck: Callable[[str, int], None],
 ) -> None:
     await write_career_profile(client)
     application = await started_application(client, fake_llm, run_queued_tasks)
-    fake_llm.cover_letter.respond_with(RuntimeError("boom"))
-
     await generate(client, application["id"])
+    under_way = (await cover_letter(client, application["id"]))["generation"]
+
+    assert (await generate(client, application["id"])).status_code == 409
+
+    assert under_way["stuck"] is False
+    make_stuck("cover_letter_generations", under_way["id"])
+    assert (await cover_letter(client, application["id"]))["generation"]["stuck"] is True
+    assert (await generate(client, application["id"])).status_code == 201
     await run_queued_tasks()
 
     letter = await cover_letter(client, application["id"])
-    assert letter["draft"] is None
-    assert letter["generation"]["status"] == "failed"
-    assert "boom" in letter["generation"]["failure"]["reason"]
+    assert letter["generation"]["status"] == "done"
+    assert len(letter["drafts"]) == 1  # the stuck request wrote none
 
 
 async def test_generating_is_refused_unless_the_application_is_preparing(

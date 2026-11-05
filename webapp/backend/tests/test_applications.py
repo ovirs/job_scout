@@ -82,7 +82,7 @@ async def test_starting_an_application_on_a_posting_not_evaluated_queues_an_eval
 
     await start(client, posting_id)
 
-    assert await evaluation_statuses(client, posting_id) == ["queued", "not_evaluated"]
+    assert await evaluation_statuses(client, posting_id) == ["queued", "failed"]
     assert await queued_tasks() == ["evaluate"]
 
 
@@ -102,6 +102,22 @@ async def test_starting_an_application_queues_no_evaluation_when_one_is_done_or_
     assert await evaluation_statuses(client, evaluated) == ["done"]
     assert await evaluation_statuses(client, waiting) == ["queued"]
     assert await queued_tasks() == ["evaluate"]
+
+
+async def test_starting_an_application_replaces_a_stuck_evaluation(
+    client: httpx.AsyncClient,
+    fake_llm: FakeLlm,
+    run_queued_tasks: RunTasks,
+    make_stuck: Callable[[str, int], None],
+) -> None:
+    await write_career_profile(client)
+    posting_id = await add_posting(client, fake_llm, run_queued_tasks, "Stuck", evaluate=False)
+    [stuck] = (await client.get(f"/api/job-postings/{posting_id}/evaluations")).json()
+    make_stuck("evaluations", stuck["id"])
+
+    await start(client, posting_id)
+
+    assert await evaluation_statuses(client, posting_id) == ["queued", "failed"]
 
 
 async def test_the_triage_is_locked_at_interested_while_the_application_is_live(

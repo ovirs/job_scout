@@ -4,7 +4,6 @@ import procrastinate
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import queue
 from job_scout.applications.models import Application
 from job_scout.applications.routes import application_or_404
 from job_scout.cover_letters import domain as cover_letters
@@ -19,6 +18,8 @@ from job_scout.cover_letters.schemas import (
     CoverLetterRevise,
     SentCoverLetterRead,
 )
+from job_scout.cover_letters.tasks import GENERATION
+from job_scout.llm_runs import domain as llm_runs
 from job_scout.routing import Owner, Session, TaskQueue
 from job_scout.user_inputs import domain as user_inputs
 
@@ -44,8 +45,9 @@ async def generate_cover_letter(
     """Queue a new draft written by the LLM from the posting, the Career Profile, the
     Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
     it. Also the retry of a failed one. Refused unless the Application is Preparing, while
-    there is no Career Profile, and when `evaluation_case` is not the Evaluation's case
-    now (the user must confirm a missing or outdated one)."""
+    there is no Career Profile, when `evaluation_case` is not the Evaluation's case now
+    (the user must confirm a missing or outdated one), and while another request is under
+    way, unless that one is stuck."""
     application = await _editable_application(session, owner, application_id)
     await _queue_generation(
         session, task_queue, application, body.evaluation_case, body.instruction
@@ -84,8 +86,8 @@ async def _queue_generation(
     instruction: str | None,
     revised: CoverLetterDraft | None = None,
 ) -> None:
-    """Queue a generation, refused while there is no Career Profile and when
-    `evaluation_case` is not the Evaluation's case now."""
+    """Queue a generation, refused while there is no Career Profile, when
+    `evaluation_case` is not the Evaluation's case now, and while another is under way."""
     profile = await user_inputs.current_document(
         session, owner_id=application.owner_id, kind="career-profile"
     )
@@ -99,10 +101,13 @@ async def _queue_generation(
             detail=f"The posting's Evaluation is {source.case}, not {evaluation_case}: "
             "confirm that case to generate",
         )
-    generation = cover_letters.queued(application, source, instruction, revised)
-    session.add(generation)
-    await session.commit()
-    await queue.enqueue_generate_cover_letter(task_queue, generation.id)
+    try:
+        generation = await cover_letters.queued(session, application, source, instruction, revised)
+    except llm_runs.RunUnderWay:
+        raise HTTPException(
+            status_code=409, detail="A draft is already being written for this Cover Letter"
+        ) from None
+    await llm_runs.commit_and_enqueue(session, task_queue, GENERATION, generation)
 
 
 @router.post("/applications/{application_id}/cover-letter/drafts", status_code=201)

@@ -181,10 +181,10 @@ async def test_a_result_failing_a_check_ends_after_retries_as_not_evaluated_with
 
     posting = await evaluated_posting(client, run_queued_tasks)
 
-    assert posting["evaluation_status"] == "not_evaluated"
+    assert posting["evaluation_status"] == "failed"
     assert len(fake_llm.evaluation.calls) == 3
     [evaluation] = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
-    assert evaluation["status"] == "not_evaluated"
+    assert evaluation["status"] == "failed"
     assert evaluation["failure"]["kind"] == "malformed"
     assert reason in evaluation["failure"]["reason"]
     assert evaluation["recommendation"] is None  # never counted as a skip
@@ -205,28 +205,6 @@ async def test_a_result_failing_a_check_is_retried_and_a_good_one_is_kept(
     assert posting["evaluation_status"] == "done"
     assert len(fake_llm.evaluation.calls) == 2
     assert (await current_evaluation(client, posting["id"]))["score"] == 8
-
-
-@pytest.mark.parametrize(
-    "failure",
-    [Failure("error", "The Anthropic API is overloaded"), Failure("refusal", "Declined")],
-)
-async def test_a_failed_call_ends_after_retries_as_not_evaluated_with_the_reason(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-    failure: Failure,
-) -> None:
-    await write_career_profile(client)
-    fake_llm.evaluation.respond_with(failure)
-
-    posting = await evaluated_posting(client, run_queued_tasks)
-
-    [evaluation] = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
-    assert evaluation["status"] == "not_evaluated"
-    assert evaluation["failure"] == {"kind": failure.kind, "reason": failure.reason}
-    assert evaluation["recommendation"] is None
-    assert len(fake_llm.evaluation.calls) == 3
 
 
 @pytest.mark.parametrize(
@@ -395,24 +373,35 @@ async def test_a_posting_not_evaluated_waits_for_a_manual_retry(
 
     assert retried.status_code == 201
     history = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
-    assert [e["status"] for e in history] == ["done", "not_evaluated"]
+    assert [e["status"] for e in history] == ["done", "failed"]
     assert (await client.get(f"/api/job-postings/{posting['id']}")).json()[
         "evaluation_status"
     ] == "done"
 
 
-async def test_a_posting_can_be_rerun_while_its_evaluation_is_under_way(
-    client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
+async def test_a_rerun_is_refused_while_an_evaluation_is_under_way_unless_it_is_stuck(
+    client: httpx.AsyncClient,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    make_stuck: Callable[[str, int], None],
 ) -> None:
     await write_career_profile(client)
-    posting = await save_manual_entry(client, run_queued_tasks)
+    posting = await save_manual_entry(client, run_queued_tasks)  # its Evaluation is queued
+    [under_way] = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
 
+    refused = await client.post(f"/api/job-postings/{posting['id']}/evaluations")
+    assert refused.status_code == 409
+
+    assert under_way["stuck"] is False
+    make_stuck("evaluations", under_way["id"])
     rerun = await client.post(f"/api/job-postings/{posting['id']}/evaluations")
     await run_queued_tasks()
 
     assert rerun.status_code == 201
     history = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
-    assert [e["status"] for e in history] == ["done", "done"]
+    assert [(e["status"], e["failure"] and e["failure"]["kind"]) for e in history] == [
+        ("done", None),
+        ("failed", "stuck"),
+    ]
 
 
 async def test_an_unknown_posting_has_no_evaluations_and_cannot_be_rerun(
@@ -487,7 +476,7 @@ async def test_without_a_career_profile_the_posting_is_not_evaluated_and_no_llm_
 
     posting = await evaluated_posting(client, run_queued_tasks)
 
-    assert posting["evaluation_status"] == "not_evaluated"
+    assert posting["evaluation_status"] == "failed"
     [evaluation] = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
     assert evaluation["failure"]["kind"] == "missing_input"
     assert "Career Profile" in evaluation["failure"]["reason"]
@@ -522,23 +511,6 @@ async def test_without_deal_breakers_or_preferences_the_evaluation_has_no_verdic
     assert "no Deal Breakers" in prompt.user_inputs
     assert "no Preferences" in prompt.user_inputs
     assert SPARK not in prompt.user_inputs
-
-
-async def test_an_unexpected_error_ends_after_retries_as_not_evaluated(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    await write_career_profile(client)
-    fake_llm.evaluation.respond_with(RuntimeError("boom"))
-
-    posting = await evaluated_posting(client, run_queued_tasks)
-
-    [evaluation] = (await client.get(f"/api/job-postings/{posting['id']}/evaluations")).json()
-    assert evaluation["status"] == "not_evaluated"
-    assert evaluation["failure"]["kind"] == "error"
-    assert "boom" in evaluation["failure"]["reason"]
-    assert len(fake_llm.evaluation.calls) == 3
 
 
 async def test_a_verdict_resting_on_several_passages_has_each_one_found(

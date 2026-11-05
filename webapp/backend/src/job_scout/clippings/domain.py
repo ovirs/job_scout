@@ -14,12 +14,12 @@ from job_scout.clippings.models import Clipping
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.extraction import WorkplaceType
 from job_scout.job_postings.models import JobPosting
-from job_scout.llm.interface import Failure, Outcome
+from job_scout.llm_runs import domain as llm_runs
 
 
 def submit(*, owner_id: uuid.UUID, pasted_text: str, url: str | None) -> Clipping:
-    """A new pending clipping; the caller enqueues its extraction."""
-    return Clipping(owner_id=owner_id, pasted_text=pasted_text, url=url, status="pending")
+    """A new clipping, queued to be read; the caller enqueues its extraction."""
+    return Clipping(owner_id=owner_id, pasted_text=pasted_text, url=url, status="queued")
 
 
 async def clipping(
@@ -32,10 +32,9 @@ async def clipping(
 
 
 def retry(clipping: Clipping) -> None:
-    """Make a failed clipping pending again; the caller enqueues its extraction."""
-    assert clipping.status == "failed"
-    clipping.status = "pending"
-    clipping.failure_kind = clipping.failure_reason = None
+    """Queue the extraction of a failed clipping, or of one stuck being read, again; the
+    caller enqueues it. Raises `llm_runs.RunUnderWay` or `llm_runs.NotRetryable`."""
+    llm_runs.requeue(clipping)
 
 
 def confirm(
@@ -83,34 +82,14 @@ def extraction(clipping: Clipping) -> ManualEntryExtraction:
     return ManualEntryExtraction.model_validate(clipping.extraction)
 
 
-def record(clipping: Clipping, outcome: Outcome[ManualEntryExtraction]) -> None:
-    """Store an extraction call's outcome: done with the cut description, or failed."""
-    clipping.model = outcome.model
-    clipping.prompt_version = outcome.prompt_version
-    result = outcome.result
-    if isinstance(result, Failure):
-        _fail(clipping, result)
-        return
+def record(clipping: Clipping, result: ManualEntryExtraction) -> None:
+    """Store an extraction, with the description cut from the pasted text."""
     description = cut_description(
         clipping.pasted_text, result.description_first_line, result.description_last_line
     )
-    clipping.status = "done"
-    clipping.failure_kind = clipping.failure_reason = None
     clipping.extraction = result.model_dump(mode="json")
     clipping.description = clipping.pasted_text if description is None else description
     clipping.description_cut = description is not None
-
-
-def record_failure(clipping: Clipping, failure: Failure) -> None:
-    """Store an error outside the LLM call, which used no model or prompt."""
-    clipping.model = clipping.prompt_version = None
-    _fail(clipping, failure)
-
-
-def _fail(clipping: Clipping, failure: Failure) -> None:
-    clipping.status = "failed"
-    clipping.failure_kind = failure.kind
-    clipping.failure_reason = failure.reason
 
 
 def cut_description(pasted_text: str, first_line: str | None, last_line: str | None) -> str | None:

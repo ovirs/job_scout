@@ -53,10 +53,11 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
   const options = getCoverLetterOptions({ path: { application_id: applicationId } })
   const letter = useQuery({
     ...options,
-    // Poll while the worker is writing a draft
+    // Poll while the worker is writing a draft, unless it is stuck
     refetchInterval: (query) => {
-      const status = query.state.data?.generation?.status
-      return status === 'queued' || status === 'running' ? 1000 : false
+      const generation = query.state.data?.generation
+      const underWay = generation?.status === 'queued' || generation?.status === 'running'
+      return underWay && !generation.stuck ? 1000 : false
     },
   })
   const handlers = {
@@ -75,7 +76,9 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
   if (letter.isError) return <p role="alert">Could not load the Cover Letter.</p>
   const { draft, drafts, generation, evaluation, editable, posting_edited_since_draft, sent } =
     letter.data
-  const underWay = generation?.status === 'queued' || generation?.status === 'running'
+  // A stuck request blocks nothing: requesting again replaces it
+  const underWay =
+    (generation?.status === 'queued' || generation?.status === 'running') && !generation.stuck
   const path = { application_id: applicationId }
   const mutations = [generate, revise, save, restore, remove]
   // While a draft is being written, a change to the latest one would be pushed down by it
@@ -123,6 +126,9 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
         <p className="missing">No Cover Letter yet.</p>
       )}
       {underWay && <Working>Writing a draft…</Working>}
+      {generation?.stuck && (
+        <p role="alert">Writing the last draft got stuck and never finished. Ask again.</p>
+      )}
       {generation?.status === 'failed' && (
         <div role="alert">
           <p>

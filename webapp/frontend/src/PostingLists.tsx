@@ -138,7 +138,7 @@ function NotEvaluated({ posting }: { posting: JobPostingRead }) {
         {label}
       </Badge>
       {posting.evaluation_failure && ` ${posting.evaluation_failure.reason}`}
-      {status === 'not_evaluated' && (
+      {status === 'failed' && (
         <>
           {' '}
           <button

@@ -4,16 +4,14 @@ from pydantic import BaseModel
 
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.domain import CheckedFlag
-from job_scout.evaluations.models import Evaluation, EvaluationFailureKind, EvaluationStatus
+from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.prompt import Recommendation, Verdict
 from job_scout.job_postings.models import JobPosting
+from job_scout.llm_runs import domain as llm_runs
+from job_scout.llm_runs.models import RunStatus
+from job_scout.llm_runs.schemas import LlmRunFailureRead
 from job_scout.posting_text import EvidenceMatch
 from job_scout.user_inputs.schemas import version_number
-
-
-class EvaluationFailureRead(BaseModel):
-    kind: EvaluationFailureKind
-    reason: str
 
 
 class DealBreakerVerdictRead(BaseModel):
@@ -28,8 +26,9 @@ class DealBreakerVerdictRead(BaseModel):
 class EvaluationRead(BaseModel):
     id: int
     job_posting_id: int
-    status: EvaluationStatus
-    failure: EvaluationFailureRead | None  # why it was not evaluated
+    status: RunStatus  # failed means not evaluated
+    stuck: bool  # queued or running for too long: run it again
+    failure: LlmRunFailureRead | None  # why it was not evaluated
     created_at: datetime
     started_at: datetime | None
     finished_at: datetime | None
@@ -76,9 +75,8 @@ class EvaluationRead(BaseModel):
             id=run.id,
             job_posting_id=run.job_posting_id,
             status=run.status,
-            failure=None
-            if run.failure_kind is None or run.failure_reason is None
-            else EvaluationFailureRead(kind=run.failure_kind, reason=run.failure_reason),
+            stuck=llm_runs.stuck(run),
+            failure=LlmRunFailureRead.of(run),
             created_at=run.created_at,
             started_at=run.started_at,
             finished_at=run.finished_at,

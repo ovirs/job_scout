@@ -179,7 +179,11 @@ export type ClippingRead = {
     /**
      * Status
      */
-    status: 'pending' | 'done' | 'failed' | 'confirmed' | 'abandoned';
+    status: 'queued' | 'running' | 'done' | 'failed' | 'confirmed' | 'abandoned';
+    /**
+     * Stuck
+     */
+    stuck: boolean;
     /**
      * Pasted Text
      */
@@ -193,6 +197,14 @@ export type ClippingRead = {
      */
     created_at: string;
     /**
+     * Started At
+     */
+    started_at: string | null;
+    /**
+     * Finished At
+     */
+    finished_at: string | null;
+    /**
      * Model
      */
     model: string | null;
@@ -200,7 +212,7 @@ export type ClippingRead = {
      * Prompt Version
      */
     prompt_version: string | null;
-    failure: ExtractionFailureRead | null;
+    failure: LlmRunFailureRead | null;
     extraction: ClippingExtractionRead | null;
     /**
      * Job Posting Id
@@ -333,20 +345,6 @@ export type CoverLetterGenerate = {
 };
 
 /**
- * CoverLetterGenerationFailureRead
- */
-export type CoverLetterGenerationFailureRead = {
-    /**
-     * Kind
-     */
-    kind: 'error' | 'refusal' | 'malformed' | 'missing_input' | 'locked';
-    /**
-     * Reason
-     */
-    reason: string;
-};
-
-/**
  * CoverLetterGenerationRead
  */
 export type CoverLetterGenerationRead = {
@@ -359,6 +357,10 @@ export type CoverLetterGenerationRead = {
      */
     status: 'queued' | 'running' | 'done' | 'failed';
     /**
+     * Stuck
+     */
+    stuck: boolean;
+    /**
      * Instruction
      */
     instruction: string | null;
@@ -370,7 +372,7 @@ export type CoverLetterGenerationRead = {
      * Revised Draft Id
      */
     revised_draft_id: number | null;
-    failure: CoverLetterGenerationFailureRead | null;
+    failure: LlmRunFailureRead | null;
     /**
      * Created At
      */
@@ -577,20 +579,6 @@ export type EvaluationBriefRead = {
 };
 
 /**
- * EvaluationFailureRead
- */
-export type EvaluationFailureRead = {
-    /**
-     * Kind
-     */
-    kind: 'error' | 'refusal' | 'malformed' | 'missing_input';
-    /**
-     * Reason
-     */
-    reason: string;
-};
-
-/**
  * EvaluationRead
  */
 export type EvaluationRead = {
@@ -605,8 +593,12 @@ export type EvaluationRead = {
     /**
      * Status
      */
-    status: 'queued' | 'running' | 'done' | 'not_evaluated';
-    failure: EvaluationFailureRead | null;
+    status: 'queued' | 'running' | 'done' | 'failed';
+    /**
+     * Stuck
+     */
+    stuck: boolean;
+    failure: LlmRunFailureRead | null;
     /**
      * Created At
      */
@@ -746,20 +738,6 @@ export type ExtractedFields = {
 };
 
 /**
- * ExtractionFailureRead
- */
-export type ExtractionFailureRead = {
-    /**
-     * Kind
-     */
-    kind: 'error' | 'refusal' | 'malformed';
-    /**
-     * Reason
-     */
-    reason: string;
-};
-
-/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -821,11 +799,27 @@ export type JobPostingRead = {
     /**
      * Evaluation Status
      */
-    evaluation_status: 'queued' | 'running' | 'done' | 'not_evaluated' | null;
-    evaluation_failure: EvaluationFailureRead | null;
+    evaluation_status: 'queued' | 'running' | 'done' | 'failed' | null;
+    evaluation_failure: LlmRunFailureRead | null;
     evaluation: EvaluationBriefRead | null;
     triage: TriageRead | null;
     application: ApplicationBriefRead | null;
+};
+
+/**
+ * LlmRunFailureRead
+ *
+ * Why an LLM job run failed.
+ */
+export type LlmRunFailureRead = {
+    /**
+     * Kind
+     */
+    kind: 'error' | 'refusal' | 'malformed' | 'missing_input' | 'locked' | 'stuck';
+    /**
+     * Reason
+     */
+    reason: string;
 };
 
 /**

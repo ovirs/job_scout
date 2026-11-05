@@ -1,46 +1,38 @@
-"""The background job that runs an Evaluation with the LLM."""
+"""The background task that runs an Evaluation with the LLM: an LLM run (see `llm_runs`).
 
-import procrastinate
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+Each attempt reads the user inputs and posting afresh. A result failing a check is a
+failed call, retried like any other.
+"""
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.domain import CheckedResult, Inputs
 from job_scout.evaluations.models import Evaluation
-from job_scout.llm.interface import Failure, Llm
-from job_scout.queue import LlmCallFailed, is_last_attempt
+from job_scout.llm.interface import Llm, Outcome
+from job_scout.llm_runs.domain import Refusal
 
 
-async def evaluate(context: procrastinate.JobContext, evaluation_id: int) -> None:
-    """Run a queued Evaluation: call the LLM, check its answer, store the outcome.
+class EvaluationTask:
+    """Judges the posting against the current user inputs and stores the gated result."""
 
-    A failed call or a failed check, or any other error, is retried on the
-    queue; only the last attempt's failure is stored. Each attempt reads the
-    user inputs and posting afresh.
-    """
-    sessions: async_sessionmaker[AsyncSession] = context.additional_context["sessions"]
-    llm: Llm = context.additional_context["llm"]
-    async with sessions.begin() as session:
-        run = await session.get_one(Evaluation, evaluation_id)
-        if run.status not in ("queued", "running"):
-            return
-        inputs = await evaluations.start(session, run)
+    task_name = "evaluate"
+    run_type = Evaluation
+
+    async def gather(self, session: AsyncSession, run: Evaluation) -> Inputs | Refusal:
+        inputs = await evaluations.gather(session, run)
         missing = inputs.missing()
-        if missing is not None:
-            # Retrying would not help: the user has to write the input first
-            evaluations.record_missing_input(run, inputs, missing)
-            return
-    # No transaction is held open while the LLM call runs
-    try:
-        checked = evaluations.check(await llm.evaluate(inputs.prompt()), inputs)
-    except Exception as error:
-        # Not an LLM failure (a bug, say), but it must not leave the Evaluation running for good
-        if not is_last_attempt(context):
-            raise
-        async with sessions.begin() as session:
-            run = await session.get_one(Evaluation, evaluation_id)
-            evaluations.record_failure(run, Failure("error", f"Unexpected error: {error!r}"))
-        return
-    if isinstance(checked.result, Failure) and not is_last_attempt(context):
-        raise LlmCallFailed(checked.result.reason)
-    async with sessions.begin() as session:
-        run = await session.get_one(Evaluation, evaluation_id)
-        evaluations.record(run, inputs, checked)
+        # Retrying would not help: the user has to write the input first
+        return inputs if missing is None else Refusal("missing_input", missing)
+
+    async def call(self, llm: Llm, inputs: Inputs) -> Outcome[CheckedResult]:
+        return evaluations.check(await llm.evaluate(inputs.prompt()), inputs)
+
+    async def record(
+        self, session: AsyncSession, run: Evaluation, inputs: Inputs, result: CheckedResult
+    ) -> Refusal | None:
+        evaluations.record(run, result)
+        return None
+
+
+EVALUATION = EvaluationTask()

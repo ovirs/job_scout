@@ -24,10 +24,11 @@ export function JobPostingPage({ id }: { id: number }) {
   const posting = useQuery(getJobPostingOptions({ path }))
   const runs = useQuery({
     ...listEvaluationsOptions({ path }),
-    // Poll while the latest Evaluation is under way
+    // Poll while the latest Evaluation is under way, and not stuck
     refetchInterval: (query) => {
-      const status = query.state.data?.at(0)?.status
-      return status === 'queued' || status === 'running' ? 1000 : false
+      const latest = query.state.data?.at(0)
+      const underWay = latest?.status === 'queued' || latest?.status === 'running'
+      return underWay && !latest.stuck ? 1000 : false
     },
   })
 

@@ -3,11 +3,13 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout import queue
 from job_scout.clippings import domain as clippings
 from job_scout.clippings.models import Clipping
 from job_scout.clippings.schemas import ClippingConfirm, ClippingRead, ClippingSubmit
+from job_scout.clippings.tasks import EXTRACTION
 from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.tasks import EVALUATION
+from job_scout.llm_runs import domain as llm_runs
 
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view.schemas import JobPostingRead
@@ -20,12 +22,11 @@ router = APIRouter(prefix="/api")
 async def submit_clipping(
     body: ClippingSubmit, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ClippingRead:
-    """Store the pasted text as a pending Clipping and queue its extraction; poll it for
-    the result."""
+    """Store the pasted text as a Clipping and queue its extraction; poll it for the
+    result."""
     clipping = clippings.submit(owner_id=owner, pasted_text=body.pasted_text, url=body.url)
     session.add(clipping)
-    await session.commit()
-    await queue.enqueue_extract_clipping(task_queue, clipping.id)
+    await llm_runs.commit_and_enqueue(session, task_queue, EXTRACTION, clipping)
     return ClippingRead.of(clipping)
 
 
@@ -38,13 +39,16 @@ async def get_clipping(clipping_id: int, session: Session, owner: Owner) -> Clip
 async def retry_clipping(
     clipping_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ClippingRead:
-    """Queue the extraction of a failed clipping again."""
-    clipping = await _clipping(session, owner, clipping_id)
-    if clipping.status != "failed":
-        raise HTTPException(status_code=409, detail="Only a failed Clipping can be retried")
-    clippings.retry(clipping)
-    await session.commit()
-    await queue.enqueue_extract_clipping(task_queue, clipping.id)
+    """Queue the extraction of a failed Clipping again, or of one stuck being read."""
+    clipping = await _clipping(session, owner, clipping_id, for_update=True)
+    try:
+        clippings.retry(clipping)
+    except (llm_runs.RunUnderWay, llm_runs.NotRetryable):
+        raise HTTPException(
+            status_code=409,
+            detail="Only a failed Clipping, or one stuck being read, can be retried",
+        ) from None
+    await llm_runs.commit_and_enqueue(session, task_queue, EXTRACTION, clipping)
     return ClippingRead.of(clipping)
 
 
@@ -65,8 +69,7 @@ async def confirm_clipping(
     await session.flush()  # assigns the posting's id
     run = evaluations.queued(posting)
     session.add(run)
-    await session.commit()
-    await queue.enqueue_evaluate(task_queue, run.id)
+    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, run)
     return JobPostingRead.of(posting, run)
 
 

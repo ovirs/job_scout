@@ -65,7 +65,7 @@ A package imports only from the packages below it. From the top:
 2. `notes`, `cover_letters`
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
-5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it
+5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
 6. `user_inputs`, `job_postings`
 
 Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).

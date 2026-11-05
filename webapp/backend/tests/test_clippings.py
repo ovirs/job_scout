@@ -9,7 +9,7 @@ from job_scout.llm.fake import FakeLlm
 from job_scout.prompts import MANUAL_ENTRY_EXTRACTION
 
 
-async def test_a_submitted_clipping_is_pending_until_the_worker_extracts_it(
+async def test_a_submitted_clipping_is_queued_until_the_worker_extracts_it(
     client: httpx.AsyncClient,
     fake_llm: FakeLlm,
     run_queued_tasks: Callable[[], Awaitable[None]],
@@ -19,7 +19,7 @@ async def test_a_submitted_clipping_is_pending_until_the_worker_extracts_it(
     submitted = await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})
     assert submitted.status_code == 201
     clipping_id = submitted.json()["id"]
-    assert submitted.json()["status"] == "pending"
+    assert submitted.json()["status"] == "queued"
     assert submitted.json()["extraction"] is None
     assert fake_llm.manual_entry_extraction.calls == []  # never inside the request
 
@@ -95,22 +95,7 @@ async def test_the_cut_takes_whole_lines_from_the_first_marker_to_the_next_last_
     assert clipping["extraction"]["description_cut"] is True
 
 
-async def test_a_failed_extraction_is_retried_on_the_queue(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    overloaded = Failure("error", "The Anthropic API is overloaded")
-    fake_llm.manual_entry_extraction.respond_with(overloaded, overloaded, an_extraction())
-
-    clipping = await submit_and_extract(client, run_queued_tasks)
-
-    assert clipping["status"] == "done"
-    assert clipping["failure"] is None
-    assert len(fake_llm.manual_entry_extraction.calls) == 3
-
-
-async def test_after_three_failed_attempts_the_clipping_shows_why_and_waits_for_a_retry(
+async def test_a_failed_clipping_shows_why_and_waits_for_a_retry(
     client: httpx.AsyncClient,
     fake_llm: FakeLlm,
     run_queued_tasks: Callable[[], Awaitable[None]],
@@ -130,7 +115,7 @@ async def test_after_three_failed_attempts_the_clipping_shows_why_and_waits_for_
     fake_llm.manual_entry_extraction.respond_with(an_extraction())
     retried = await client.post(f"/api/clippings/{clipping['id']}/retry")
     assert retried.status_code == 200
-    assert retried.json()["status"] == "pending"
+    assert retried.json()["status"] == "queued"
     assert retried.json()["failure"] is None
 
     await run_queued_tasks()
@@ -140,8 +125,8 @@ async def test_after_three_failed_attempts_the_clipping_shows_why_and_waits_for_
     assert clipping["extraction"]["title"] == "Senior Data Engineer"
 
 
-@pytest.mark.parametrize("status", ["pending", "done"])
-async def test_only_a_failed_clipping_can_be_retried(
+@pytest.mark.parametrize("status", ["queued", "done"])
+async def test_only_a_failed_or_stuck_clipping_can_be_retried(
     client: httpx.AsyncClient,
     run_queued_tasks: Callable[[], Awaitable[None]],
     status: str,
@@ -154,6 +139,23 @@ async def test_only_a_failed_clipping_can_be_retried(
 
     assert retried.status_code == 409
     assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["status"] == status
+
+
+async def test_a_clipping_stuck_being_read_can_be_retried(
+    client: httpx.AsyncClient,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    make_stuck: Callable[[str, int], None],
+) -> None:
+    clipping = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
+    assert clipping["stuck"] is False
+    make_stuck("clippings", clipping["id"])
+    assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["stuck"] is True
+
+    retried = await client.post(f"/api/clippings/{clipping['id']}/retry")
+    await run_queued_tasks()
+
+    assert retried.status_code == 200
+    assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["status"] == "done"
 
 
 async def test_extracted_facts_keep_every_salary_range_seniority_and_alternative(
@@ -227,40 +229,6 @@ async def test_a_clipping_must_have_some_text(
 async def test_an_unknown_clipping_is_not_found(client: httpx.AsyncClient) -> None:
     assert (await client.get("/api/clippings/1")).status_code == 404
     assert (await client.post("/api/clippings/1/retry")).status_code == 404
-
-
-async def test_an_unexpected_error_also_ends_in_failed_with_its_reason(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    fake_llm.manual_entry_extraction.respond_with(RuntimeError("connection reset"))
-
-    clipping = await submit_and_extract(client, run_queued_tasks)
-
-    assert clipping["status"] == "failed"
-    assert clipping["failure"]["kind"] == "error"
-    assert "connection reset" in clipping["failure"]["reason"]
-    assert len(fake_llm.manual_entry_extraction.calls) == 3
-
-
-async def test_an_unexpected_error_after_a_failed_call_names_no_model_or_prompt(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    fake_llm.manual_entry_extraction.respond_with(Failure("refusal", "The model declined"))
-    clipping = await submit_and_extract(client, run_queued_tasks)
-    assert clipping["model"] == "claude-opus-5-5"
-
-    fake_llm.manual_entry_extraction.respond_with(RuntimeError("connection reset"))
-    await client.post(f"/api/clippings/{clipping['id']}/retry")
-    await run_queued_tasks()
-
-    clipping = (await client.get(f"/api/clippings/{clipping['id']}")).json()
-    assert clipping["failure"]["kind"] == "error"
-    assert clipping["model"] is None
-    assert clipping["prompt_version"] is None
 
 
 async def test_a_last_marker_also_found_in_the_first_line_ends_the_cut_further_down(
