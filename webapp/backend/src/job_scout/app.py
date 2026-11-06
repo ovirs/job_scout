@@ -15,14 +15,12 @@ from job_scout.job_postings.routes import router as job_postings
 from job_scout.notes.routes import router as notes
 from job_scout.posting_view.routes import router as posting_view
 from job_scout.runtime import open_runtime
-from job_scout.triage.routes import router as triage
 from job_scout.user_inputs.routes import router as user_inputs
 
 # Each package's routes, in the order the OpenAPI schema lists them
 ROUTERS = [
     posting_view,
-    triage,
-    applications,
+    applications,  # the Triage route included, first
     notes,
     job_postings,
     evaluations,

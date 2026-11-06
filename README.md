@@ -50,7 +50,7 @@ Type-check the frontend with `npm run typecheck` in `webapp/frontend`.
 
 ## Backend layout
 
-The backend in `webapp/backend/src/job_scout/` has one package per domain concept ([ADR-0004](docs/adr/0004-backend-code-is-one-package-per-domain-concept.md)). A change to one concept should stay inside its folder. Every package has the same four files:
+The backend in `webapp/backend/src/job_scout/` has one package per domain concept ([ADR-0004](docs/adr/0004-backend-code-is-one-package-per-domain-concept.md)). A change to one concept should stay inside its folder. Every package has the same four files, except that a package with no routes of its own (`triage`, `llm_runs`) has no `routes.py`:
 
 - `routes.py`: the FastAPI routes. They parse the request, call the package and map its errors to HTTP. They hold no rules.
 - `schemas.py`: the Pydantic request and response models.
@@ -74,7 +74,6 @@ Packages on the same line don't import each other. Above them all is the wiring 
 - **Shared code:** goes in a module named for a concept, never `utils` or `common`.
 - **Exceptions:** a few are allowed, each listed with its reason in the `[tool.importlinter]` contract in `webapp/backend/pyproject.toml`.
   - Any route may return a Job Posting as `posting_view` shows it.
-  - Two upward calls remain until #42 and #43 remove them.
 - **Foreign keys:** they name tables by string, so they need no imports. A `relationship()` to a higher package quotes the class name and imports it only under `TYPE_CHECKING`.
 
 `uv run lint-imports` checks the order, and `tests/test_architecture.py` runs that same check.

@@ -24,6 +24,7 @@ from job_scout.evaluations.prompt import (
     Recommendation,
     Verdict,
 )
+from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm.interface import Failure, Outcome
 from job_scout.llm_runs import domain as llm_runs
@@ -282,7 +283,7 @@ async def queued_unless_evaluated(session: AsyncSession, posting: JobPosting) ->
     """A new queued Evaluation of a posting with none done or under way, added to the
     session; the caller enqueues its task. A failed one does not count, and a stuck one
     is failed and replaced."""
-    await session.refresh(posting, with_for_update=True)
+    await job_postings.lock(session, posting)
     runs = await history(session, owner_id=posting.owner_id, job_posting_id=posting.id)
     if any(run.status == "done" for run in runs):
         return None

@@ -74,6 +74,13 @@ def _title_similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, normalise(a), normalise(b)).ratio()
 
 
+async def lock(session: AsyncSession, posting: JobPosting) -> None:
+    """Lock the posting until the transaction ends, reloading it, so what other concepts
+    record about it (its Triage, its Application, its next Evaluation) is checked and
+    changed by one transaction at a time."""
+    await session.refresh(posting, with_for_update=True)
+
+
 def close(posting: JobPosting) -> None:
     """Mark the posting closed (the role is filled, the posting is gone); it is never
     deleted. Closing a closed posting keeps the date it first closed on."""

@@ -92,8 +92,7 @@ export const getApplication = <ThrowOnError extends boolean = false>(options: Op
  * Set Application State
  *
  * Move the Application to any state, from any other; each move is kept, dated, in
- * its history. The Cover Letter is locked outside Preparing, and each move to Applied
- * records its latest draft as the letter sent, or that no letter was sent.
+ * its history. The Cover Letter is locked outside Preparing.
  */
 export const setApplicationState = <ThrowOnError extends boolean = false>(options: Options<SetApplicationStateData, ThrowOnError>): RequestResult<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError> => (options.client ?? client).put<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError>({
     url: '/api/applications/{application_id}/state',

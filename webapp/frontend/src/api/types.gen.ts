@@ -809,7 +809,7 @@ export type JobPostingRead = {
 /**
  * LlmRunFailureRead
  *
- * Why an LLM job run failed.
+ * Why an LLM run failed.
  */
 export type LlmRunFailureRead = {
     /**

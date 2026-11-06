@@ -391,7 +391,7 @@
     "/api/applications/{application_id}/state": {
       "put": {
         "summary": "Set Application State",
-        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history. The Cover Letter is locked outside Preparing, and each move to Applied\nrecords its latest draft as the letter sent, or that no letter was sent.",
+        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history. The Cover Letter is locked outside Preparing.",
         "operationId": "set_application_state",
         "parameters": [
           {
@@ -3529,7 +3529,7 @@
           "reason"
         ],
         "title": "LlmRunFailureRead",
-        "description": "Why an LLM job run failed."
+        "description": "Why an LLM run failed."
       },
       "NoteAdd": {
         "properties": {
