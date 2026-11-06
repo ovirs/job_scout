@@ -1,12 +1,184 @@
-from collections.abc import Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 import httpx
 import pytest
-from clipping_helpers import PASTED_TEXT, an_extraction, submit_and_extract
+from clipping_helpers import ENVELOPE, PASTED_TEXT, an_extraction, submit_and_extract
 
+from job_scout.clippings import domain as clippings
+from job_scout.clippings.models import Clipping
+from job_scout.config import Settings
 from job_scout.llm import Failure
 from job_scout.llm.fake import FakeLlm
+from job_scout.owners import LOCAL_USER_ID
 from job_scout.prompts import MANUAL_ENTRY_EXTRACTION
+from job_scout.runtime import Runtime, open_runtime
+
+# The Clipping rules, at the package's interface
+
+
+@pytest.fixture
+async def runtime(settings: Settings) -> AsyncIterator[Runtime]:
+    async with open_runtime(settings) as runtime:
+        yield runtime
+
+
+async def a_clipping(
+    runtime: Runtime, run_queued_tasks: Callable[[], Awaitable[None]], status: str
+) -> int:
+    """A Clipping of the local user in `status`: queued, done or failed; its id."""
+    async with runtime.sessions() as session:
+        clipping = await clippings.submit(
+            session, runtime.task_queue, owner_id=LOCAL_USER_ID, pasted_text=PASTED_TEXT, url=None
+        )
+    if status != "queued":
+        await run_queued_tasks()
+    assert (await read(runtime, clipping.id)).status == status
+    return clipping.id
+
+
+async def read(runtime: Runtime, clipping_id: int) -> Clipping:
+    async with runtime.sessions() as session:
+        return await clippings.clipping(session, owner_id=LOCAL_USER_ID, clipping_id=clipping_id)
+
+
+@pytest.mark.parametrize("status", ["queued", "done"])
+async def test_only_a_failed_or_stuck_clipping_can_be_retried(
+    runtime: Runtime, run_queued_tasks: Callable[[], Awaitable[None]], status: str
+) -> None:
+    clipping_id = await a_clipping(runtime, run_queued_tasks, status)
+
+    with pytest.raises(clippings.WrongStatus):
+        async with runtime.sessions() as session:
+            await clippings.retry(
+                session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+            )
+
+    assert (await read(runtime, clipping_id)).status == status
+
+
+async def test_a_clipping_stuck_being_read_can_be_retried(
+    runtime: Runtime,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    make_stuck: Callable[[str, int], None],
+) -> None:
+    clipping_id = await a_clipping(runtime, run_queued_tasks, "queued")
+    make_stuck("clippings", clipping_id)
+
+    async with runtime.sessions() as session:
+        await clippings.retry(
+            session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+        )
+    await run_queued_tasks()
+
+    assert (await read(runtime, clipping_id)).status == "done"
+
+
+async def abandon(runtime: Runtime, clipping_id: int) -> Clipping:
+    async with runtime.sessions() as session:
+        return await clippings.abandon(session, owner_id=LOCAL_USER_ID, clipping_id=clipping_id)
+
+
+@pytest.mark.parametrize("status", ["done", "failed"])
+async def test_a_done_or_failed_clipping_can_be_abandoned_and_is_kept(
+    runtime: Runtime,
+    fake_llm: FakeLlm,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    status: str,
+) -> None:
+    if status == "failed":
+        fake_llm.manual_entry_extraction.respond_with(Failure("refusal", "The model declined"))
+    clipping_id = await a_clipping(runtime, run_queued_tasks, status)
+
+    await abandon(runtime, clipping_id)
+
+    clipping = await read(runtime, clipping_id)
+    assert clipping.status == "abandoned"
+    assert clipping.pasted_text == PASTED_TEXT
+    with pytest.raises(clippings.WrongStatus):
+        async with runtime.sessions() as session:
+            await clippings.retry(
+                session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+            )
+
+
+@pytest.mark.parametrize("status", ["queued", "confirmed"])
+async def test_a_clipping_still_being_read_or_confirmed_cannot_be_abandoned(
+    runtime: Runtime, run_queued_tasks: Callable[[], Awaitable[None]], status: str
+) -> None:
+    clipping_id = await a_clipping(
+        runtime, run_queued_tasks, "queued" if status == "queued" else "done"
+    )
+    if status == "confirmed":
+        await confirm(runtime, clipping_id)
+
+    with pytest.raises(clippings.WrongStatus):
+        await abandon(runtime, clipping_id)
+
+    assert (await read(runtime, clipping_id)).status == status
+
+
+async def confirm(runtime: Runtime, clipping_id: int) -> clippings.Confirmed:
+    async with runtime.sessions() as session:
+        return await clippings.confirm(
+            session,
+            runtime.task_queue,
+            owner_id=LOCAL_USER_ID,
+            clipping_id=clipping_id,
+            title="Senior Data Engineer",
+            company="Acme",
+            location_text=None,
+            workplace_type="remote",
+            description="Build pipelines.",
+        )
+
+
+async def test_confirming_a_clipping_saves_its_posting_and_queues_its_evaluation(
+    runtime: Runtime,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    queued_tasks: Callable[[], Awaitable[list[str]]],
+) -> None:
+    clipping_id = await a_clipping(runtime, run_queued_tasks, "done")
+
+    confirmed = await confirm(runtime, clipping_id)
+
+    assert confirmed.posting.title == "Senior Data Engineer"
+    assert confirmed.posting.source == "manual"
+    assert confirmed.evaluation.job_posting_id == confirmed.posting.id
+    assert confirmed.evaluation.status == "queued"
+    assert await queued_tasks() == ["evaluate"]
+    clipping = await read(runtime, clipping_id)
+    assert clipping.status == "confirmed"
+    assert clipping.job_posting_id == confirmed.posting.id
+
+
+@pytest.mark.parametrize("status", ["queued", "failed", "confirmed", "abandoned"])
+async def test_only_a_done_clipping_can_be_confirmed(
+    runtime: Runtime,
+    fake_llm: FakeLlm,
+    run_queued_tasks: Callable[[], Awaitable[None]],
+    queued_tasks: Callable[[], Awaitable[list[str]]],
+    status: str,
+) -> None:
+    if status == "failed":
+        fake_llm.manual_entry_extraction.respond_with(Failure("refusal", "The model declined"))
+    clipping_id = await a_clipping(
+        runtime, run_queued_tasks, status if status in ("queued", "failed") else "done"
+    )
+    if status == "confirmed":
+        await confirm(runtime, clipping_id)
+        await run_queued_tasks()
+    if status == "abandoned":
+        await abandon(runtime, clipping_id)
+
+    with pytest.raises(clippings.WrongStatus):
+        await confirm(runtime, clipping_id)
+
+    assert (await read(runtime, clipping_id)).status == status
+    if status != "queued":
+        assert await queued_tasks() == []  # no Evaluation queued
+
+
+# The HTTP API
 
 
 async def test_a_submitted_clipping_is_queued_until_the_worker_extracts_it(
@@ -125,39 +297,6 @@ async def test_a_failed_clipping_shows_why_and_waits_for_a_retry(
     assert clipping["extraction"]["title"] == "Senior Data Engineer"
 
 
-@pytest.mark.parametrize("status", ["queued", "done"])
-async def test_only_a_failed_or_stuck_clipping_can_be_retried(
-    client: httpx.AsyncClient,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-    status: str,
-) -> None:
-    clipping = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
-    if status == "done":
-        await run_queued_tasks()
-
-    retried = await client.post(f"/api/clippings/{clipping['id']}/retry")
-
-    assert retried.status_code == 409
-    assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["status"] == status
-
-
-async def test_a_clipping_stuck_being_read_can_be_retried(
-    client: httpx.AsyncClient,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-    make_stuck: Callable[[str, int], None],
-) -> None:
-    clipping = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
-    assert clipping["stuck"] is False
-    make_stuck("clippings", clipping["id"])
-    assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["stuck"] is True
-
-    retried = await client.post(f"/api/clippings/{clipping['id']}/retry")
-    await run_queued_tasks()
-
-    assert retried.status_code == 200
-    assert (await client.get(f"/api/clippings/{clipping['id']}")).json()["status"] == "done"
-
-
 async def test_extracted_facts_keep_every_salary_range_seniority_and_alternative(
     client: httpx.AsyncClient,
     fake_llm: FakeLlm,
@@ -229,6 +368,22 @@ async def test_a_clipping_must_have_some_text(
 async def test_an_unknown_clipping_is_not_found(client: httpx.AsyncClient) -> None:
     assert (await client.get("/api/clippings/1")).status_code == 404
     assert (await client.post("/api/clippings/1/retry")).status_code == 404
+
+
+async def test_a_refused_operation_is_a_conflict(client: httpx.AsyncClient) -> None:
+    clipping = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
+    path = f"/api/clippings/{clipping['id']}"
+
+    retried = await client.post(f"{path}/retry")
+    confirmed = await client.post(f"{path}/confirm", json=ENVELOPE)
+    abandoned = await client.post(f"{path}/abandon")
+
+    assert retried.status_code == 409
+    assert retried.json()["detail"] == (
+        "Only a failed Clipping, or one stuck being read, can be retried"
+    )
+    assert confirmed.status_code == 409
+    assert abandoned.status_code == 409
 
 
 async def test_a_last_marker_also_found_in_the_first_line_ends_the_cut_further_down(

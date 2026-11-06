@@ -10,7 +10,6 @@ from clipping_helpers import (
     submit_and_extract,
 )
 
-from job_scout.llm import Failure
 from job_scout.llm.fake import NOTHING_FOUND, FakeLlm
 
 URL = "https://www.linkedin.com/jobs/view/4012345678/"
@@ -56,42 +55,6 @@ async def test_the_corrections_made_on_confirmation_are_what_gets_stored(
     assert clipping["extraction"]["extracted_fields"]["workplace_type"] == "hybrid"
     assert posting["extracted_fields"]["seniority"] == ["senior", "staff"]
     assert len(fake_llm.manual_entry_extraction.calls) == 1
-
-
-async def test_a_clipping_is_confirmed_once_and_points_at_its_manual_entry(
-    client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
-) -> None:
-    clipping = await submit_and_extract(client, run_queued_tasks)
-    path = f"/api/clippings/{clipping['id']}/confirm"
-
-    posting = (await client.post(path, json=ENVELOPE)).json()
-    again = await client.post(path, json=ENVELOPE)
-
-    assert again.status_code == 409
-    clipping = (await client.get(f"/api/clippings/{clipping['id']}")).json()
-    assert clipping["status"] == "confirmed"
-    assert clipping["job_posting_id"] == posting["id"]
-    assert clipping["extraction"] is not None  # still shown
-    assert [p["id"] for p in (await client.get("/api/job-postings")).json()] == [posting["id"]]
-
-
-async def test_a_clipping_not_yet_read_or_whose_reading_failed_cannot_be_confirmed(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    pending = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
-    assert (
-        await client.post(f"/api/clippings/{pending['id']}/confirm", json=ENVELOPE)
-    ).status_code == 409
-
-    fake_llm.manual_entry_extraction.respond_with(Failure("refusal", "The model declined"))
-    await run_queued_tasks()
-    assert (
-        await client.post(f"/api/clippings/{pending['id']}/confirm", json=ENVELOPE)
-    ).status_code == 409
-
-    assert (await client.get("/api/job-postings")).json() == []
 
 
 @pytest.mark.parametrize(
@@ -192,10 +155,9 @@ async def test_a_company_with_no_stored_postings_has_no_similar_ones(
     assert similar.json() == []
 
 
-async def test_an_abandoned_clipping_stores_no_posting_and_can_no_longer_be_confirmed(
+async def test_an_abandoned_clipping_is_kept_and_stores_no_posting(
     client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
 ) -> None:
-    existing = await save_manual_entry(client, run_queued_tasks)
     clipping = await submit_and_extract(client, run_queued_tasks)
 
     abandoned = await client.post(f"/api/clippings/{clipping['id']}/abandon")
@@ -203,35 +165,7 @@ async def test_an_abandoned_clipping_stores_no_posting_and_can_no_longer_be_conf
     assert abandoned.status_code == 200
     assert abandoned.json()["status"] == "abandoned"
     assert abandoned.json()["pasted_text"] == PASTED_TEXT  # kept, not deleted
-    confirmed = await client.post(f"/api/clippings/{clipping['id']}/confirm", json=ENVELOPE)
-    assert confirmed.status_code == 409
-    assert [p["id"] for p in (await client.get("/api/job-postings")).json()] == [existing["id"]]
-
-
-async def test_a_clipping_whose_reading_failed_can_be_abandoned(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: Callable[[], Awaitable[None]],
-) -> None:
-    fake_llm.manual_entry_extraction.respond_with(Failure("refusal", "The model declined"))
-    clipping = await submit_and_extract(client, run_queued_tasks)
-
-    abandoned = await client.post(f"/api/clippings/{clipping['id']}/abandon")
-
-    assert abandoned.json()["status"] == "abandoned"
-    assert (await client.post(f"/api/clippings/{clipping['id']}/retry")).status_code == 409
-
-
-async def test_a_clipping_still_being_read_or_confirmed_cannot_be_abandoned(
-    client: httpx.AsyncClient, run_queued_tasks: Callable[[], Awaitable[None]]
-) -> None:
-    pending = (await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})).json()
-    assert (await client.post(f"/api/clippings/{pending['id']}/abandon")).status_code == 409
-
-    await run_queued_tasks()
-    await client.post(f"/api/clippings/{pending['id']}/confirm", json=ENVELOPE)
-    assert (await client.post(f"/api/clippings/{pending['id']}/abandon")).status_code == 409
-    assert (await client.get(f"/api/clippings/{pending['id']}")).json()["status"] == "confirmed"
+    assert (await client.get("/api/job-postings")).json() == []
 
 
 async def test_closing_sets_a_closed_date_and_reopening_clears_it_without_deleting(
