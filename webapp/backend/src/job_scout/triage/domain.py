@@ -1,5 +1,8 @@
 """Triage: the user's own call on a Job Posting (Interested, Maybe, Ignored); untriaged is
-the absence of one. The lists that follow from it are `posting_view`'s."""
+the absence of one. The lists that follow from it are `posting_view`'s.
+
+The user sets it through the Applications package, which keeps it locked at Interested
+while the posting has a live Application; the Triage package knows nothing of that."""
 
 import uuid
 from datetime import UTC, datetime
@@ -7,16 +10,19 @@ from datetime import UTC, datetime
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.triage.models import Triage, TriageValue
 
 
 async def set_triage(session: AsyncSession, posting: JobPosting, value: TriageValue) -> Triage:
     """The user's Triage of the posting: the first creates it, later ones change its value.
+    Any posting can be triaged, whatever its Evaluation.
 
-    Any posting can be triaged, whatever its Evaluation. While the posting has a live
-    Application its Triage is locked at Interested: the caller refuses the change.
+    The posting is locked first, so two first Triages do not both create one: the later
+    waits, then changes the value the earlier set.
     """
+    await job_postings.lock(session, posting)
     triage = await session.scalar(select(Triage).where(Triage.job_posting_id == posting.id))
     now = datetime.now(UTC)
     if triage is None:

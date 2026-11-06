@@ -1,13 +1,16 @@
 """The four inputs the user writes: Career Profile, Preferences, Writing Guide and Deal Breakers.
 
 Every save adds a new immutable version, so later records can name the exact
-versions they used. Saving never triggers an Evaluation or any other LLM call.
+versions they used. Saving never triggers an Evaluation or any other LLM call. Saves of
+the same input are numbered one at a time: two at once both succeed, as versions N and
+N + 1, since each is a whole new version rather than an edit of the other.
 """
 
 import uuid
 from datetime import UTC, datetime
+from typing import Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.user_inputs.models import (
@@ -22,6 +25,7 @@ from job_scout.user_inputs.models import (
 async def save_document(
     session: AsyncSession, *, owner_id: uuid.UUID, kind: DocumentKind, text: str
 ) -> DocumentVersion:
+    await _lock(session, owner_id, kind)
     current = await current_document(session, owner_id=owner_id, kind=kind)
     version = DocumentVersion(
         owner_id=owner_id,
@@ -59,6 +63,7 @@ async def document_version(
 async def add_deal_breaker(
     session: AsyncSession, *, owner_id: uuid.UUID, text: str
 ) -> DealBreakerSetVersion:
+    await _lock(session, owner_id, "deal-breakers")
     deal_breaker = DealBreaker(owner_id=owner_id)
     session.add(deal_breaker)
     await session.flush()  # assigns the new Deal Breaker's id
@@ -71,6 +76,7 @@ async def edit_deal_breaker(
     session: AsyncSession, *, owner_id: uuid.UUID, deal_breaker_id: int, text: str
 ) -> DealBreakerSetVersion | None:
     """Change one Deal Breaker's text, keeping its id; None if it is not in the current set."""
+    await _lock(session, owner_id, "deal-breakers")
     current = await current_deal_breaker_set(session, owner_id=owner_id)
     texts = _texts_by_id(current)
     if deal_breaker_id not in texts:
@@ -86,6 +92,7 @@ async def delete_deal_breaker(
 
     None if it is not in the current set.
     """
+    await _lock(session, owner_id, "deal-breakers")
     current = await current_deal_breaker_set(session, owner_id=owner_id)
     texts = _texts_by_id(current)
     if deal_breaker_id not in texts:
@@ -115,6 +122,16 @@ async def deal_breaker_set_version(
             DealBreakerSetVersion.id == version_id, DealBreakerSetVersion.owner_id == owner_id
         )
     )
+
+
+async def _lock(
+    session: AsyncSession, owner_id: uuid.UUID, user_input: DocumentKind | Literal["deal-breakers"]
+) -> None:
+    """Lock one of the owner's inputs until the transaction ends, so its saves read the
+    current version and number the next one at a time. An advisory lock, since there is
+    no row to lock before the first version."""
+    key = func.hashtextextended(f"user-input:{owner_id}:{user_input}", 0)
+    await session.execute(select(func.pg_advisory_xact_lock(key)))
 
 
 def _texts_by_id(version: DealBreakerSetVersion | None) -> dict[int, str]:

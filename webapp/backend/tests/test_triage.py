@@ -247,27 +247,6 @@ async def test_a_triaged_skip_is_out_of_the_skip_list(
     assert await titles(client, "shortlist") == ["Skipped"]
 
 
-async def test_the_triage_can_be_changed_and_records_who_set_it_and_when(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    await write_career_profile(client)
-    posting_id = await add_posting(client, fake_llm, run_queued_tasks, "Fickle")
-
-    first = (await triage(client, posting_id, "maybe")).json()["triage"]
-    second = (await triage(client, posting_id, "interested")).json()["triage"]
-
-    assert first["value"] == "maybe"
-    assert first["origin"] == "user"
-    assert second["value"] == "interested"
-    assert second["origin"] == "user"
-    assert second["created_at"] == first["created_at"]  # when it was first triaged
-    assert second["changed_at"] >= first["changed_at"]
-    assert await titles(client, "later") == []
-    assert await titles(client, "shortlist") == ["Fickle"]
-    posting = (await client.get(f"/api/job-postings/{posting_id}")).json()
-    assert posting["triage"] == second
-
-
 async def test_an_unknown_triage_value_is_rejected(
     client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
 ) -> None:

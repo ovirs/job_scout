@@ -1,4 +1,6 @@
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from fastapi import APIRouter, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -6,14 +8,30 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
-from job_scout.evaluations import domain as evaluations
-from job_scout.evaluations.tasks import EVALUATION
-from job_scout.job_postings.routes import job_posting_or_404
-from job_scout.llm_runs import domain as llm_runs
+
+# A route may build its response from the posting view, above it (see the import contract)
+from job_scout.posting_view import domain as posting_view
+from job_scout.posting_view.schemas import JobPostingRead
 from job_scout.routing import Owner, Session, TaskQueue
-from job_scout.triage import domain as triage
+from job_scout.triage.schemas import TriageSet
 
 router = APIRouter(prefix="/api")
+
+
+# The Triage route is the Applications package's, which keeps the Triage locked while the
+# posting has a live Application; first, so the OpenAPI schema lists it before the others
+@router.put("/job-postings/{job_posting_id}/triage")
+async def set_job_posting_triage(
+    job_posting_id: int, body: TriageSet, session: Session, owner: Owner
+) -> JobPostingRead:
+    """The user's Triage of the posting, replacing any earlier one; allowed for any
+    posting, evaluated or not. Refused while the posting has a live Application, which
+    keeps it locked at Interested."""
+    with _refusals():
+        posting = await applications.set_triage(
+            session, owner_id=owner, job_posting_id=job_posting_id, value=body.value
+        )
+    return await posting_view.read(session, posting)
 
 
 @router.post("/job-postings/{job_posting_id}/applications", status_code=201)
@@ -23,16 +41,10 @@ async def start_application(
     """Start applying: a new Application in Preparing, with the posting's Triage set to
     Interested. Refused while the posting has a live Application. Queues an Evaluation
     of a posting that has none done or under way."""
-    posting = await job_posting_or_404(session, owner, job_posting_id)
-    if await applications.live(session, posting) is not None:
-        raise HTTPException(status_code=409, detail="The posting already has a live Application")
-    await triage.set_triage(session, posting, "interested")
-    application = applications.start(posting)
-    session.add(application)
-    run = await evaluations.queued_unless_evaluated(session, posting)
-    await llm_runs.commit_and_enqueue(
-        session, task_queue, EVALUATION, *([] if run is None else [run])
-    )
+    with _refusals():
+        application = await applications.start(
+            session, task_queue, owner_id=owner, job_posting_id=job_posting_id
+        )
     return ApplicationRead.of(application)
 
 
@@ -58,11 +70,10 @@ async def set_application_state(
 ) -> ApplicationRead:
     """Move the Application to any state, from any other; each move is kept, dated, in
     its history. The Cover Letter is locked outside Preparing."""
-    # Locked before the move is timed, so no Cover Letter draft is stored while it moves;
-    # #43 moves this into an Applications operation
-    application = await application_or_404(session, owner, application_id, for_update=True)
-    applications.set_state(application, body.state)
-    await session.commit()
+    with _refusals():
+        application = await applications.move(
+            session, owner_id=owner, application_id=application_id, state=body.state
+        )
     return ApplicationRead.of(application)
 
 
@@ -71,22 +82,30 @@ async def delete_application(application_id: int, session: Session, owner: Owner
     """Delete an Application while it is Preparing: it is hidden everywhere but kept, and
     the posting's Triage stays Interested, changeable again. Past Preparing, an
     Application is closed rather than deleted."""
-    application = await application_or_404(session, owner, application_id)
-    if application.state != "preparing":
-        raise HTTPException(
-            status_code=409, detail="Only an Application in Preparing can be deleted"
-        )
-    applications.delete(application)
-    await session.commit()
+    with _refusals():
+        await applications.delete(session, owner_id=owner, application_id=application_id)
 
 
 async def application_or_404(
-    session: AsyncSession, owner: uuid.UUID, application_id: int, *, for_update: bool = False
+    session: AsyncSession, owner: uuid.UUID, application_id: int
 ) -> Application:
     """The owner's live Application, for any package's routes; a 404 when there is none."""
     application = await applications.application(
-        session, owner_id=owner, application_id=application_id, for_update=for_update
+        session, owner_id=owner, application_id=application_id
     )
     if application is None:
         raise HTTPException(status_code=404, detail="No such Application")
     return application
+
+
+@contextmanager
+def _refusals() -> Iterator[None]:
+    """Map the Applications package's errors to HTTP."""
+    try:
+        yield
+    except applications.NoSuchJobPosting:
+        raise HTTPException(status_code=404, detail="No such Job Posting") from None
+    except applications.NoSuchApplication:
+        raise HTTPException(status_code=404, detail="No such Application") from None
+    except applications.Refused as refusal:
+        raise HTTPException(status_code=409, detail=str(refusal)) from None
