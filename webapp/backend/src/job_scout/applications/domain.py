@@ -65,16 +65,16 @@ async def live_by_posting(
 
 
 async def application(
-    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int
+    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int, for_update: bool = False
 ) -> Application | None:
-    """A live Application; a deleted one is hidden as if it never existed."""
-    return await session.scalar(
-        select(Application).where(
-            Application.id == application_id,
-            Application.owner_id == owner_id,
-            Application.deleted_at.is_(None),
-        )
+    """A live Application; a deleted one is hidden as if it never existed. `for_update`
+    locks it until the transaction ends, so two requests cannot both change it."""
+    query = select(Application).where(
+        Application.id == application_id,
+        Application.owner_id == owner_id,
+        Application.deleted_at.is_(None),
     )
+    return await session.scalar(query.with_for_update() if for_update else query)
 
 
 def set_state(application: Application, state: ApplicationState) -> ApplicationStateChange | None:

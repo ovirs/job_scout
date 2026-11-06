@@ -1,16 +1,12 @@
 import uuid
 from datetime import datetime
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from sqlalchemy import CheckConstraint, ForeignKey, Index, String, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from job_scout.db import Base
 from job_scout.job_postings.models import JobPosting
-
-if TYPE_CHECKING:
-    # A relationship up to Cover Letters (ADR-0004); removed by #42
-    from job_scout.cover_letters.models import CoverLetterDraft
 
 ApplicationState = Literal[
     "preparing",
@@ -75,8 +71,7 @@ class Application(Base):
 
 class ApplicationStateChange(Base):
     """One entry in an Application's state history: the state it moved to, and when.
-    Starting an Application records its first entry, Preparing. A move to Applied also
-    records the Cover Letter sent: the latest draft then, or none."""
+    Starting an Application records its first entry, Preparing."""
 
     __tablename__ = "application_state_changes"
 
@@ -84,6 +79,3 @@ class ApplicationStateChange(Base):
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     state: Mapped[ApplicationState] = mapped_column(String)
     changed_at: Mapped[datetime] = mapped_column(server_default=func.now())
-    # On a move to Applied, the draft locked as the letter sent; null when none was
-    sent_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
-    sent_draft: Mapped["CoverLetterDraft | None"] = relationship(lazy="selectin")

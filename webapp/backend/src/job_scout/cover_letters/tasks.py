@@ -9,8 +9,8 @@ gets no draft: the run is refused as locked.
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications.models import Application
-from job_scout.cover_letters import domain as cover_letters
-from job_scout.cover_letters.domain import Inputs
+from job_scout.cover_letters import generation
+from job_scout.cover_letters.generation import Inputs
 from job_scout.cover_letters.models import CoverLetterGeneration
 from job_scout.cover_letters.prompt import CoverLetterResult
 from job_scout.llm.interface import Llm, Outcome
@@ -27,13 +27,13 @@ class CoverLetterGenerationTask:
         locked = await _locked(session, run)
         if locked is not None:
             return locked
-        inputs = await cover_letters.gather(session, run)
+        inputs = await generation.gather(session, run)
         missing = inputs.missing()
         # Retrying would not help: the user has to write the input first
         return inputs if missing is None else Refusal("missing_input", missing)
 
     async def call(self, llm: Llm, inputs: Inputs) -> Outcome[CoverLetterResult]:
-        return cover_letters.check(await llm.write_cover_letter(inputs.prompt()))
+        return generation.check(await llm.write_cover_letter(inputs.prompt()))
 
     async def record(
         self,
@@ -46,13 +46,16 @@ class CoverLetterGenerationTask:
         locked = await _locked(session, run)
         if locked is not None:
             return locked
-        cover_letters.record(session, run, inputs, result)
+        generation.record(session, run, inputs, result)
         return None
 
 
 async def _locked(session: AsyncSession, run: CoverLetterGeneration) -> Refusal | None:
-    application = await session.get_one(Application, run.application_id)
-    reason = cover_letters.locked_reason(application)
+    """Why the run's Application takes no draft, if it does not. The Application stays
+    locked until the transaction ends, so it cannot move to Applied before the draft is
+    stored, and the draft is the letter sent."""
+    application = await session.get_one(Application, run.application_id, with_for_update=True)
+    reason = generation.locked_reason(application)
     return None if reason is None else Refusal("locked", reason)
 
 

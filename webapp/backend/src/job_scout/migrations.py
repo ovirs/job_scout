@@ -8,8 +8,12 @@ from alembic.config import Config
 from job_scout.config import Settings
 
 
-def upgrade(database_url: str) -> None:
-    command.upgrade(_config(Settings(database_url=database_url)), "head")
+def upgrade(database_url: str, revision: str = "head") -> None:
+    command.upgrade(_config(Settings(database_url=database_url)), revision)
+
+
+def downgrade(database_url: str, revision: str) -> None:
+    command.downgrade(_config(Settings(database_url=database_url)), revision)
 
 
 def include_name(name: str | None, type_: str, parent_names: object) -> bool:

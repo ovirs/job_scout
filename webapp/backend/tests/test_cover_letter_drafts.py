@@ -1,5 +1,6 @@
 """Cover Letter drafts after the first: hand edits, revisions in words, restore, delete,
-the edited-posting badge and locking with the Application's state."""
+the edited-posting badge and the letter sent. Their rules are tested at the package's
+interface, in test_cover_letter_rules.py."""
 
 from typing import Any
 
@@ -100,20 +101,12 @@ async def test_a_revision_in_words_sends_the_hand_edited_text_with_the_instructi
     ]
 
 
-async def test_a_revision_needs_a_draft_and_a_confirmed_evaluation_case(
+async def test_a_revision_needs_an_instruction(
     client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
 ) -> None:
-    await write_career_profile(client)
-    application = await started_application(client, fake_llm, run_queued_tasks)
+    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
 
-    nothing_to_revise = await revise(client, application["id"], "Shorter.")
-    assert nothing_to_revise.status_code == 409
-    assert "draft" in nothing_to_revise.json()["detail"]
-    await save_draft(client, application["id"], "My own letter.")
-    unconfirmed = await revise(client, application["id"], "Shorter.", evaluation_case="missing")
-    assert unconfirmed.status_code == 409
     assert (await revise(client, application["id"], "  ")).status_code == 422
-    assert (await cover_letter(client, application["id"]))["generation"] is None
 
 
 async def test_regenerating_writes_from_scratch_without_the_latest_draft(
@@ -164,17 +157,6 @@ async def test_restoring_an_earlier_draft_makes_a_new_latest_draft_with_its_text
         "A hand edit I regret.",
         "Generated.",
     ]
-
-
-async def test_only_a_live_draft_of_the_application_can_be_restored(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    application = await generated_application(client, fake_llm, run_queued_tasks, "Mine.")
-    draft_id = (await cover_letter(client, application["id"]))["draft"]["id"]
-    other = await started_application(client, fake_llm, run_queued_tasks, "Other")
-
-    assert (await restore(client, other["id"], draft_id)).status_code == 404
-    assert (await restore(client, application["id"], 999)).status_code == 404
 
 
 async def delete_draft(
@@ -233,41 +215,6 @@ async def test_the_letter_shows_when_the_posting_was_edited_since_its_latest_dra
     assert (await cover_letter(client, application["id"]))["posting_edited_since_draft"] is True
 
 
-async def test_every_action_is_refused_outside_preparing_and_moving_back_unlocks_them(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
-    application_id = application["id"]
-    before = await cover_letter(client, application_id)
-    draft_id = before["draft"]["id"]
-
-    for state in ["applied", "screen_call", "withdrawn"]:
-        await move(client, application_id, state)
-        for refused in [
-            await save_draft(client, application_id, "A change."),
-            await revise(client, application_id, "Shorter."),
-            await generate(client, application_id),
-            await restore(client, application_id, draft_id),
-            await delete_draft(client, application_id, draft_id),
-        ]:
-            assert refused.status_code == 409
-            assert "locked" in refused.json()["detail"]
-        letter = await cover_letter(client, application_id)
-        assert letter["editable"] is False
-        assert letter["drafts"] == before["drafts"]
-        assert letter["generation"] == before["generation"]
-
-    await move(client, application_id, "preparing")
-
-    assert (await cover_letter(client, application_id))["editable"] is True
-    assert (await save_draft(client, application_id, "A change.")).status_code == 201
-    assert (await restore(client, application_id, draft_id)).status_code == 201
-    assert (await delete_draft(client, application_id, draft_id)).status_code == 200
-    assert (await revise(client, application_id, "Shorter.")).status_code == 201
-    await run_queued_tasks()
-    assert (await cover_letter(client, application_id))["draft"]["origin"] == "revised_in_words"
-
-
 async def test_moving_to_applied_with_no_draft_records_that_no_letter_was_sent(
     client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
 ) -> None:
@@ -281,44 +228,3 @@ async def test_moving_to_applied_with_no_draft_records_that_no_letter_was_sent(
     sent_letter = (await cover_letter(client, application["id"]))["sent"]
     assert sent_letter["draft"] is None
     assert sent_letter["applied_at"] == moved.json()["state_changed_at"]
-
-
-async def test_each_move_to_applied_locks_the_then_latest_draft_as_the_sent_letter(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
-    application_id = application["id"]
-    await save_draft(client, application_id, "First sent.")
-
-    await move(client, application_id, "applied")
-    first = (await cover_letter(client, application_id))["sent"]
-    assert first["draft"]["text"] == "First sent."
-    # Moving on keeps the letter that was sent
-    await move(client, application_id, "screen_call")
-    assert (await cover_letter(client, application_id))["sent"] == first
-
-    await move(client, application_id, "preparing")
-    second = (await save_draft(client, application_id, "Sent again.")).json()["draft"]
-    await move(client, application_id, "applied")
-
-    letter = await cover_letter(client, application_id)
-    assert letter["sent"]["draft"] == second
-    assert letter["sent"]["applied_at"] > first["applied_at"]
-    # Drafts are kept after locking
-    assert [d["text"] for d in letter["drafts"]] == ["Sent again.", "First sent.", "Generated."]
-
-
-async def test_a_deleted_draft_is_kept_as_the_letter_that_was_sent(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
-    application_id = application["id"]
-    sent_draft = (await cover_letter(client, application_id))["draft"]
-    await move(client, application_id, "applied")
-    await move(client, application_id, "preparing")
-
-    await delete_draft(client, application_id, sent_draft["id"])
-
-    letter = await cover_letter(client, application_id)
-    assert letter["drafts"] == []
-    assert letter["sent"]["draft"] == sent_draft

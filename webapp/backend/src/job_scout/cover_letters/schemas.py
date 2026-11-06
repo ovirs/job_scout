@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from job_scout.cover_letters import domain as cover_letters
 from job_scout.cover_letters.models import (
     CoverLetterDraft,
     CoverLetterDraftOrigin,
@@ -117,6 +118,13 @@ class SentCoverLetterRead(BaseModel):
     applied_at: datetime
     draft: CoverLetterDraftRead | None  # null when no Cover Letter was sent
 
+    @classmethod
+    def of(cls, sent: cover_letters.SentLetter) -> "SentCoverLetterRead":
+        return cls(
+            applied_at=sent.applied_at,
+            draft=None if sent.draft is None else CoverLetterDraftRead.of(sent.draft),
+        )
+
 
 class CoverLetterRead(BaseModel):
     application_id: int
@@ -127,3 +135,22 @@ class CoverLetterRead(BaseModel):
     sent: SentCoverLetterRead | None  # null until the Application first moves to Applied
     generation: CoverLetterGenerationRead | None  # the latest request, done or not
     evaluation: CoverLetterEvaluationRead  # what generating now would take flags from
+
+    @classmethod
+    def of(cls, letter: cover_letters.CoverLetter) -> "CoverLetterRead":
+        source = letter.flags_source
+        return cls(
+            application_id=letter.application.id,
+            editable=letter.editable,
+            draft=None if letter.draft is None else CoverLetterDraftRead.of(letter.draft),
+            drafts=[CoverLetterDraftRead.of(draft) for draft in letter.drafts],
+            posting_edited_since_draft=letter.posting_edited_since_draft,
+            sent=None if letter.sent is None else SentCoverLetterRead.of(letter.sent),
+            generation=None
+            if letter.generation is None
+            else CoverLetterGenerationRead.of(letter.generation),
+            evaluation=CoverLetterEvaluationRead(
+                case=source.case,
+                evaluation_id=None if source.evaluation is None else source.evaluation.id,
+            ),
+        )

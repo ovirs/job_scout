@@ -1,5 +1,7 @@
 """The fake LLM for tests: canned results or failures per step, and a record of the inputs."""
 
+from collections.abc import Awaitable, Callable
+
 from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Settings
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
@@ -14,6 +16,8 @@ class FakeStep[I, T]:
     It answers with the responses given to `respond_with`, in order, repeating
     the last one, and records every input it was called with in `calls`. An
     exception given as a response is raised, as an unexpected error would be.
+    A hook given to `while_answering` runs during each call, before it answers, as
+    the user acting while the LLM works would.
     """
 
     def __init__(self, *, default: T, model: str, prompt: Prompt) -> None:
@@ -21,12 +25,18 @@ class FakeStep[I, T]:
         self._responses: list[T | Failure | Exception] = [default]
         self._model = model
         self._prompt = prompt
+        self._while_answering: Callable[[I], Awaitable[None]] | None = None
 
     def respond_with(self, *responses: T | Failure | Exception) -> None:
         self._responses = list(responses)
 
-    def __call__(self, inputs: I) -> Outcome[T]:
+    def while_answering(self, hook: Callable[[I], Awaitable[None]]) -> None:
+        self._while_answering = hook
+
+    async def __call__(self, inputs: I) -> Outcome[T]:
         self.calls.append(inputs)
+        if self._while_answering is not None:
+            await self._while_answering(inputs)
         result = self._responses.pop(0) if len(self._responses) > 1 else self._responses[0]
         if isinstance(result, Exception):
             raise result
@@ -85,10 +95,10 @@ class FakeLlm:
         )
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
-        return self.manual_entry_extraction(pasted_text)
+        return await self.manual_entry_extraction(pasted_text)
 
     async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
-        return self.evaluation(prompt)
+        return await self.evaluation(prompt)
 
     async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
-        return self.cover_letter(prompt)
+        return await self.cover_letter(prompt)

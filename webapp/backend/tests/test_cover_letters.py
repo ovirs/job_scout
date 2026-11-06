@@ -151,9 +151,6 @@ async def test_with_no_evaluation_the_case_is_reported_and_the_letter_has_no_fla
 
     letter = await cover_letter(client, application["id"])
     assert letter["evaluation"] == {"case": "missing", "evaluation_id": None}
-    unconfirmed = await generate(client, application["id"], evaluation_case="current")
-    assert unconfirmed.status_code == 409
-    assert "missing" in unconfirmed.json()["detail"]
     confirmed = await generate(client, application["id"], evaluation_case="missing")
     assert confirmed.status_code == 201
     await run_queued_tasks()
@@ -188,7 +185,6 @@ async def test_with_an_outdated_evaluation_the_case_is_reported_and_its_flags_ar
 
     letter = await cover_letter(client, application["id"])
     assert letter["evaluation"] == {"case": "outdated", "evaluation_id": evaluation_id}
-    assert (await generate(client, application["id"], evaluation_case="current")).status_code == 409
     confirmed = await generate(client, application["id"], evaluation_case="outdated")
     assert confirmed.status_code == 201
     await run_queued_tasks()
@@ -199,17 +195,6 @@ async def test_with_an_outdated_evaluation_the_case_is_reported_and_its_flags_ar
     draft = (await cover_letter(client, application["id"]))["draft"]
     assert draft["evaluation_case"] == "outdated"
     assert draft["evaluation_id"] == evaluation_id
-
-
-async def test_confirming_a_missing_or_outdated_case_is_refused_when_the_evaluation_is_current(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    await write_career_profile(client)
-    application = await started_application(client, fake_llm, run_queued_tasks)
-
-    for case in ["missing", "outdated"]:
-        assert (await generate(client, application["id"], evaluation_case=case)).status_code == 409
-    assert (await cover_letter(client, application["id"]))["generation"] is None
 
 
 async def test_a_failed_generation_leaves_the_letter_unchanged_shows_why_and_can_be_retried(
@@ -260,47 +245,6 @@ async def test_a_blank_letter_is_a_malformed_answer(
     assert letter["generation"]["failure"]["kind"] == "malformed"
 
 
-async def test_generating_is_refused_while_a_request_is_under_way_unless_it_is_stuck(
-    client: httpx.AsyncClient,
-    fake_llm: FakeLlm,
-    run_queued_tasks: RunTasks,
-    make_stuck: Callable[[str, int], None],
-) -> None:
-    await write_career_profile(client)
-    application = await started_application(client, fake_llm, run_queued_tasks)
-    await generate(client, application["id"])
-    under_way = (await cover_letter(client, application["id"]))["generation"]
-
-    assert (await generate(client, application["id"])).status_code == 409
-
-    assert under_way["stuck"] is False
-    make_stuck("cover_letter_generations", under_way["id"])
-    assert (await cover_letter(client, application["id"]))["generation"]["stuck"] is True
-    assert (await generate(client, application["id"])).status_code == 201
-    await run_queued_tasks()
-
-    letter = await cover_letter(client, application["id"])
-    assert letter["generation"]["status"] == "done"
-    assert len(letter["drafts"]) == 1  # the stuck request wrote none
-
-
-async def test_generating_is_refused_unless_the_application_is_preparing(
-    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
-) -> None:
-    await write_career_profile(client)
-    application = await started_application(client, fake_llm, run_queued_tasks)
-
-    for state in ["applied", "interview_loop", "rejected"]:
-        await move(client, application["id"], state)
-        refused = await generate(client, application["id"])
-        assert refused.status_code == 409
-        assert (await cover_letter(client, application["id"]))["editable"] is False
-    await move(client, application["id"], "preparing")
-
-    assert (await cover_letter(client, application["id"]))["editable"] is True
-    assert (await generate(client, application["id"])).status_code == 201
-
-
 async def test_an_application_that_leaves_preparing_before_the_generation_runs_gets_no_draft(
     client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
 ) -> None:
@@ -318,7 +262,7 @@ async def test_an_application_that_leaves_preparing_before_the_generation_runs_g
     assert fake_llm.cover_letter.calls == []
 
 
-async def test_generating_is_refused_while_there_is_no_career_profile(
+async def test_a_refused_request_is_a_conflict_with_the_reason(
     client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
 ) -> None:
     await write_career_profile(client)
@@ -329,6 +273,7 @@ async def test_generating_is_refused_while_there_is_no_career_profile(
 
     assert refused.status_code == 409
     assert "Career Profile" in refused.json()["detail"]
+    assert (await cover_letter(client, application["id"]))["generation"] is None
 
 
 async def test_the_writing_guide_is_not_required(
@@ -384,3 +329,25 @@ async def test_a_posting_edited_after_the_request_makes_the_draft_record_an_outd
     draft = (await cover_letter(client, application["id"]))["draft"]
     assert draft["evaluation_case"] == "outdated"
     assert draft["evaluation_id"] == evaluation_id
+
+
+async def test_an_application_that_leaves_preparing_while_the_llm_writes_gets_no_draft(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    await write_career_profile(client)
+    application = await started_application(client, fake_llm, run_queued_tasks)
+    await generate(client, application["id"])
+
+    async def apply_meanwhile(_: object) -> None:
+        assert (await move(client, application["id"], "applied")).status_code == 200
+
+    fake_llm.cover_letter.while_answering(apply_meanwhile)
+    await run_queued_tasks()
+
+    letter = await cover_letter(client, application["id"])
+    assert len(fake_llm.cover_letter.calls) == 1
+    assert letter["drafts"] == []
+    assert letter["generation"]["status"] == "failed"
+    assert letter["generation"]["failure"]["kind"] == "locked"
+    assert "no longer Preparing" in letter["generation"]["failure"]["reason"]
+    assert letter["sent"]["draft"] is None
