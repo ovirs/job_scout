@@ -65,7 +65,8 @@ class CoverLetterDraft(Base):
     the model, the prompt and input versions, the Evaluation that supplied its flags (or
     that none did) and the posting's content hash then. Restoring a draft copies all of
     it into a new latest draft that points back to it. Deleting it only stamps
-    `deleted_at`.
+    `deleted_at`. Its `created_at` and `deleted_at` are taken by the app, as the
+    Application's `changed_at` is, since the letter sent is found by comparing them.
     """
 
     __tablename__ = "cover_letter_drafts"

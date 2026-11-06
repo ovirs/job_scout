@@ -57,7 +57,7 @@ The backend in `webapp/backend/src/job_scout/` has one package per domain concep
 - `models.py`: the package's SQLAlchemy tables.
 - `domain.py`: the package's rules and queries.
 
-Some packages have more modules: `prompt.py` (building an LLM prompt), `tasks.py` (a background task the worker runs) and `extraction.py` (what the LLM returns).
+Some packages have more modules: `prompt.py` (building an LLM prompt), `tasks.py` (a background task the worker runs), `extraction.py` (what the LLM returns) and `generation.py` (what a Cover Letter generation is written from and how its draft is stored, shared by `domain.py` and `tasks.py`).
 
 A package imports only from the packages below it. From the top:
 

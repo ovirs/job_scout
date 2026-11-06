@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
-from job_scout.cover_letters import domain as cover_letters
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings.routes import job_posting_or_404
@@ -58,13 +57,11 @@ async def set_application_state(
     application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
 ) -> ApplicationRead:
     """Move the Application to any state, from any other; each move is kept, dated, in
-    its history. The Cover Letter is locked outside Preparing, and each move to Applied
-    records its latest draft as the letter sent, or that no letter was sent."""
-    application = await application_or_404(session, owner, application_id)
-    change = applications.set_state(application, body.state)
-    if change is not None:
-        # An upward call into Cover Letters, removed by #42
-        await cover_letters.lock_sent(session, application, change)
+    its history. The Cover Letter is locked outside Preparing."""
+    # Locked before the move is timed, so no Cover Letter draft is stored while it moves;
+    # #43 moves this into an Applications operation
+    application = await application_or_404(session, owner, application_id, for_update=True)
+    applications.set_state(application, body.state)
     await session.commit()
     return ApplicationRead.of(application)
 
@@ -84,11 +81,11 @@ async def delete_application(application_id: int, session: Session, owner: Owner
 
 
 async def application_or_404(
-    session: AsyncSession, owner: uuid.UUID, application_id: int
+    session: AsyncSession, owner: uuid.UUID, application_id: int, *, for_update: bool = False
 ) -> Application:
     """The owner's live Application, for any package's routes; a 404 when there is none."""
     application = await applications.application(
-        session, owner_id=owner, application_id=application_id
+        session, owner_id=owner, application_id=application_id, for_update=for_update
     )
     if application is None:
         raise HTTPException(status_code=404, detail="No such Application")

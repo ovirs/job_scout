@@ -89,6 +89,4 @@ ignore_imports = [
     "job_scout.*.routes -> job_scout.posting_view.*",
     # The Triage lock, checked in the Triage route; removed by #43
     "job_scout.triage.routes -> job_scout.applications.domain",
-    # Locking the Cover Letter sent, in the Application state route; removed by #42
-    "job_scout.applications.routes -> job_scout.cover_letters.domain",
 ]
