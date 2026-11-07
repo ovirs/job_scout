@@ -228,3 +228,72 @@ async def test_moving_to_applied_with_no_draft_records_that_no_letter_was_sent(
     sent_letter = (await cover_letter(client, application["id"]))["sent"]
     assert sent_letter["draft"] is None
     assert sent_letter["applied_at"] == moved.json()["state_changed_at"]
+
+
+async def sent_ratio(client: httpx.AsyncClient, application_id: int) -> float | None:
+    ratio: float | None = (await cover_letter(client, application_id))["sent"]["survival_ratio"]
+    return ratio
+
+
+async def test_an_unedited_llm_draft_sent_survives_whole(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(client, fake_llm, run_queued_tasks, "As written.")
+    assert (await cover_letter(client, application["id"]))["sent"] is None
+
+    await move(client, application["id"], "applied")
+
+    assert await sent_ratio(client, application["id"]) == 1.0
+
+
+async def test_an_edited_llm_draft_survives_in_part_and_the_ratio_is_kept_as_recorded(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(
+        client, fake_llm, run_queued_tasks, "Dear Acme team, I love Kafka. Kind regards"
+    )
+    await save_draft(client, application["id"], "Dear Acme team, I love Kafka a lot. Regards")
+
+    await move(client, application["id"], "applied")
+
+    ratio = await sent_ratio(client, application["id"])
+    assert ratio is not None and 0.8 < ratio < 1.0
+    # Later moves leave the ratio recorded on the move to Applied
+    await move(client, application["id"], "screen_call")
+    assert await sent_ratio(client, application["id"]) == ratio
+    # Another move to Applied records its own
+    await move(client, application["id"], "preparing")
+    await save_draft(client, application["id"], "Something else entirely.")
+    await move(client, application["id"], "applied")
+    again = await sent_ratio(client, application["id"])
+    assert again is not None and again < ratio
+
+
+async def test_no_ratio_without_a_live_llm_draft_before_the_move(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
+    generated = (await cover_letter(client, application["id"]))["draft"]
+    await save_draft(client, application["id"], "Written by hand.")
+    await client.delete(
+        f"/api/applications/{application['id']}/cover-letter/drafts/{generated['id']}"
+    )
+
+    await move(client, application["id"], "applied")
+
+    letter = await cover_letter(client, application["id"])
+    assert letter["sent"]["draft"]["text"] == "Written by hand."
+    assert letter["sent"]["survival_ratio"] is None
+
+
+async def test_no_ratio_when_no_letter_was_sent(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    await write_career_profile(client)
+    application = await started_application(client, fake_llm, run_queued_tasks)
+
+    await move(client, application["id"], "applied")
+
+    sent_letter = (await cover_letter(client, application["id"]))["sent"]
+    assert sent_letter["draft"] is None
+    assert sent_letter["survival_ratio"] is None

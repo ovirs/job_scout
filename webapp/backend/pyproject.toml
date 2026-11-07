@@ -73,7 +73,7 @@ exhaustive = true
 exhaustive_ignores = ["alembic", "llm"]
 layers = [
     # Wiring: builds the app and the worker, and hands in the LLM
-    "app : worker : openapi : runtime : tables : llm.anthropic_adapter : llm.fake",
+    "app : worker : compare_letters : openapi : runtime : tables : llm.anthropic_adapter : llm.fake",
     "posting_view",
     "notes | cover_letters",
     "clippings | applications",

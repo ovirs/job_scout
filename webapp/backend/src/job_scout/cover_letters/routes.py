@@ -3,6 +3,8 @@ from contextlib import contextmanager
 
 from fastapi import APIRouter, HTTPException
 
+from job_scout.applications import domain as applications
+from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
 from job_scout.cover_letters import domain as cover_letters
 from job_scout.cover_letters.schemas import (
     CoverLetterDraftSave,
@@ -13,6 +15,22 @@ from job_scout.cover_letters.schemas import (
 from job_scout.routing import Owner, Session, TaskQueue
 
 router = APIRouter(prefix="/api")
+
+
+# The route that moves an Application is this package's, since a move to Applied sends the
+# Cover Letter and records how much of the last LLM draft survived into it
+@router.put("/applications/{application_id}/state")
+async def set_application_state(
+    application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
+) -> ApplicationRead:
+    """Move the Application to any state, from any other; each move is kept, dated, in
+    its history. The Cover Letter is locked outside Preparing. A move to Applied sends the
+    latest draft and records how much of the last LLM draft survived into it."""
+    with _refusals():
+        application = await cover_letters.move(
+            session, owner_id=owner, application_id=application_id, state=body.state
+        )
+    return ApplicationRead.of(application)
 
 
 @router.get("/applications/{application_id}/cover-letter")
@@ -119,7 +137,7 @@ def _refusals() -> Iterator[None]:
     """Map the Cover Letter package's errors to HTTP."""
     try:
         yield
-    except cover_letters.NoSuchApplication:
+    except (cover_letters.NoSuchApplication, applications.NoSuchApplication):
         raise HTTPException(status_code=404, detail="No such Application") from None
     except cover_letters.NoSuchDraft:
         raise HTTPException(status_code=404, detail="Cover Letter draft not found") from None

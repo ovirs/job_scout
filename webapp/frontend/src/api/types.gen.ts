@@ -929,6 +929,10 @@ export type SentCoverLetterRead = {
      */
     applied_at: string;
     draft: CoverLetterDraftRead | null;
+    /**
+     * Survival Ratio
+     */
+    survival_ratio: number | null;
 };
 
 /**
@@ -1277,36 +1281,6 @@ export type GetApplicationResponses = {
 
 export type GetApplicationResponse = GetApplicationResponses[keyof GetApplicationResponses];
 
-export type SetApplicationStateData = {
-    body: ApplicationStateSet;
-    path: {
-        /**
-         * Application Id
-         */
-        application_id: number;
-    };
-    query?: never;
-    url: '/api/applications/{application_id}/state';
-};
-
-export type SetApplicationStateErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type SetApplicationStateError = SetApplicationStateErrors[keyof SetApplicationStateErrors];
-
-export type SetApplicationStateResponses = {
-    /**
-     * Successful Response
-     */
-    200: ApplicationRead;
-};
-
-export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
-
 export type ListJobPostingNotesData = {
     body?: never;
     path: {
@@ -1614,6 +1588,36 @@ export type GetCurrentEvaluationResponses = {
 };
 
 export type GetCurrentEvaluationResponse = GetCurrentEvaluationResponses[keyof GetCurrentEvaluationResponses];
+
+export type SetApplicationStateData = {
+    body: ApplicationStateSet;
+    path: {
+        /**
+         * Application Id
+         */
+        application_id: number;
+    };
+    query?: never;
+    url: '/api/applications/{application_id}/state';
+};
+
+export type SetApplicationStateErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetApplicationStateError = SetApplicationStateErrors[keyof SetApplicationStateErrors];
+
+export type SetApplicationStateResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApplicationRead;
+};
+
+export type SetApplicationStateResponse = SetApplicationStateResponses[keyof SetApplicationStateResponses];
 
 export type GetCoverLetterData = {
     body?: never;

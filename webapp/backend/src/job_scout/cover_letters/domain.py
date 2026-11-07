@@ -6,12 +6,15 @@ Career Profile, the Writing Guide and the flags of the Evaluation the user agree
 from scratch or revising the latest draft in words; each request is its own row, and a
 failed one leaves the letter as it was. The user also saves hand edits as drafts, restores
 an earlier draft as a new one and deletes drafts, keeping them. Outside Preparing the
-letter is locked, and the latest draft on each move to Applied is the letter sent.
+letter is locked, and the latest draft on each move to Applied is the letter sent; the
+move also records how much of the last LLM draft survived into it. A backend command
+regenerates the letters of past Applications to compare, saving nothing.
 
 Each operation enforces these rules and refuses with a `Refused` error otherwise; an
 unknown Application or draft raises `NoSuchApplication` or `NoSuchDraft`.
 """
 
+import difflib
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -21,13 +24,25 @@ from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications import domain as applications
-from job_scout.applications.models import Application, ApplicationStateChange
+from job_scout.applications.models import (
+    Application,
+    ApplicationState,
+    ApplicationStateChange,
+)
+from job_scout.cover_letters import generation as generations
 from job_scout.cover_letters.generation import locked_reason, missing_input
-from job_scout.cover_letters.models import CoverLetterDraft, CoverLetterGeneration, EvaluationCase
+from job_scout.cover_letters.models import (
+    CoverLetterDraft,
+    CoverLetterGeneration,
+    DraftSurvival,
+    EvaluationCase,
+)
 from job_scout.cover_letters.tasks import GENERATION
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.models import Evaluation
+from job_scout.llm.interface import Failure, Llm
 from job_scout.llm_runs import domain as llm_runs
+from job_scout.prompts import Prompt
 from job_scout.user_inputs import domain as user_inputs
 
 
@@ -77,6 +92,8 @@ class SentLetter:
 
     applied_at: datetime
     draft: CoverLetterDraft | None  # None when no letter was sent
+    # How much of the last LLM draft survived into it, 0 to 1; None with no LLM draft
+    survival_ratio: float | None
 
 
 @dataclass(frozen=True)
@@ -109,6 +126,101 @@ class CoverLetter:
 async def read(session: AsyncSession, *, owner_id: uuid.UUID, application_id: int) -> CoverLetter:
     """The Application's Cover Letter. Raises `NoSuchApplication`."""
     return await _letter(session, await _application(session, owner_id, application_id))
+
+
+async def move(
+    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int, state: ApplicationState
+) -> Application:
+    """Move the Application as `applications.move` does; a move to Applied also records
+    how much of the last LLM draft survived into the letter sent, in the same commit."""
+
+    async def record(application: Application, change: ApplicationStateChange) -> None:
+        drafts = await _in_force(session, application, change.changed_at)
+        sent = drafts[0] if drafts else None
+        written = next((d for d in drafts if d.origin != "edited_by_hand"), None)
+        if sent is not None and written is not None:
+            session.add(
+                DraftSurvival(state_change_id=change.id, ratio=survival(written.text, sent.text))
+            )
+
+    return await applications.move(
+        session,
+        owner_id=owner_id,
+        application_id=application_id,
+        state=state,
+        on_applied=record,
+    )
+
+
+def survival(written: str, sent: str) -> float:
+    """How much of the LLM-written text survived into the text sent: a text-similarity
+    ratio from 0 to 1, 1.0 for identical texts."""
+    return difflib.SequenceMatcher(None, written, sent, autojunk=False).ratio()
+
+
+@dataclass(frozen=True)
+class Comparison:
+    """A past Application's letter sent, and the letter written again for it."""
+
+    application: Application
+    sent: CoverLetterDraft
+    # What the LLM wrote now, or why it did not; nothing is saved
+    regenerated: str | Failure
+    model: str
+    prompt_version: str
+
+
+async def compare(
+    session: AsyncSession,
+    llm: Llm,
+    *,
+    owner_id: uuid.UUID,
+    application_ids: list[int],
+    instructions: Prompt | None = None,
+    model: str | None = None,
+) -> list[Comparison]:
+    """Write the letter again for each Application, which must have had a letter sent, with
+    the LLM under `instructions` or `model` instead of the configured ones, and give each
+    beside the letter sent. It is written from the posting and user inputs as they are
+    now and the flags of the Evaluation the sent letter used, with no instruction. Nothing
+    is saved: the drafts are left as they are.
+
+    Raises `NoSuchApplication` for an Application that is unknown or deleted, and
+    `Refused` for one with no letter sent or while there is no Career Profile, before any
+    call to the LLM."""
+    found: list[tuple[Application, CoverLetterDraft]] = []
+    for application_id in application_ids:
+        application = await _application(session, owner_id, application_id)
+        sent = await _sent(session, application)
+        if sent is None or sent.draft is None:
+            raise Refused(f"Application {application_id} has no Cover Letter sent")
+        found.append((application, sent.draft))
+    comparisons = []
+    for application, sent_draft in found:
+        request = CoverLetterGeneration(
+            owner_id=owner_id,
+            application_id=application.id,
+            evaluation_id=sent_draft.evaluation_id,
+            instruction=None,
+        )
+        inputs = await generations.gather(session, request)
+        missing = inputs.missing()
+        if missing is not None:
+            raise MissingInput(missing)
+        outcome = generations.check(
+            await llm.write_cover_letter(inputs.prompt(), instructions=instructions, model=model)
+        )
+        result = outcome.result
+        comparisons.append(
+            Comparison(
+                application=application,
+                sent=sent_draft,
+                regenerated=result if isinstance(result, Failure) else result.letter,
+                model=outcome.model,
+                prompt_version=outcome.prompt_version,
+            )
+        )
+    return comparisons
 
 
 async def generate(
@@ -354,20 +466,36 @@ async def _sent(session: AsyncSession, application: Application) -> SentLetter |
     applied = _latest_move_to_applied(application)
     if applied is None:
         return None
-    draft = await session.scalar(
-        select(CoverLetterDraft)
-        .where(
-            CoverLetterDraft.application_id == application.id,
-            CoverLetterDraft.created_at < applied.changed_at,
-            or_(
-                CoverLetterDraft.deleted_at.is_(None),
-                CoverLetterDraft.deleted_at > applied.changed_at,
-            ),
-        )
-        .order_by(CoverLetterDraft.id.desc())
-        .limit(1)
+    drafts = await _in_force(session, application, applied.changed_at)
+    ratio = await session.scalar(
+        select(DraftSurvival.ratio).where(DraftSurvival.state_change_id == applied.id)
     )
-    return SentLetter(applied_at=applied.changed_at, draft=draft)
+    return SentLetter(
+        applied_at=applied.changed_at,
+        draft=drafts[0] if drafts else None,
+        survival_ratio=ratio,
+    )
+
+
+async def _in_force(
+    session: AsyncSession, application: Application, moment: datetime
+) -> list[CoverLetterDraft]:
+    """The drafts made before `moment` and not deleted by then, the latest first: the
+    Cover Letter as it stood."""
+    return list(
+        await session.scalars(
+            select(CoverLetterDraft)
+            .where(
+                CoverLetterDraft.application_id == application.id,
+                CoverLetterDraft.created_at < moment,
+                or_(
+                    CoverLetterDraft.deleted_at.is_(None),
+                    CoverLetterDraft.deleted_at > moment,
+                ),
+            )
+            .order_by(CoverLetterDraft.id.desc())
+        )
+    )
 
 
 def _latest_move_to_applied(application: Application) -> ApplicationStateChange | None:

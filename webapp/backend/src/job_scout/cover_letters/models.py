@@ -100,3 +100,16 @@ class CoverLetterDraft(Base):
     content_hash: Mapped[str]  # the posting's, when the draft was made
     # The earlier draft this one restores, copying its text and record
     restored_from_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
+
+
+class DraftSurvival(Base):
+    """How much of the last LLM-written draft survived into the letter sent, recorded on
+    one move to Applied: a text-similarity ratio from 0 to 1, 1.0 for an unedited LLM
+    draft. A move with no letter sent, or no LLM draft before it, records none."""
+
+    __tablename__ = "draft_survivals"
+
+    state_change_id: Mapped[int] = mapped_column(
+        ForeignKey("application_state_changes.id"), primary_key=True
+    )
+    ratio: Mapped[float]

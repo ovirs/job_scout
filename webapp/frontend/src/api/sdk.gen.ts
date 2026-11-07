@@ -89,21 +89,6 @@ export const deleteApplication = <ThrowOnError extends boolean = false>(options:
 export const getApplication = <ThrowOnError extends boolean = false>(options: Options<GetApplicationData, ThrowOnError>): RequestResult<GetApplicationResponses, GetApplicationErrors, ThrowOnError> => (options.client ?? client).get<GetApplicationResponses, GetApplicationErrors, ThrowOnError>({ url: '/api/applications/{application_id}', ...options });
 
 /**
- * Set Application State
- *
- * Move the Application to any state, from any other; each move is kept, dated, in
- * its history. The Cover Letter is locked outside Preparing.
- */
-export const setApplicationState = <ThrowOnError extends boolean = false>(options: Options<SetApplicationStateData, ThrowOnError>): RequestResult<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError> => (options.client ?? client).put<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError>({
-    url: '/api/applications/{application_id}/state',
-    ...options,
-    headers: {
-        'Content-Type': 'application/json',
-        ...options.headers
-    }
-});
-
-/**
  * List Job Posting Notes
  *
  * The posting's notes, the first first.
@@ -183,6 +168,22 @@ export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: O
  * The posting's latest done Evaluation, or null while it has none.
  */
 export const getCurrentEvaluation = <ThrowOnError extends boolean = false>(options: Options<GetCurrentEvaluationData, ThrowOnError>): RequestResult<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError> => (options.client ?? client).get<GetCurrentEvaluationResponses, GetCurrentEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations/current', ...options });
+
+/**
+ * Set Application State
+ *
+ * Move the Application to any state, from any other; each move is kept, dated, in
+ * its history. The Cover Letter is locked outside Preparing. A move to Applied sends the
+ * latest draft and records how much of the last LLM draft survived into it.
+ */
+export const setApplicationState = <ThrowOnError extends boolean = false>(options: Options<SetApplicationStateData, ThrowOnError>): RequestResult<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError> => (options.client ?? client).put<SetApplicationStateResponses, SetApplicationStateErrors, ThrowOnError>({
+    url: '/api/applications/{application_id}/state',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Get Cover Letter

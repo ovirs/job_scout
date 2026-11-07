@@ -57,7 +57,13 @@ class AnthropicLlm:
             schema=EvaluationResult,
         )
 
-    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
+    async def write_cover_letter(
+        self,
+        prompt: CoverLetterPrompt,
+        *,
+        instructions: Prompt | None = None,
+        model: str | None = None,
+    ) -> Outcome[CoverLetterResult]:
         # The Career Profile and Writing Guide change rarely, so they are cached with the
         # instructions; the posting, flags and the letter's own instruction come after
         content: list[TextBlockParam] = [
@@ -65,9 +71,9 @@ class AnthropicLlm:
             {"type": "text", "text": prompt.request},
         ]
         return await self._complete(
-            model=self._cover_letter_model,
+            model=model or self._cover_letter_model,
             effort=self._cover_letter_effort,
-            prompt=COVER_LETTER,
+            prompt=instructions or COVER_LETTER,
             content=content,
             schema=CoverLetterResult,
         )

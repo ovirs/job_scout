@@ -117,12 +117,16 @@ class SentCoverLetterRead(BaseModel):
 
     applied_at: datetime
     draft: CoverLetterDraftRead | None  # null when no Cover Letter was sent
+    # How much of the last LLM draft survived into it, 0 to 1 (1.0 if sent unedited); null
+    # when no letter was sent or no LLM draft was written before it
+    survival_ratio: float | None
 
     @classmethod
     def of(cls, sent: cover_letters.SentLetter) -> "SentCoverLetterRead":
         return cls(
             applied_at=sent.applied_at,
             draft=None if sent.draft is None else CoverLetterDraftRead.of(sent.draft),
+            survival_ratio=sent.survival_ratio,
         )
 
 

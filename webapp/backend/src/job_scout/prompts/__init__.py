@@ -16,7 +16,16 @@ class Prompt:
 
 def load(name: str) -> Prompt:
     source = (files(__package__) / f"{name}.md").read_text(encoding="utf-8")
-    _, header, text = source.split("---\n", 2)
+    return parse(source, name)
+
+
+def parse(source: str, name: str) -> Prompt:
+    """A prompt from the text of its file, which starts with a 'version: ...' header;
+    `name` names it in the error."""
+    try:
+        _, header, text = source.split("---\n", 2)
+    except ValueError:
+        raise ValueError(f"Prompt {name!r} must start with a 'version: ...' header") from None
     key, _, version = header.strip().partition(": ")
     if key != "version" or not version:
         raise ValueError(f"Prompt {name!r} must start with a 'version: ...' header")

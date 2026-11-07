@@ -48,6 +48,17 @@ Type-check the frontend with `npm run typecheck` in `webapp/frontend`.
 - **API client**: the frontend's client in `webapp/frontend/src/api` is generated from the backend's OpenAPI schema. After changing the HTTP API, run `npm run generate-api` in `webapp/frontend` (it needs uv) and commit the result.
 - **Migrations**: after changing the models, create a migration with `DATABASE_URL=... uv run alembic revision --autogenerate -m "..."` in `webapp/backend` against a migrated database, review it, and apply it with `uv run python -m job_scout.migrations`.
 
+## Compare Cover Letters
+
+To judge a new Cover Letter prompt or model by eye, regenerate the letters of a few past Applications and read each beside the letter sent. In `webapp/backend`:
+
+```sh
+uv run python -m job_scout.compare_letters --application 3 --application 7 \
+    --prompt-file new-cover-letter.md --model claude-sonnet-5-5
+```
+
+Give `--prompt-file` (a prompt in the format of `src/job_scout/prompts/cover-letter.md`, with its `version:` header), `--model` or both. Each Application must have had a letter sent. The command saves nothing: no draft is made. The app also records, on each move to Applied, how much of the last LLM draft survived into the letter sent (`survival_ratio` on the Cover Letter's `sent`).
+
 ## Backend layout
 
 The backend in `webapp/backend/src/job_scout/` has one package per domain concept ([ADR-0004](docs/adr/0004-backend-code-is-one-package-per-domain-concept.md)). A change to one concept should stay inside its folder. Every package has the same four files, except that a package with no routes of its own (`triage`, `llm_runs`) has no `routes.py`:
@@ -68,7 +79,7 @@ A package imports only from the packages below it. From the top:
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
 6. `user_inputs`, `job_postings`
 
-Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
+Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `compare_letters` (the command below), `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 
 - **Coordinating several concepts:** code that does this goes in the highest package involved. It never goes in a lower package reaching up.
 - **Shared code:** goes in a module named for a concept, never `utils` or `common`.

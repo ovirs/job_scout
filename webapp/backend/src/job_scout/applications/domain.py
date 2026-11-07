@@ -9,6 +9,7 @@ unknown posting or Application raises `NoSuchJobPosting` or `NoSuchApplication`.
 """
 
 import uuid
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import get_args
 
@@ -160,7 +161,12 @@ async def application(
 
 
 async def move(
-    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int, state: ApplicationState
+    session: AsyncSession,
+    *,
+    owner_id: uuid.UUID,
+    application_id: int,
+    state: ApplicationState,
+    on_applied: Callable[[Application, ApplicationStateChange], Awaitable[None]] | None = None,
 ) -> Application:
     """Move the Application to any state, from any other, committed; each move is kept,
     dated, in its history, and moving to the state it is in records nothing. The first
@@ -168,7 +174,11 @@ async def move(
 
     The Application is locked before the move is timed: a Cover Letter draft is stored
     while holding the same lock, so one stored just before the move is always made
-    before it, and counts as sent."""
+    before it, and counts as sent.
+
+    A higher package that records something about each move to Applied passes `on_applied`:
+    it runs on every move to Applied, with the Application still locked and the move not
+    yet committed, so the record and the move are committed together."""
     application = await _locked_application(session, owner_id, application_id)
     if state != application.state:
         now = datetime.now(UTC)
@@ -176,6 +186,9 @@ async def move(
         application.history.append(ApplicationStateChange(state=state, changed_at=now))
         if state == "applied" and application.copied_at is None:
             _copy_posting(application, now)
+        if state == "applied" and on_applied is not None:
+            await session.flush()  # the move gets its id
+            await on_applied(application, application.history[-1])
     await session.commit()
     return application
 

@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from job_scout.clippings.extraction import ManualEntryExtraction
     from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
     from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
+    from job_scout.prompts import Prompt
 
 FailureKind = Literal["error", "refusal", "malformed"]
 
@@ -47,6 +48,14 @@ class Llm(Protocol):
         """Judge one Job Posting against the user's inputs, as laid out in `prompt`."""
         ...
 
-    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
-        """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`."""
+    async def write_cover_letter(
+        self,
+        prompt: CoverLetterPrompt,
+        *,
+        instructions: Prompt | None = None,
+        model: str | None = None,
+    ) -> Outcome[CoverLetterResult]:
+        """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`; with
+        `instructions` or `model`, under those rather than the configured ones, as when
+        trying a new prompt version or model."""
         ...

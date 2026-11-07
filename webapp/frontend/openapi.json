@@ -388,56 +388,6 @@
         }
       }
     },
-    "/api/applications/{application_id}/state": {
-      "put": {
-        "summary": "Set Application State",
-        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history. The Cover Letter is locked outside Preparing.",
-        "operationId": "set_application_state",
-        "parameters": [
-          {
-            "name": "application_id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "title": "Application Id"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ApplicationStateSet"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ApplicationRead"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/job-postings/{job_posting_id}/notes": {
       "get": {
         "summary": "List Job Posting Notes",
@@ -845,6 +795,56 @@
                     }
                   ],
                   "title": "Response Get Current Evaluation"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/applications/{application_id}/state": {
+      "put": {
+        "summary": "Set Application State",
+        "description": "Move the Application to any state, from any other; each move is kept, dated, in\nits history. The Cover Letter is locked outside Preparing. A move to Applied sends the\nlatest draft and records how much of the last LLM draft survived into it.",
+        "operationId": "set_application_state",
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Application Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationStateSet"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApplicationRead"
                 }
               }
             }
@@ -3725,12 +3725,24 @@
                 "type": "null"
               }
             ]
+          },
+          "survival_ratio": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Survival Ratio"
           }
         },
         "type": "object",
         "required": [
           "applied_at",
-          "draft"
+          "draft",
+          "survival_ratio"
         ],
         "title": "SentCoverLetterRead",
         "description": "The Cover Letter sent on the latest move to Applied."

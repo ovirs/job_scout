@@ -33,14 +33,20 @@ class FakeStep[I, T]:
     def while_answering(self, hook: Callable[[I], Awaitable[None]]) -> None:
         self._while_answering = hook
 
-    async def __call__(self, inputs: I) -> Outcome[T]:
+    async def __call__(
+        self, inputs: I, *, model: str | None = None, prompt: Prompt | None = None
+    ) -> Outcome[T]:
         self.calls.append(inputs)
         if self._while_answering is not None:
             await self._while_answering(inputs)
         result = self._responses.pop(0) if len(self._responses) > 1 else self._responses[0]
         if isinstance(result, Exception):
             raise result
-        return Outcome(result=result, model=self._model, prompt_version=self._prompt.version)
+        return Outcome(
+            result=result,
+            model=model or self._model,
+            prompt_version=(prompt or self._prompt).version,
+        )
 
 
 NOTHING_FOUND = ManualEntryExtraction(
@@ -100,5 +106,11 @@ class FakeLlm:
     async def evaluate(self, prompt: EvaluationPrompt) -> Outcome[EvaluationResult]:
         return await self.evaluation(prompt)
 
-    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
-        return await self.cover_letter(prompt)
+    async def write_cover_letter(
+        self,
+        prompt: CoverLetterPrompt,
+        *,
+        instructions: Prompt | None = None,
+        model: str | None = None,
+    ) -> Outcome[CoverLetterResult]:
+        return await self.cover_letter(prompt, model=model, prompt=instructions)
