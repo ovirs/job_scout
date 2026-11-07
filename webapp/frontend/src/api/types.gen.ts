@@ -893,6 +893,16 @@ export type PostingCopyRead = {
 };
 
 /**
+ * RerunQueuedRead
+ */
+export type RerunQueuedRead = {
+    /**
+     * Queued
+     */
+    queued: number;
+};
+
+/**
  * SalaryRange
  */
 export type SalaryRange = {
@@ -1520,6 +1530,22 @@ export type ReopenJobPostingResponses = {
 };
 
 export type ReopenJobPostingResponse = ReopenJobPostingResponses[keyof ReopenJobPostingResponses];
+
+export type RerunUnactedEvaluationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/job-postings/rerun-evaluations';
+};
+
+export type RerunUnactedEvaluationsResponses = {
+    /**
+     * Successful Response
+     */
+    201: RerunQueuedRead;
+};
+
+export type RerunUnactedEvaluationsResponse = RerunUnactedEvaluationsResponses[keyof RerunUnactedEvaluationsResponses];
 
 export type ListEvaluationsData = {
     body?: never;

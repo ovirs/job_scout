@@ -62,7 +62,7 @@ Some packages have more modules: `prompt.py` (building an LLM prompt), `tasks.py
 A package imports only from the packages below it. From the top:
 
 1. `posting_view`: how a Job Posting appears in lists and on its page
-2. `notes`, `cover_letters`
+2. `notes`, `cover_letters`, `reevaluation`: when a posting is evaluated again (re-run all, a change to its text)
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`

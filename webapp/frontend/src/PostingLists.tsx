@@ -6,6 +6,7 @@ import {
   listJobPostingsOptions,
   listJobPostingsQueryKey,
   rerunEvaluationMutation,
+  rerunUnactedEvaluationsMutation,
 } from './api/@tanstack/react-query.gen'
 import type { JobPostingRead, ListJobPostingsData } from './api/types.gen'
 import { Badge } from './Badge'
@@ -67,6 +68,7 @@ export function PostingLists() {
           <option value="age">Age, newest first</option>
         </select>
       </label>
+      <RerunAll />
       {postings.isPending && <Loading />}
       {postings.isError && <p role="alert">Could not load the job postings.</p>}
       {postings.data?.length === 0 && <p>{list.empty}</p>}
@@ -78,6 +80,31 @@ export function PostingLists() {
         </ul>
       )}
     </section>
+  )
+}
+
+/** Evaluates every open posting the user has not acted on again, with their current inputs. */
+function RerunAll() {
+  const queryClient = useQueryClient()
+  const rerun = useMutation({
+    ...rerunUnactedEvaluationsMutation(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listJobPostingsQueryKey() }),
+  })
+  return (
+    <p className="hint">
+      <button
+        type="button"
+        disabled={rerun.isPending}
+        aria-busy={rerun.isPending}
+        onClick={() => rerun.mutate({})}
+      >
+        Re-run all untriaged
+      </button>{' '}
+      {rerun.isError
+        ? 'Could not queue the Evaluations.'
+        : rerun.data &&
+          `Queued ${rerun.data.queued} ${rerun.data.queued === 1 ? 'Evaluation' : 'Evaluations'}.`}
+    </p>
   )
 }
 
@@ -103,7 +130,13 @@ function PostingRow({ posting }: { posting: JobPostingRead }) {
       {posting.closed_at && <Badge>Closed on {posting.closed_at.slice(0, 10)}</Badge>}
       {evaluation && (
         <>
-          {evaluation.outdated && <Badge tone="warn">Edited since evaluated</Badge>}
+          {evaluation.outdated && (
+            <Badge tone="warn">
+              {posting.triage || posting.application
+                ? 'Edited since you triaged it'
+                : 'Edited since evaluated'}
+            </Badge>
+          )}
           {evaluation.disqualified_but_recommended && (
             <Badge tone="bad" dot>
               Disqualified but recommended:{' '}

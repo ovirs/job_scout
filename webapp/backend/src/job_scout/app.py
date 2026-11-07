@@ -14,6 +14,7 @@ from job_scout.evaluations.routes import router as evaluations
 from job_scout.job_postings.routes import router as job_postings
 from job_scout.notes.routes import router as notes
 from job_scout.posting_view.routes import router as posting_view
+from job_scout.reevaluation.routes import router as reevaluation
 from job_scout.runtime import open_runtime
 from job_scout.user_inputs.routes import router as user_inputs
 
@@ -23,6 +24,7 @@ ROUTERS = [
     applications,  # the Triage route included, first
     notes,
     job_postings,
+    reevaluation,
     evaluations,
     cover_letters,
     clippings,

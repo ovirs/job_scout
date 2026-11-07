@@ -732,6 +732,25 @@
         }
       }
     },
+    "/api/job-postings/rerun-evaluations": {
+      "post": {
+        "summary": "Rerun Unacted Evaluations",
+        "description": "Queue a new Evaluation of every open posting not acted on: with no Triage and no\nlive Application. Closed and acted-on postings are skipped, and so is one whose\nEvaluation is already under way.",
+        "operationId": "rerun_unacted_evaluations",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RerunQueuedRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/job-postings/{job_posting_id}/evaluations": {
       "get": {
         "summary": "List Evaluations",
@@ -3648,6 +3667,19 @@
         ],
         "title": "PostingCopyRead",
         "description": "The posting as it was when the Application first moved to Applied."
+      },
+      "RerunQueuedRead": {
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "title": "Queued"
+          }
+        },
+        "type": "object",
+        "required": [
+          "queued"
+        ],
+        "title": "RerunQueuedRead"
       },
       "SalaryRange": {
         "properties": {
