@@ -11,7 +11,7 @@ Provider = Literal["anthropic", "openai", "google"]
 
 
 class ProviderKey(Base):
-    """The user's API key for one Provider, kept as typed (ADR 0006).
+    """The user's API key for one Provider, kept as typed, unencrypted.
 
     An owner has at most one key per Provider; replacing it overwrites the row.
     """

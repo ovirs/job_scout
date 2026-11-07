@@ -82,3 +82,10 @@ An automated ingestion mechanism to pull Job Postings from specific ATS platform
 **Watchlist**:
 The user-maintained set of companies whose Job Postings the Pipelines pull. A company not on the Watchlist is only reachable through manual entry.
 _Avoid_: Company list, Sources, Subscriptions
+
+**Provider**:
+An LLM vendor (Anthropic, OpenAI, Google). Only a Provider with an adapter is available, so only it can be set up.
+
+**Provider key**:
+The user's own API key for a Provider, saved in Settings and checked by listing the Provider's models with it. The worker makes each attempt of an LLM run with the run owner's key. Until the user has one for an available Provider, the app shows only its setup screen and refuses every LLM run.
+_Avoid_: Token, Credential
