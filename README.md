@@ -16,9 +16,8 @@ Then open <http://localhost:5173>. Compose starts Postgres, applies the migratio
 
 All configuration comes from environment variables, each with a default in [compose.yaml](compose.yaml): `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `API_PORT` and `FRONTEND_PORT`. Set them in your shell or in a `.env` file next to `compose.yaml`. The backend itself reads `DATABASE_URL`.
 
-The background worker makes every LLM call, through the Anthropic API:
+The background worker makes every LLM call, through the Anthropic API, with the API key you save on first opening the app (its setup screen asks for one, and Settings replaces or removes it). The key is stored unencrypted in the database. These settings choose the models:
 
-- `ANTHROPIC_API_KEY`: your API key. Without it the app still runs, but every LLM step fails with a reason saying the key is not set.
 - `EXTRACTION_MODEL`: the model that reads a pasted Job Posting (default `claude-opus-5-5`).
 - `EXTRACTION_EFFORT`: how hard that model thinks, one of `low`, `medium`, `high`, `xhigh` or `max`. Unset, the API's default applies; not every model accepts every level.
 - `EVALUATION_MODEL` and `EVALUATION_EFFORT`: the same for the model that evaluates a saved Job Posting against the Career Profile, Preferences and Deal Breakers.
@@ -65,8 +64,8 @@ A package imports only from the packages below it. From the top:
 2. `notes`, `cover_letters`
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
-5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
-6. `user_inputs`, `job_postings`
+5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`, and the setup gate its starting routes use (`gate.py`)
+6. `user_inputs`, `job_postings`, `settings`: the user's Provider keys
 
 Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 

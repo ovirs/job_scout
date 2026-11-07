@@ -13,6 +13,8 @@ from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 from job_scout.llm.interface import Failure, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.settings.domain import ListingRefused
+from job_scout.settings.models import Provider
 
 MAX_TOKENS = 8192
 
@@ -20,11 +22,24 @@ MAX_TOKENS = 8192
 type Content = str | list[TextBlockParam]
 
 
+class AnthropicModelLister:
+    """Checks a key by listing the Provider's models with the official SDK."""
+
+    async def list_models(self, provider: Provider, api_key: str) -> list[str]:
+        if provider != "anthropic":
+            raise ListingRefused(f"{provider} is not available yet")
+        client = anthropic.AsyncAnthropic(api_key=api_key)
+        try:
+            return [model.id async for model in client.models.list(limit=1000)]
+        except anthropic.APIError as error:
+            raise ListingRefused(error.message) from error
+        finally:
+            await client.close()
+
+
 class AnthropicLlm:
-    def __init__(self, settings: Settings) -> None:
-        secret = settings.anthropic_api_key
-        api_key = secret.get_secret_value() if secret else ""  # blank counts as not set
-        self._client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else None
+    def __init__(self, settings: Settings, api_key: str) -> None:
+        self._client = anthropic.AsyncAnthropic(api_key=api_key)
         self._extraction_model = settings.extraction_model
         self._extraction_effort = settings.extraction_effort
         self._evaluation_model = settings.evaluation_model
@@ -95,8 +110,6 @@ class AnthropicLlm:
         content: Content,
         schema: type[T],
     ) -> T | Failure:
-        if self._client is None:
-            return Failure("error", "ANTHROPIC_API_KEY is not set")
         output_config: OutputConfigParam = {
             "format": {"type": "json_schema", "schema": anthropic.transform_schema(schema)}
         }

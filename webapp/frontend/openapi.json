@@ -1708,6 +1708,139 @@
           }
         }
       }
+    },
+    "/api/setup": {
+      "get": {
+        "summary": "Get Setup Status",
+        "description": "Whether the user has a Provider; until they do, the app shows only its setup screen\nand every endpoint that starts an LLM run refuses.",
+        "operationId": "get_setup_status",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupStatus"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/providers": {
+      "get": {
+        "summary": "List Providers",
+        "description": "Every Provider, with the user's key for it masked, if they have one.",
+        "operationId": "list_providers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Providers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/providers/{provider}": {
+      "put": {
+        "summary": "Save Provider Key",
+        "description": "Save, or replace, the key for a Provider. The key is checked by listing the Provider's\nmodels with it, which are returned; a key the Provider refuses is not saved, and 422\nreturns the Provider's reason. Only available Providers can be set up.",
+        "operationId": "save_provider_key",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderKeySave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderKeySaved"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Provider Key",
+        "description": "Remove the key for a Provider. Removing the last one returns the app to its setup\nscreen.",
+        "operationId": "remove_provider_key",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3649,6 +3782,89 @@
         "title": "PostingCopyRead",
         "description": "The posting as it was when the Application first moved to Applied."
       },
+      "ProviderKeySave": {
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "title": "ProviderKeySave"
+      },
+      "ProviderKeySaved": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/ProviderRead"
+          },
+          "models": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "models"
+        ],
+        "title": "ProviderKeySaved"
+      },
+      "ProviderRead": {
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "anthropic",
+              "openai",
+              "google"
+            ],
+            "title": "Provider"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "masked_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Masked Key"
+          },
+          "saved_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "available",
+          "masked_key",
+          "saved_at"
+        ],
+        "title": "ProviderRead",
+        "description": "A Provider and the user's key for it; never the key itself, only its masked form."
+      },
       "SalaryRange": {
         "properties": {
           "minimum": {
@@ -3734,6 +3950,19 @@
         ],
         "title": "SentCoverLetterRead",
         "description": "The Cover Letter sent on the latest move to Applied."
+      },
+      "SetupStatus": {
+        "properties": {
+          "has_provider": {
+            "type": "boolean",
+            "title": "Has Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_provider"
+        ],
+        "title": "SetupStatus"
       },
       "Technology": {
         "properties": {

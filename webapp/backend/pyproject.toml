@@ -80,7 +80,7 @@ layers = [
     "triage | evaluations",
     # The posting text the LLM reads, shared by the prompts; the LLM job run lifecycle
     "posting_text | llm_runs",
-    "user_inputs | job_postings",
+    "user_inputs | job_postings | settings",
     "queue : routing : fields : owners : llm.interface : prompts : migrations : db : config",
 ]
 ignore_imports = [

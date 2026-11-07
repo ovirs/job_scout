@@ -5,6 +5,7 @@ from job_scout.evaluations.schemas import EvaluationRead
 from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings.routes import job_posting_or_404
 from job_scout.llm_runs import domain as llm_runs
+from job_scout.llm_runs.gate import NEEDS_PROVIDER
 from job_scout.routing import Owner, Session, TaskQueue
 
 router = APIRouter(prefix="/api")
@@ -31,7 +32,9 @@ async def get_current_evaluation(
     return None if current is None else EvaluationRead.of(current, posting)
 
 
-@router.post("/job-postings/{job_posting_id}/evaluations", status_code=201)
+@router.post(
+    "/job-postings/{job_posting_id}/evaluations", status_code=201, dependencies=NEEDS_PROVIDER
+)
 async def rerun_evaluation(
     job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> EvaluationRead:

@@ -1,6 +1,5 @@
 from typing import Literal
 
-from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import make_url
 
@@ -18,9 +17,6 @@ class Settings(BaseSettings):
 
     # A libpq URL, e.g. postgresql://job_scout:secret@localhost:5432/job_scout
     database_url: str
-
-    # Without a key, every LLM call fails with a reason saying so
-    anthropic_api_key: SecretStr | None = None
 
     # The model for each LLM step
     extraction_model: str = DEFAULT_MODEL

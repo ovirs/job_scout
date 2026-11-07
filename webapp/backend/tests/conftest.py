@@ -27,8 +27,9 @@ from testcontainers.community.postgres import PostgresContainer
 from job_scout import migrations, queue, worker
 from job_scout.app import create_app
 from job_scout.config import Settings
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 from job_scout.llm_runs.domain import STUCK_AFTER
+from job_scout.owners import LOCAL_USER_ID
 
 TEMPLATE_DATABASE = "job_scout_template"
 FRONTEND = Path(__file__).parents[2] / "frontend"
@@ -54,9 +55,32 @@ def settings(postgres_server: PostgresContainer) -> Iterator[Settings]:
         conn.execute(f"DROP DATABASE {name} WITH (FORCE)")
 
 
+ANTHROPIC_KEY = "sk-ant-the-test-key-0000"
+
+
+@pytest.fixture(autouse=True)
+def provider_key(settings: Settings) -> str:
+    """Every test starts with the Anthropic key saved, so the app is past its setup screen
+    and runs have a key to use; a test of the setup gate removes it first."""
+    with psycopg.connect(settings.database_url) as conn:
+        conn.execute(
+            "INSERT INTO provider_keys (owner_id, provider, key) VALUES (%s, 'anthropic', %s)",
+            (LOCAL_USER_ID, ANTHROPIC_KEY),
+        )
+    return ANTHROPIC_KEY
+
+
 @pytest.fixture
-async def client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
-    app = create_app(settings)
+def model_lister() -> FakeModelLister:
+    """The fake that checks the keys saved in Settings: make it refuse some, read its calls."""
+    return FakeModelLister()
+
+
+@pytest.fixture
+async def client(
+    settings: Settings, model_lister: FakeModelLister
+) -> AsyncIterator[httpx.AsyncClient]:
+    app = create_app(settings, model_lister=model_lister)
     async with LifespanManager(app) as manager:
         transport = httpx.ASGITransport(app=manager.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
@@ -74,7 +98,7 @@ def run_queued_tasks(settings: Settings, fake_llm: FakeLlm) -> Callable[[], Awai
     """Run every queued task to completion, retries included, then return."""
 
     async def run() -> None:
-        await worker.run(settings, llm=fake_llm, wait=False)
+        await worker.run(settings, llm_for=fake_llm.for_key, wait=False)
 
     return run
 
@@ -109,10 +133,15 @@ def make_stuck(settings: Settings) -> Callable[[str, int], None]:
 
 
 @pytest.fixture
-async def api_url(settings: Settings) -> AsyncIterator[str]:
+async def api_url(settings: Settings, model_lister: FakeModelLister) -> AsyncIterator[str]:
     port = _free_port()
     server = uvicorn.Server(
-        uvicorn.Config(create_app(settings), host="127.0.0.1", port=port, log_level="warning")
+        uvicorn.Config(
+            create_app(settings, model_lister=model_lister),
+            host="127.0.0.1",
+            port=port,
+            log_level="warning",
+        )
     )
     serving = asyncio.create_task(server.serve())
     while not server.started:

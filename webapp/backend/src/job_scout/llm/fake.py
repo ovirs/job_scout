@@ -8,6 +8,8 @@ from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 from job_scout.llm.interface import Failure, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
+from job_scout.settings.domain import ListingRefused
+from job_scout.settings.models import Provider
 
 
 class FakeStep[I, T]:
@@ -74,10 +76,32 @@ A_LETTER = CoverLetterResult(
 )
 
 
+class FakeModelLister:
+    """The fake Provider model listing: accepts every key but those given to `refuse`."""
+
+    def __init__(self) -> None:
+        self.models = ["fake-model-1", "fake-model-2"]
+        self.listed: list[tuple[Provider, str]] = []  # every provider and key it was asked
+        self._refused: dict[str, str] = {}
+
+    def refuse(self, key: str, reason: str) -> None:
+        self._refused[key] = reason
+
+    async def list_models(self, provider: Provider, api_key: str) -> list[str]:
+        self.listed.append((provider, api_key))
+        if api_key in self._refused:
+            raise ListingRefused(self._refused[api_key])
+        return list(self.models)
+
+
 class FakeLlm:
-    """Reports the models configured in `settings`, as the real adapter would."""
+    """Reports the models configured in `settings`, as the real adapter would.
+
+    `for_key` is what the worker calls for each attempt of a run; it records the key.
+    """
 
     def __init__(self, settings: Settings) -> None:
+        self.keys_used: list[str] = []
         self.manual_entry_extraction = FakeStep[str, ManualEntryExtraction](
             default=NOTHING_FOUND,
             model=settings.extraction_model,
@@ -93,6 +117,10 @@ class FakeLlm:
             model=settings.cover_letter_model,
             prompt=COVER_LETTER,
         )
+
+    def for_key(self, api_key: str) -> "FakeLlm":
+        self.keys_used.append(api_key)
+        return self
 
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         return await self.manual_entry_extraction(pasted_text)

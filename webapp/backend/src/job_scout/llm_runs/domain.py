@@ -9,6 +9,8 @@ the result. This module owns the rest:
 - the status, from queued to running to done or failed, and its timestamps;
 - attempts: a failed call, or an unexpected error, is retried on the queue, and only
   the last attempt's failure is stored;
+- the Provider key: read from the run owner's settings on every attempt; a run whose
+  owner has none fails at once, without a retry;
 - refusals: the task may refuse a run before the call (an input is missing) or after it
   (its target no longer takes the result), failing it without a retry;
 - one policy for runs under way: a feature never starts a second run of the same thing
@@ -28,8 +30,9 @@ import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from job_scout.config import Settings
-from job_scout.llm.interface import Failure, Llm, Outcome
+from job_scout.llm.interface import Failure, Llm, LlmFor, Outcome
 from job_scout.llm_runs.models import LlmRun, RunFailureKind
+from job_scout.settings import domain as settings
 
 logger = logging.getLogger(__name__)
 
@@ -144,10 +147,10 @@ async def execute[R: LlmRun, I, T](
     attempt's is stored, so it never leaves the run under way for good.
     """
     sessions: async_sessionmaker[AsyncSession] = context.additional_context["sessions"]
-    llm: Llm = context.additional_context["llm"]
+    llm_for: LlmFor = context.additional_context["llm_for"]
     last_attempt = _is_last_attempt(context)
     try:
-        await _attempt(sessions, llm, task, run_id, last_attempt)
+        await _attempt(sessions, llm_for, task, run_id, last_attempt)
     except LlmCallFailed:
         raise
     except Exception as error:
@@ -162,7 +165,7 @@ async def execute[R: LlmRun, I, T](
 
 async def _attempt[R: LlmRun, I, T](
     sessions: async_sessionmaker[AsyncSession],
-    llm: Llm,
+    llm_for: LlmFor,
     task: LlmRunTask[R, I, T],
     run_id: int,
     last_attempt: bool,
@@ -175,13 +178,19 @@ async def _attempt[R: LlmRun, I, T](
         queued_at = run.queued_at
         run.status = "running"
         run.started_at = run.started_at or _now()
+        # Read afresh on every attempt, so a replaced key takes effect without a restart
+        api_key = await settings.active_key(session, owner_id=run.owner_id)
+        if api_key is None:
+            run.model = run.prompt_version = None
+            _fail(run, "missing_input", "Add a Provider key in Settings first")
+            return
         gathered = await task.gather(session, run)
         if isinstance(gathered, Refusal):
             # Retrying would not help: the feature has to change first
             run.model = run.prompt_version = None
             _fail(run, gathered.kind, gathered.reason)
             return
-    outcome = await task.call(llm, gathered)
+    outcome = await task.call(llm_for(api_key), gathered)
     result = outcome.result
     if isinstance(result, Failure) and not last_attempt:
         raise LlmCallFailed(result.reason)

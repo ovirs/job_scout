@@ -893,6 +893,51 @@ export type PostingCopyRead = {
 };
 
 /**
+ * ProviderKeySave
+ */
+export type ProviderKeySave = {
+    /**
+     * Key
+     */
+    key: string;
+};
+
+/**
+ * ProviderKeySaved
+ */
+export type ProviderKeySaved = {
+    provider: ProviderRead;
+    /**
+     * Models
+     */
+    models: Array<string>;
+};
+
+/**
+ * ProviderRead
+ *
+ * A Provider and the user's key for it; never the key itself, only its masked form.
+ */
+export type ProviderRead = {
+    /**
+     * Provider
+     */
+    provider: 'anthropic' | 'openai' | 'google';
+    /**
+     * Available
+     */
+    available: boolean;
+    /**
+     * Masked Key
+     */
+    masked_key: string | null;
+    /**
+     * Saved At
+     */
+    saved_at: string | null;
+};
+
+/**
  * SalaryRange
  */
 export type SalaryRange = {
@@ -929,6 +974,16 @@ export type SentCoverLetterRead = {
      */
     applied_at: string;
     draft: CoverLetterDraftRead | null;
+};
+
+/**
+ * SetupStatus
+ */
+export type SetupStatus = {
+    /**
+     * Has Provider
+     */
+    has_provider: boolean;
 };
 
 /**
@@ -2176,3 +2231,97 @@ export type GetDealBreakerSetVersionResponses = {
 };
 
 export type GetDealBreakerSetVersionResponse = GetDealBreakerSetVersionResponses[keyof GetDealBreakerSetVersionResponses];
+
+export type GetSetupStatusData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/setup';
+};
+
+export type GetSetupStatusResponses = {
+    /**
+     * Successful Response
+     */
+    200: SetupStatus;
+};
+
+export type GetSetupStatusResponse = GetSetupStatusResponses[keyof GetSetupStatusResponses];
+
+export type ListProvidersData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/settings/providers';
+};
+
+export type ListProvidersResponses = {
+    /**
+     * Response List Providers
+     *
+     * Successful Response
+     */
+    200: Array<ProviderRead>;
+};
+
+export type ListProvidersResponse = ListProvidersResponses[keyof ListProvidersResponses];
+
+export type RemoveProviderKeyData = {
+    body?: never;
+    path: {
+        /**
+         * Provider
+         */
+        provider: 'anthropic' | 'openai' | 'google';
+    };
+    query?: never;
+    url: '/api/settings/providers/{provider}';
+};
+
+export type RemoveProviderKeyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RemoveProviderKeyError = RemoveProviderKeyErrors[keyof RemoveProviderKeyErrors];
+
+export type RemoveProviderKeyResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RemoveProviderKeyResponse = RemoveProviderKeyResponses[keyof RemoveProviderKeyResponses];
+
+export type SaveProviderKeyData = {
+    body: ProviderKeySave;
+    path: {
+        /**
+         * Provider
+         */
+        provider: 'anthropic' | 'openai' | 'google';
+    };
+    query?: never;
+    url: '/api/settings/providers/{provider}';
+};
+
+export type SaveProviderKeyErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveProviderKeyError = SaveProviderKeyErrors[keyof SaveProviderKeyErrors];
+
+export type SaveProviderKeyResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProviderKeySaved;
+};
+
+export type SaveProviderKeyResponse = SaveProviderKeyResponses[keyof SaveProviderKeyResponses];

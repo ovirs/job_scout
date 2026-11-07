@@ -16,6 +16,7 @@ from job_scout.llm.fake import FakeLlm
 from job_scout.llm.interface import Failure, Llm, Outcome
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
+from job_scout.owners import LOCAL_USER_ID
 
 
 class ExampleBase(DeclarativeBase):
@@ -90,7 +91,10 @@ def queue_runs(
     async def store(*subjects: str) -> list[int]:
         task_queue = queue.build(settings)
         async with task_queue.open_async(), sessions() as session:
-            runs = [ExampleRun(subject=subject, status="queued") for subject in subjects]
+            runs = [
+                ExampleRun(owner_id=LOCAL_USER_ID, subject=subject, status="queued")
+                for subject in subjects
+            ]
             session.add_all(runs)
             await llm_runs.commit_and_enqueue(session, task_queue, TASK, *runs)
             return [run.id for run in runs]
@@ -109,7 +113,7 @@ def run_worker(
         llm_runs.register(task_queue, settings, [task])
         async with task_queue.open_async():
             await task_queue.run_worker_async(
-                additional_context=queue.worker_context(sessions, fake_llm), wait=False
+                additional_context=queue.worker_context(sessions, fake_llm.for_key), wait=False
             )
 
     return run
@@ -348,7 +352,7 @@ async def test_a_run_whose_enqueue_fails_is_failed_at_once_so_it_can_be_retried(
     unopened = queue.build(settings)  # deferring on it raises
 
     async with sessions() as session:
-        run = ExampleRun(subject="a pasted posting", status="queued")
+        run = ExampleRun(owner_id=LOCAL_USER_ID, subject="a pasted posting", status="queued")
         session.add(run)
         await llm_runs.commit_and_enqueue(session, unopened, TASK, run)
 

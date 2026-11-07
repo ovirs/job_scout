@@ -8,6 +8,7 @@ it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
 
@@ -50,3 +51,7 @@ class Llm(Protocol):
     async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
         """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`."""
         ...
+
+
+# Builds the LLM for a Provider key: the worker makes one per attempt, with the run owner's key
+type LlmFor = Callable[[str], Llm]

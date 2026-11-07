@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
+from job_scout.llm_runs.gate import NEEDS_PROVIDER
 
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view import domain as posting_view
@@ -34,7 +35,9 @@ async def set_job_posting_triage(
     return await posting_view.read(session, posting)
 
 
-@router.post("/job-postings/{job_posting_id}/applications", status_code=201)
+@router.post(
+    "/job-postings/{job_posting_id}/applications", status_code=201, dependencies=NEEDS_PROVIDER
+)
 async def start_application(
     job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ApplicationRead:

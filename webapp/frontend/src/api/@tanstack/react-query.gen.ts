@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, type Options, reopenJobPosting, rerunEvaluation, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, getSetupStatus, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, listProviders, type Options, removeProviderKey, reopenJobPosting, rerunEvaluation, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, saveProviderKey, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, GetSetupStatusData, GetSetupStatusResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ListProvidersData, ListProvidersResponse, RemoveProviderKeyData, RemoveProviderKeyError, RemoveProviderKeyResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SaveProviderKeyData, SaveProviderKeyError, SaveProviderKeyResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -785,3 +785,85 @@ export const getDealBreakerSetVersionOptions = (options: Options<GetDealBreakerS
     },
     queryKey: getDealBreakerSetVersionQueryKey(options)
 });
+
+export const getSetupStatusQueryKey = (options?: Options<GetSetupStatusData>) => createQueryKey('getSetupStatus', options);
+
+/**
+ * Get Setup Status
+ *
+ * Whether the user has a Provider; until they do, the app shows only its setup screen
+ * and every endpoint that starts an LLM run refuses.
+ */
+export const getSetupStatusOptions = (options?: Options<GetSetupStatusData>) => queryOptions<GetSetupStatusResponse, DefaultError, GetSetupStatusResponse, ReturnType<typeof getSetupStatusQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getSetupStatus({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getSetupStatusQueryKey(options)
+});
+
+export const listProvidersQueryKey = (options?: Options<ListProvidersData>) => createQueryKey('listProviders', options);
+
+/**
+ * List Providers
+ *
+ * Every Provider, with the user's key for it masked, if they have one.
+ */
+export const listProvidersOptions = (options?: Options<ListProvidersData>) => queryOptions<ListProvidersResponse, DefaultError, ListProvidersResponse, ReturnType<typeof listProvidersQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listProviders({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listProvidersQueryKey(options)
+});
+
+/**
+ * Remove Provider Key
+ *
+ * Remove the key for a Provider. Removing the last one returns the app to its setup
+ * screen.
+ */
+export const removeProviderKeyMutation = (options?: Partial<Options<RemoveProviderKeyData>>): UseMutationOptions<RemoveProviderKeyResponse, RemoveProviderKeyError, Options<RemoveProviderKeyData>> => {
+    const mutationOptions: UseMutationOptions<RemoveProviderKeyResponse, RemoveProviderKeyError, Options<RemoveProviderKeyData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await removeProviderKey({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Save Provider Key
+ *
+ * Save, or replace, the key for a Provider. The key is checked by listing the Provider's
+ * models with it, which are returned; a key the Provider refuses is not saved, and 422
+ * returns the Provider's reason. Only available Providers can be set up.
+ */
+export const saveProviderKeyMutation = (options?: Partial<Options<SaveProviderKeyData>>): UseMutationOptions<SaveProviderKeyResponse, SaveProviderKeyError, Options<SaveProviderKeyData>> => {
+    const mutationOptions: UseMutationOptions<SaveProviderKeyResponse, SaveProviderKeyError, Options<SaveProviderKeyData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveProviderKey({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};

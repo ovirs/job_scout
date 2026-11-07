@@ -1,4 +1,6 @@
+import { useQuery } from '@tanstack/react-query'
 import { Fragment, type ReactNode, useEffect, useState } from 'react'
+import { getSetupStatusOptions } from './api/@tanstack/react-query.gen'
 import { AddPosting } from './AddPosting'
 import { ApplicationPage, ApplicationsPage } from './ApplicationPage'
 import { ClippingPage } from './ClippingPage'
@@ -6,6 +8,8 @@ import { DealBreakersPage } from './DealBreakersPage'
 import { DOCUMENTS, type DocumentKind, DocumentPage } from './DocumentPage'
 import { JobPostingPage } from './JobPostingPage'
 import { PostingLists } from './PostingLists'
+import { SettingsPage, SetupScreen } from './SettingsPage'
+import { Loading } from './Waiting'
 
 type NavPage = { hash: string; label: string; glyph: string; page: ReactNode }
 
@@ -38,6 +42,7 @@ const GROUPS: { label: string; pages: NavPage[] }[] = [
     ],
   },
   { label: 'Writing', pages: [documentPage('writing-guide', '✎')] },
+  { label: 'App', pages: [{ hash: '#/settings', label: 'Settings', glyph: '⚙', page: <SettingsPage /> }] },
 ]
 
 const PAGES = GROUPS.flatMap((group) => group.pages)
@@ -62,7 +67,16 @@ function recordPage(hash: string): { owner: NavPage; page: ReactNode } | null {
   return null
 }
 
+/** Until the user has a Provider, the app is only its setup screen. */
 export default function App() {
+  const setup = useQuery(getSetupStatusOptions())
+  if (setup.isPending) return <Loading />
+  if (setup.isError) return <p role="alert">Could not reach the app. Reload to try again.</p>
+  if (!setup.data.has_provider) return <SetupScreen />
+  return <Shell />
+}
+
+function Shell() {
   const hash = useHash()
   const record = recordPage(hash)
   const navPage = PAGES.find((page) => page.hash === hash) ?? JOB_POSTINGS

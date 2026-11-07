@@ -1,5 +1,6 @@
 """The columns every LLM run's table shares: its status, timestamps, model and failure."""
 
+import uuid
 from datetime import datetime
 from typing import Literal
 
@@ -21,6 +22,9 @@ class LlmRun:
 
     A feature narrows `status` to its own statuses, which include every `RunStatus`.
     """
+
+    # Whose Provider key the run is made with; each feature's table indexes it
+    owner_id: Mapped[uuid.UUID]
 
     id: Mapped[int] = mapped_column(primary_key=True)
     status: Mapped[str] = mapped_column(String)

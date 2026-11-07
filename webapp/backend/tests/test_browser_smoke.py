@@ -45,3 +45,27 @@ async def test_paste_confirm_and_save_a_manual_entry(
     async with httpx.AsyncClient(base_url=api_url) as client:
         stored = (await client.get("/api/job-postings")).json()
     assert [(p["title"], p["company"]) for p in stored] == [("Staff Data Engineer", "Acme")]
+
+
+async def test_the_setup_screen_blocks_the_app_until_a_key_is_saved_and_returns_when_removed(
+    page: Page, api_url: str
+) -> None:
+    async with httpx.AsyncClient(base_url=api_url) as client:
+        await client.delete("/api/settings/providers/anthropic")
+
+    await page.goto("/")
+    await expect(page.get_by_role("heading", name="Welcome to Job Scout")).to_be_visible()
+    await expect(page.get_by_role("navigation")).to_have_count(0)
+
+    await page.get_by_label("API key").fill("sk-ant-typed-in-the-browser-9876")
+    await page.get_by_role("button", name="Save key").click()
+    await expect(page.get_by_role("navigation", name="Main")).to_be_visible()
+
+    await page.get_by_role("link", name="Settings").click()
+    anthropic = page.get_by_role("group", name="Anthropic")
+    await expect(anthropic.get_by_text("9876")).to_be_visible()
+    await expect(page.get_by_text("sk-ant-typed-in-the-browser-9876")).to_have_count(0)
+
+    page.once("dialog", lambda dialog: dialog.accept())
+    await anthropic.get_by_role("button", name="Remove key").click()
+    await expect(page.get_by_role("heading", name="Welcome to Job Scout")).to_be_visible()

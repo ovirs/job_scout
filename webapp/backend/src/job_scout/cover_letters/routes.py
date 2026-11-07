@@ -10,6 +10,7 @@ from job_scout.cover_letters.schemas import (
     CoverLetterRead,
     CoverLetterRevise,
 )
+from job_scout.llm_runs.gate import NEEDS_PROVIDER
 from job_scout.routing import Owner, Session, TaskQueue
 
 router = APIRouter(prefix="/api")
@@ -24,7 +25,11 @@ async def get_cover_letter(application_id: int, session: Session, owner: Owner) 
     return CoverLetterRead.of(letter)
 
 
-@router.post("/applications/{application_id}/cover-letter/generations", status_code=201)
+@router.post(
+    "/applications/{application_id}/cover-letter/generations",
+    status_code=201,
+    dependencies=NEEDS_PROVIDER,
+)
 async def generate_cover_letter(
     application_id: int,
     body: CoverLetterGenerate,
@@ -50,7 +55,11 @@ async def generate_cover_letter(
     return CoverLetterRead.of(letter)
 
 
-@router.post("/applications/{application_id}/cover-letter/revisions", status_code=201)
+@router.post(
+    "/applications/{application_id}/cover-letter/revisions",
+    status_code=201,
+    dependencies=NEEDS_PROVIDER,
+)
 async def revise_cover_letter(
     application_id: int,
     body: CoverLetterRevise,

@@ -12,9 +12,12 @@ from job_scout.config import Settings
 from job_scout.cover_letters.routes import router as cover_letters
 from job_scout.evaluations.routes import router as evaluations
 from job_scout.job_postings.routes import router as job_postings
+from job_scout.llm.anthropic_adapter import AnthropicModelLister
 from job_scout.notes.routes import router as notes
 from job_scout.posting_view.routes import router as posting_view
 from job_scout.runtime import open_runtime
+from job_scout.settings.domain import ModelLister
+from job_scout.settings.routes import router as settings_routes
 from job_scout.user_inputs.routes import router as user_inputs
 
 # Each package's routes, in the order the OpenAPI schema lists them
@@ -27,10 +30,16 @@ ROUTERS = [
     cover_letters,
     clippings,
     user_inputs,
+    settings_routes,
 ]
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, *, model_lister: ModelLister | None = None
+) -> FastAPI:
+    """The API; `model_lister` checks the keys saved in Settings, with the Providers' own
+    SDKs unless another is given."""
+
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         nonlocal settings
@@ -38,6 +47,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async with open_runtime(settings) as runtime:
             app.state.sessions = runtime.sessions
             app.state.task_queue = runtime.task_queue
+            app.state.model_lister = model_lister or AnthropicModelLister()
             yield
 
     app = FastAPI(

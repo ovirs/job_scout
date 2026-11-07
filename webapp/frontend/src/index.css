@@ -904,3 +904,10 @@ mark.active {
   border: 1px solid var(--line);
   border-radius: var(--radius-panel);
 }
+
+/* The setup screen shown until the user has a Provider */
+.setup {
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: 4rem 1rem;
+}
