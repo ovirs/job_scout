@@ -183,12 +183,13 @@ async def move(
     if state != application.state:
         now = datetime.now(UTC)
         application.state = state
-        application.history.append(ApplicationStateChange(state=state, changed_at=now))
+        change = ApplicationStateChange(state=state, changed_at=now)
+        application.history.append(change)
         if state == "applied" and application.copied_at is None:
             _copy_posting(application, now)
         if state == "applied" and on_applied is not None:
             await session.flush()  # the move gets its id
-            await on_applied(application, application.history[-1])
+            await on_applied(application, change)
     await session.commit()
     return application
 
