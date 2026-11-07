@@ -98,7 +98,7 @@ function RerunAll() {
         aria-busy={rerun.isPending}
         onClick={() => rerun.mutate({})}
       >
-        Re-run all untriaged
+        Re-run all not acted on
       </button>{' '}
       {rerun.isError
         ? 'Could not queue the Evaluations.'
