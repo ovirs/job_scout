@@ -75,3 +75,21 @@ async def test_dropping_the_pointer_is_refused_when_a_stored_sent_letter_differs
 
     with pytest.raises(RuntimeError, match=rf"\[{changed[0]}\]"):
         migrations.upgrade(settings.database_url)
+
+
+async def test_moves_to_applied_made_before_survivals_were_recorded_get_their_ratio(
+    client: httpx.AsyncClient, settings: Settings, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application_id: int = (
+        await generated_application(client, fake_llm, run_queued_tasks, "one two three four")
+    )["id"]
+    await save_draft(client, application_id, "one two three five")
+    await move(client, application_id, "applied")
+    before = await cover_letter(client, application_id)
+    migrations.downgrade(settings.database_url, "0014")
+
+    migrations.upgrade(settings.database_url)
+
+    after = await cover_letter(client, application_id)
+    assert after["sent"]["survival_ratio"] == 0.75
+    assert after == before

@@ -6,6 +6,7 @@ from sqlalchemy import CheckConstraint, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from job_scout.applications.models import ApplicationStateChange
 from job_scout.db import Base
 from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
 from job_scout.user_inputs.models import DocumentVersion
@@ -100,3 +101,17 @@ class CoverLetterDraft(Base):
     content_hash: Mapped[str]  # the posting's, when the draft was made
     # The earlier draft this one restores, copying its text and record
     restored_from_draft_id: Mapped[int | None] = mapped_column(ForeignKey("cover_letter_drafts.id"))
+
+
+class DraftSurvival(Base):
+    """How much of the last draft the LLM wrote survived into the letter sent on one move
+    to Applied: a text-similarity ratio from 0 to 1, recorded with the move. A move with
+    no letter sent, or with no LLM draft live before it, has none."""
+
+    __tablename__ = "draft_survivals"
+
+    state_change_id: Mapped[int] = mapped_column(
+        ForeignKey("application_state_changes.id"), primary_key=True
+    )
+    state_change: Mapped[ApplicationStateChange] = relationship()
+    ratio: Mapped[float]

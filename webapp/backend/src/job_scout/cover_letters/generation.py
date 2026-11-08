@@ -82,12 +82,7 @@ async def gather(session: AsyncSession, generation: CoverLetterGeneration) -> In
     case: EvaluationCase = "missing"
     if generation.evaluation_id is not None:
         run = await session.get_one(Evaluation, generation.evaluation_id)
-        result = evaluations.checked_result(run)
-        assert result is not None
-        flags = Flags(
-            green=[flag.point for flag in result.green_flags],
-            red=[flag.point for flag in result.red_flags],
-        )
+        flags = flags_of(run)
         case = "outdated" if evaluations.outdated(run, posting) else "current"
     return Inputs(
         career_profile=await user_inputs.current_document(
@@ -102,6 +97,16 @@ async def gather(session: AsyncSession, generation: CoverLetterGeneration) -> In
         evaluation_case=case,
         revised_text=None if generation.revised_draft is None else generation.revised_draft.text,
         instruction=generation.instruction,
+    )
+
+
+def flags_of(run: Evaluation) -> Flags:
+    """The points of a done Evaluation's flags."""
+    result = evaluations.checked_result(run)
+    assert result is not None
+    return Flags(
+        green=[flag.point for flag in result.green_flags],
+        red=[flag.point for flag in result.red_flags],
     )
 
 

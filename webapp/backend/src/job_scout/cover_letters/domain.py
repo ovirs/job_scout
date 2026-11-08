@@ -6,7 +6,9 @@ Career Profile, the Writing Guide and the flags of the Evaluation the user agree
 from scratch or revising the latest draft in words; each request is its own row, and a
 failed one leaves the letter as it was. The user also saves hand edits as drafts, restores
 an earlier draft as a new one and deletes drafts, keeping them. Outside Preparing the
-letter is locked, and the latest draft on each move to Applied is the letter sent.
+letter is locked, and the latest draft on each move to Applied is the letter sent. So
+this package moves the Application, recording with each move to Applied how much of the
+last draft the LLM wrote survived into the letter sent.
 
 Each operation enforces these rules and refuses with a `Refused` error otherwise; an
 unknown Application or draft raises `NoSuchApplication` or `NoSuchDraft`.
@@ -15,15 +17,21 @@ unknown Application or draft raises `NoSuchApplication` or `NoSuchDraft`.
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from difflib import SequenceMatcher
 
 import procrastinate
 from sqlalchemy import Select, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications import domain as applications
-from job_scout.applications.models import Application, ApplicationStateChange
+from job_scout.applications.models import Application, ApplicationState, ApplicationStateChange
 from job_scout.cover_letters.generation import locked_reason, missing_input
-from job_scout.cover_letters.models import CoverLetterDraft, CoverLetterGeneration, EvaluationCase
+from job_scout.cover_letters.models import (
+    CoverLetterDraft,
+    CoverLetterGeneration,
+    DraftSurvival,
+    EvaluationCase,
+)
 from job_scout.cover_letters.tasks import GENERATION
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.models import Evaluation
@@ -77,6 +85,10 @@ class SentLetter:
 
     applied_at: datetime
     draft: CoverLetterDraft | None  # None when no letter was sent
+    # The last draft the LLM wrote, live at the move; None when there was none
+    llm_draft: CoverLetterDraft | None
+    # How much of that LLM draft survived into the letter sent; None without either
+    survival_ratio: float | None
 
 
 @dataclass(frozen=True)
@@ -227,6 +239,47 @@ async def delete(
     return await _letter(session, application)
 
 
+async def move(
+    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int, state: ApplicationState
+) -> Application:
+    """Move the Application to any state, from any other, committed (see
+    `applications.move`). Outside Preparing the Cover Letter is locked, and each move to
+    Applied sends its latest draft and records, with the move, how much of the last
+    draft the LLM wrote survived into it."""
+    application = await _application(session, owner_id, application_id, for_update=True)
+    change = applications.move(application, state)
+    if change is not None and change.state == "applied":
+        await _record_survival(session, application, change)
+    await session.commit()
+    return application
+
+
+def survival_ratio(llm_text: str, sent_text: str) -> float:
+    """How much of a text the LLM wrote survived into the one sent, from 0 to 1: the
+    share of their words that match, in order. Whitespace and line breaks are ignored,
+    so re-wrapping a letter changes nothing."""
+    return SequenceMatcher(None, llm_text.split(), sent_text.split(), autojunk=False).ratio()
+
+
+async def _record_survival(
+    session: AsyncSession, application: Application, change: ApplicationStateChange
+) -> None:
+    """Record how much of the last live LLM draft survived into the letter sent with the
+    move, if the LLM wrote any of its live drafts; a deleted draft counts for nothing."""
+    drafts = list(await session.scalars(_live_drafts(application)))
+    llm_draft = _last_llm_draft(drafts)
+    if llm_draft is None:
+        return
+    ratio = survival_ratio(llm_draft.text, drafts[0].text)
+    session.add(DraftSurvival(state_change=change, ratio=ratio))
+
+
+def _last_llm_draft(drafts: list[CoverLetterDraft]) -> CoverLetterDraft | None:
+    """The latest of the drafts, given the latest first, that the LLM wrote; a restored
+    LLM draft counts as one."""
+    return next((d for d in drafts if d.origin != "edited_by_hand"), None)
+
+
 async def _application(
     session: AsyncSession, owner_id: uuid.UUID, application_id: int, *, for_update: bool = False
 ) -> Application:
@@ -354,20 +407,28 @@ async def _sent(session: AsyncSession, application: Application) -> SentLetter |
     applied = _latest_move_to_applied(application)
     if applied is None:
         return None
-    draft = await session.scalar(
-        select(CoverLetterDraft)
-        .where(
-            CoverLetterDraft.application_id == application.id,
-            CoverLetterDraft.created_at < applied.changed_at,
-            or_(
-                CoverLetterDraft.deleted_at.is_(None),
-                CoverLetterDraft.deleted_at > applied.changed_at,
-            ),
+    # The drafts live at the move, the latest first
+    drafts = list(
+        await session.scalars(
+            select(CoverLetterDraft)
+            .where(
+                CoverLetterDraft.application_id == application.id,
+                CoverLetterDraft.created_at < applied.changed_at,
+                or_(
+                    CoverLetterDraft.deleted_at.is_(None),
+                    CoverLetterDraft.deleted_at > applied.changed_at,
+                ),
+            )
+            .order_by(CoverLetterDraft.id.desc())
         )
-        .order_by(CoverLetterDraft.id.desc())
-        .limit(1)
     )
-    return SentLetter(applied_at=applied.changed_at, draft=draft)
+    survival = await session.get(DraftSurvival, applied.id)
+    return SentLetter(
+        applied_at=applied.changed_at,
+        draft=drafts[0] if drafts else None,
+        llm_draft=_last_llm_draft(drafts),
+        survival_ratio=None if survival is None else survival.ratio,
+    )
 
 
 def _latest_move_to_applied(application: Application) -> ApplicationStateChange | None:

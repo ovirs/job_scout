@@ -224,26 +224,6 @@ export const getApplicationOptions = (options: Options<GetApplicationData>) => q
     queryKey: getApplicationQueryKey(options)
 });
 
-/**
- * Set Application State
- *
- * Move the Application to any state, from any other; each move is kept, dated, in
- * its history. The Cover Letter is locked outside Preparing.
- */
-export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
-    const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
-        mutationFn: async (fnOptions) => {
-            const { data } = await setApplicationState({
-                ...options,
-                ...fnOptions,
-                throwOnError: true
-            });
-            return data;
-        }
-    };
-    return mutationOptions;
-};
-
 export const listJobPostingNotesQueryKey = (options: Options<ListJobPostingNotesData>) => createQueryKey('listJobPostingNotes', options);
 
 /**
@@ -434,6 +414,27 @@ export const getCurrentEvaluationOptions = (options: Options<GetCurrentEvaluatio
     },
     queryKey: getCurrentEvaluationQueryKey(options)
 });
+
+/**
+ * Set Application State
+ *
+ * Move the Application to any state, from any other; each move is kept, dated, in
+ * its history. The Cover Letter is locked outside Preparing, and each move to Applied
+ * sends its latest draft.
+ */
+export const setApplicationStateMutation = (options?: Partial<Options<SetApplicationStateData>>): UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> => {
+    const mutationOptions: UseMutationOptions<SetApplicationStateResponse, SetApplicationStateError, Options<SetApplicationStateData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await setApplicationState({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 export const getCoverLetterQueryKey = (options: Options<GetCoverLetterData>) => createQueryKey('getCoverLetter', options);
 

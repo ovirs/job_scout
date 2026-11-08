@@ -11,6 +11,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
 
+from job_scout.prompts import Prompt
+
 if TYPE_CHECKING:
     # Only named in the signatures: the steps' packages sit above this interface
     from job_scout.clippings.extraction import ManualEntryExtraction
@@ -47,6 +49,13 @@ class Llm(Protocol):
         """Judge one Job Posting against the user's inputs, as laid out in `prompt`."""
         ...
 
-    async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
-        """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`."""
+    async def write_cover_letter(
+        self,
+        prompt: CoverLetterPrompt,
+        *,
+        model: str | None = None,
+        instructions: Prompt | None = None,
+    ) -> Outcome[CoverLetterResult]:
+        """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`, with
+        the step's model and instructions unless `model` or `instructions` is given."""
         ...

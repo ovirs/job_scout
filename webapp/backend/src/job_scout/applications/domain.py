@@ -165,25 +165,25 @@ async def application(
     return await session.scalar(query)
 
 
-async def move(
-    session: AsyncSession, *, owner_id: uuid.UUID, application_id: int, state: ApplicationState
-) -> Application:
-    """Move the Application to any state, from any other, committed; each move is kept,
-    dated, in its history, and moving to the state it is in records nothing. The first
-    move to Applied copies the posting.
+def move(application: Application, state: ApplicationState) -> ApplicationStateChange | None:
+    """Move the Application to any state, from any other, not committed; returns the move,
+    kept, dated, in its history, or None when it is already in that state, which records
+    nothing. The first move to Applied copies the posting.
 
-    The Application is locked before the move is timed: a Cover Letter draft is stored
-    while holding the same lock, so one stored just before the move is always made
-    before it, and counts as sent."""
-    application = await _locked_application(session, owner_id, application_id)
-    if state != application.state:
-        now = datetime.now(UTC)
-        application.state = state
-        application.history.append(ApplicationStateChange(state=state, changed_at=now))
-        if state == "applied" and application.copied_at is None:
-            _copy_posting(application, now)
-    await session.commit()
-    return application
+    The caller holds the Application's lock (`application(..., for_update=True)`) and
+    commits: the Cover Letter package, above, moves it, since a move to Applied sends
+    its letter. The lock is taken before the move is timed: a Cover Letter draft is
+    stored while holding the same lock, so one stored just before the move is always
+    made before it, and counts as sent."""
+    if state == application.state:
+        return None
+    now = datetime.now(UTC)
+    change = ApplicationStateChange(state=state, changed_at=now)
+    application.state = state
+    application.history.append(change)
+    if state == "applied" and application.copied_at is None:
+        _copy_posting(application, now)
+    return change
 
 
 async def _locked_application(

@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
-from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
+from job_scout.applications.schemas import ApplicationRead
 from job_scout.evaluations.schemas import EvaluationRead
 from job_scout.job_postings.models import JobPosting
 
@@ -79,19 +79,6 @@ async def list_applications(
 @router.get("/applications/{application_id}")
 async def get_application(application_id: int, session: Session, owner: Owner) -> ApplicationRead:
     return ApplicationRead.of(await application_or_404(session, owner, application_id))
-
-
-@router.put("/applications/{application_id}/state")
-async def set_application_state(
-    application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
-) -> ApplicationRead:
-    """Move the Application to any state, from any other; each move is kept, dated, in
-    its history. The Cover Letter is locked outside Preparing."""
-    with _refusals():
-        application = await applications.move(
-            session, owner_id=owner, application_id=application_id, state=body.state
-        )
-    return ApplicationRead.of(application)
 
 
 @router.delete("/applications/{application_id}", status_code=204)

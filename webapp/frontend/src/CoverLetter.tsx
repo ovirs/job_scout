@@ -203,6 +203,8 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
                 sent.draft.origin
               ].toLowerCase()} draft from ${age(sent.draft.created_at)}.`
             : `No Cover Letter sent: moved to Applied ${age(sent.applied_at)} without one.`}
+          {sent.survival_ratio !== null &&
+            ` ${Math.round(sent.survival_ratio * 100)}% of the last LLM draft survived into it.`}
         </p>
       )}
       {failed && <p role="alert">{refusal(failed.error) ?? 'Could not do that. Try again.'}</p>}

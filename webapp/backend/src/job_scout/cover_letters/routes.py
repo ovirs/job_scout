@@ -3,6 +3,7 @@ from contextlib import contextmanager
 
 from fastapi import APIRouter, HTTPException
 
+from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
 from job_scout.cover_letters import domain as cover_letters
 from job_scout.cover_letters.schemas import (
     CoverLetterDraftSave,
@@ -13,6 +14,22 @@ from job_scout.cover_letters.schemas import (
 from job_scout.routing import Owner, Session, TaskQueue
 
 router = APIRouter(prefix="/api")
+
+
+# The Cover Letter package's, since a move to Applied sends the letter and records how much
+# of the last LLM draft survived into it
+@router.put("/applications/{application_id}/state")
+async def set_application_state(
+    application_id: int, body: ApplicationStateSet, session: Session, owner: Owner
+) -> ApplicationRead:
+    """Move the Application to any state, from any other; each move is kept, dated, in
+    its history. The Cover Letter is locked outside Preparing, and each move to Applied
+    sends its latest draft."""
+    with _refusals():
+        application = await cover_letters.move(
+            session, owner_id=owner, application_id=application_id, state=body.state
+        )
+    return ApplicationRead.of(application)
 
 
 @router.get("/applications/{application_id}/cover-letter")

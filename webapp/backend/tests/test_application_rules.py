@@ -1,5 +1,6 @@
 """The Application rules, at the package's interface: starting one, moving it, deleting
-it, and the Triage of a posting while it has one."""
+it, and the Triage of a posting while it has one. An Application is moved through the
+Cover Letter package, which records the letter sent with each move to Applied."""
 
 import asyncio
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -14,6 +15,7 @@ from test_triage import add_posting
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application, ApplicationState
 from job_scout.config import Settings
+from job_scout.cover_letters import domain as cover_letters
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm import Failure
@@ -152,7 +154,7 @@ async def test_a_triage_set_while_an_application_starts_cannot_unlock_it(
 
 async def move(runtime: Runtime, application_id: int, state: ApplicationState) -> Application:
     async with runtime.sessions() as session:
-        return await applications.move(
+        return await cover_letters.move(
             session, owner_id=LOCAL_USER_ID, application_id=application_id, state=state
         )
 
@@ -169,9 +171,10 @@ async def test_a_deleted_application_is_hidden_and_the_triage_freed_at_intereste
 
     await delete(runtime, application.id)
 
-    for change in [move(runtime, application.id, "applied"), delete(runtime, application.id)]:
-        with pytest.raises(applications.NoSuchApplication):
-            await change
+    with pytest.raises(cover_letters.NoSuchApplication):
+        await move(runtime, application.id, "applied")
+    with pytest.raises(applications.NoSuchApplication):
+        await delete(runtime, application.id)
     found = await read_posting(runtime, posting_id)
     assert found.application is None
     assert await triage_value(runtime, posting_id) == "interested"
@@ -216,7 +219,7 @@ async def test_an_application_moving_to_applied_while_it_is_deleted_is_not_delet
         )
         deleting = asyncio.create_task(delete(runtime, application.id))
         await asyncio.sleep(0.2)
-        await applications.move(
+        await cover_letters.move(
             moving, owner_id=LOCAL_USER_ID, application_id=application.id, state="applied"
         )
 
@@ -229,9 +232,10 @@ async def test_an_unknown_posting_or_application_is_reported_as_such(runtime: Ru
     for on_posting in [start(runtime, 999), set_triage(runtime, 999, "maybe")]:
         with pytest.raises(applications.NoSuchJobPosting):
             await on_posting
-    for on_application in [move(runtime, 999, "applied"), delete(runtime, 999)]:
-        with pytest.raises(applications.NoSuchApplication):
-            await on_application
+    with pytest.raises(cover_letters.NoSuchApplication):
+        await move(runtime, 999, "applied")
+    with pytest.raises(applications.NoSuchApplication):
+        await delete(runtime, 999)
 
 
 async def evaluation_statuses(client: httpx.AsyncClient, posting_id: int) -> list[str]:

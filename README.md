@@ -27,6 +27,20 @@ The background worker makes every LLM call, through the Anthropic API:
 
 Prompts live in `webapp/backend/src/job_scout/prompts/`, one file per step, each starting with a `version:` header that every LLM-produced record stores. Bump the version whenever you change a prompt's text.
 
+## Judge Cover Letter quality
+
+Two aids help you judge whether generated Cover Letters are getting better, by eye:
+
+- **Survival ratio**: on each move to Applied the app records how much of the last LLM draft survived into the letter sent, from 0 to 1 (1 for an LLM draft sent unedited). The Cover Letter shows it beside the letter sent.
+- **Regeneration comparison**: a command writes the letters of a handful of Applications again, under another prompt or model, and prints each beside the letter you sent. It saves nothing. Each letter is written from what its last LLM draft was written from (the same Career Profile and Writing Guide versions, Evaluation flags and instruction) and the posting as the Application copied it, so only the prompt and model differ.
+
+```sh
+docker compose run --rm -v "$PWD/candidate.md:/tmp/candidate.md" worker \
+  python -m job_scout.compare_letters 12 15 19 --model claude-sonnet-5 --prompt /tmp/candidate.md
+```
+
+The numbers are Application ids, as in the Application page's address. `--prompt` takes a prompt file with a `version:` header, like those in `prompts/`; without it the app's own Cover Letter prompt is used, and without `--model` the configured `COVER_LETTER_MODEL`. Applications that are deleted, sent no letter, or had no live LLM draft before the letter sent are refused before any letter is written.
+
 ## Test
 
 The backend tests drive the HTTP API against a real Postgres, which they start in a throwaway container, so Docker must be running. Queued tasks run to completion inside the test. You need [uv](https://docs.astral.sh/uv/).
@@ -57,7 +71,7 @@ The backend in `webapp/backend/src/job_scout/` has one package per domain concep
 - `models.py`: the package's SQLAlchemy tables.
 - `domain.py`: the package's rules and queries.
 
-Some packages have more modules: `prompt.py` (building an LLM prompt), `tasks.py` (a background task the worker runs), `extraction.py` (what the LLM returns) and `generation.py` (what a Cover Letter generation is written from and how its draft is stored, shared by `domain.py` and `tasks.py`).
+Some packages have more modules: `prompt.py` (building an LLM prompt), `tasks.py` (a background task the worker runs), `extraction.py` (what the LLM returns), `generation.py` (what a Cover Letter generation is written from and how its draft is stored, shared by `domain.py` and `tasks.py`) and `comparison.py` (what the regeneration comparison writes letters again from).
 
 A package imports only from the packages below it. From the top:
 
@@ -68,7 +82,7 @@ A package imports only from the packages below it. From the top:
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
 6. `user_inputs`, `job_postings`
 
-Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
+Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, the `compare_letters` command, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 
 - **Coordinating several concepts:** code that does this goes in the highest package involved. It never goes in a lower package reaching up.
 - **Shared code:** goes in a module named for a concept, never `utils` or `common`.

@@ -228,3 +228,94 @@ async def test_moving_to_applied_with_no_draft_records_that_no_letter_was_sent(
     sent_letter = (await cover_letter(client, application["id"]))["sent"]
     assert sent_letter["draft"] is None
     assert sent_letter["applied_at"] == moved.json()["state_changed_at"]
+    assert sent_letter["survival_ratio"] is None
+
+
+async def survival_ratio(client: httpx.AsyncClient, application_id: int) -> float | None:
+    """How much of the last LLM draft survived into the letter sent on the latest move to
+    Applied."""
+    ratio: float | None = (await cover_letter(client, application_id))["sent"]["survival_ratio"]
+    return ratio
+
+
+async def test_an_llm_draft_sent_unedited_survives_whole(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(
+        client, fake_llm, run_queued_tasks, "Dear Acme,\n\nI build pipelines.\n\nRegards"
+    )
+
+    await move(client, application["id"], "applied")
+
+    assert await survival_ratio(client, application["id"]) == 1.0
+
+
+async def test_the_ratio_is_the_share_of_the_llm_drafts_words_kept_in_order(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(
+        client, fake_llm, run_queued_tasks, "Dear Acme, I build data pipelines."
+    )
+    # Re-wrapped, which does not count, and one word of six changed
+    await save_draft(client, application["id"], "Dear Acme,\nI build data\nplatforms.")
+
+    await move(client, application["id"], "applied")
+
+    # Five of six words kept: 2 * 5 / (6 + 6)
+    assert await survival_ratio(client, application["id"]) == 10 / 12
+
+
+async def test_a_deleted_llm_draft_counts_for_nothing(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(
+        client, fake_llm, run_queued_tasks, "one two three four"
+    )
+    fake_llm.cover_letter.respond_with(a_letter(letter="something else entirely"))
+    await generate(client, application["id"])
+    await run_queued_tasks()
+    discarded = (await cover_letter(client, application["id"]))["draft"]
+    await delete_draft(client, application["id"], discarded["id"])
+    await save_draft(client, application["id"], "one two three five")
+
+    await move(client, application["id"], "applied")
+
+    assert await survival_ratio(client, application["id"]) == 0.75
+
+
+async def test_a_letter_written_with_no_live_llm_draft_has_no_ratio(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
+    generated = (await cover_letter(client, application["id"]))["draft"]
+    await save_draft(client, application["id"], "All my own.")
+    await delete_draft(client, application["id"], generated["id"])
+
+    await move(client, application["id"], "applied")
+
+    assert (await cover_letter(client, application["id"]))["sent"]["draft"]["text"] == (
+        "All my own."
+    )
+    assert await survival_ratio(client, application["id"]) is None
+
+
+async def test_each_move_to_applied_records_its_own_ratio_which_later_changes_leave_alone(
+    client: httpx.AsyncClient, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    application = await generated_application(
+        client, fake_llm, run_queued_tasks, "one two three four"
+    )
+    await save_draft(client, application["id"], "one two three five")
+    await move(client, application["id"], "applied")
+    await move(client, application["id"], "screen_call")
+    assert await survival_ratio(client, application["id"]) == 0.75
+
+    # Back to Preparing: deleting the LLM draft afterwards leaves the letter sent as it was
+    await move(client, application["id"], "preparing")
+    generated = (await cover_letter(client, application["id"]))["drafts"][-1]
+    await delete_draft(client, application["id"], generated["id"])
+    assert await survival_ratio(client, application["id"]) == 0.75
+
+    # The next move to Applied sends the hand-written letter, with no live LLM draft
+    await move(client, application["id"], "applied")
+    assert await survival_ratio(client, application["id"]) is None
