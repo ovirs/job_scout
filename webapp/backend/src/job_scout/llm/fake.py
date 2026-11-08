@@ -34,9 +34,9 @@ class FakeStep[I, T]:
         self._while_answering = hook
 
     async def __call__(
-        self, inputs: I, *, model: str | None = None, prompt: Prompt | None = None
+        self, inputs: I, *, model: str | None = None, instructions: Prompt | None = None
     ) -> Outcome[T]:
-        """Answer, reporting `model` and `prompt` as what answered when given, as the real
+        """Answer, reporting `model` and `instructions` as what answered when given, as the real
         adapter would."""
         self.calls.append(inputs)
         if self._while_answering is not None:
@@ -47,7 +47,7 @@ class FakeStep[I, T]:
         return Outcome(
             result=result,
             model=model or self._model,
-            prompt_version=(prompt or self._prompt).version,
+            prompt_version=(instructions or self._prompt).version,
         )
 
 
@@ -115,4 +115,4 @@ class FakeLlm:
         model: str | None = None,
         instructions: Prompt | None = None,
     ) -> Outcome[CoverLetterResult]:
-        return await self.cover_letter(prompt, model=model, prompt=instructions)
+        return await self.cover_letter(prompt, model=model, instructions=instructions)
