@@ -56,6 +56,14 @@ _Avoid_: Deal Breaker (which disqualifies), Search criteria, Screening Rule
 What the user writes and maintains for the LLM to work from: the Career Profile, Preferences, Writing Guide and Deal Breakers. Every saved change creates a new version, so each Evaluation and Cover Letter draft records exactly which versions produced it.
 _Avoid_: Settings, Config, Profile data
 
+**Settings**:
+How the user has set up the app to run, rather than what the LLM reads: which Providers they use and the default model for each LLM step. Settings are not versioned; each Evaluation and Cover Letter draft records the model that produced it instead.
+_Avoid_: User Input (which the LLM reads, and is versioned), Preferences (which is a User Input), Config
+
+**Provider**:
+A company whose models the app can call, such as Anthropic, OpenAI or Google. The user sets up at least one; the models offered are those their Providers make available.
+_Avoid_: Vendor, Backend, Platform
+
 **Document**:
 A User Input written as one piece of free text: the Career Profile, Preferences or Writing Guide. Deal Breakers are not a Document, since they are a list of separate one-sentence items.
 _Avoid_: File, Note (which the user writes on a Job Posting or an Application)
