@@ -11,6 +11,9 @@ the result. This module owns the rest:
   the last attempt's failure is stored;
 - refusals: the task may refuse a run before the call (an input is missing) or after it
   (its target no longer takes the result), failing it without a retry;
+- the Provider: every attempt calls the LLM with the run owner's key, read afresh, so a
+  replaced key takes effect on the next attempt; a run whose owner has no key is failed
+  without a retry;
 - one policy for runs under way: a feature never starts a second run of the same thing
   while one is under way, unless that one is stuck, queued or running for longer than
   `STUCK_AFTER`. A stuck run is failed and replaced, or requeued in place.
@@ -28,10 +31,14 @@ import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from job_scout.config import Settings
-from job_scout.llm.interface import Failure, Llm, Outcome
+from job_scout.llm.interface import Connect, Failure, Llm, Outcome, Provider
 from job_scout.llm_runs.models import LlmRun, RunFailureKind
+from job_scout.settings import domain as provider_settings
 
 logger = logging.getLogger(__name__)
+
+# Every run calls Anthropic, the only Provider with an adapter, until runs store a choice
+PROVIDER: Provider = "anthropic"
 
 # A run calls the LLM at most this many times before it records the failure
 ATTEMPTS = 3
@@ -144,10 +151,10 @@ async def execute[R: LlmRun, I, T](
     attempt's is stored, so it never leaves the run under way for good.
     """
     sessions: async_sessionmaker[AsyncSession] = context.additional_context["sessions"]
-    llm: Llm = context.additional_context["llm"]
+    connect: Connect = context.additional_context["connect"]
     last_attempt = _is_last_attempt(context)
     try:
-        await _attempt(sessions, llm, task, run_id, last_attempt)
+        await _attempt(sessions, connect, task, run_id, last_attempt)
     except LlmCallFailed:
         raise
     except Exception as error:
@@ -162,7 +169,7 @@ async def execute[R: LlmRun, I, T](
 
 async def _attempt[R: LlmRun, I, T](
     sessions: async_sessionmaker[AsyncSession],
-    llm: Llm,
+    connect: Connect,
     task: LlmRunTask[R, I, T],
     run_id: int,
     last_attempt: bool,
@@ -177,11 +184,13 @@ async def _attempt[R: LlmRun, I, T](
         run.started_at = run.started_at or _now()
         gathered = await task.gather(session, run)
         if isinstance(gathered, Refusal):
-            # Retrying would not help: the feature has to change first
-            run.model = run.prompt_version = None
-            _fail(run, gathered.kind, gathered.reason)
+            _refuse(run, gathered)
             return
-    outcome = await task.call(llm, gathered)
+        api_key = await _api_key(session, run)
+        if isinstance(api_key, Refusal):
+            _refuse(run, api_key)
+            return
+    outcome = await task.call(connect(PROVIDER, api_key), gathered)
     result = outcome.result
     if isinstance(result, Failure) and not last_attempt:
         raise LlmCallFailed(result.reason)
@@ -201,6 +210,16 @@ async def _attempt[R: LlmRun, I, T](
         run.status = "done"
         run.finished_at = _now()
         run.failure_kind = run.failure_reason = None
+
+
+async def _api_key(session: AsyncSession, run: LlmRun) -> str | Refusal:
+    """The run owner's key for the Provider, read afresh for each attempt; or a refusal
+    pointing to Settings when they have none."""
+    api_key = await provider_settings.api_key(session, owner_id=run.owner_id, provider=PROVIDER)
+    if api_key is None:
+        name = provider_settings.PROVIDER_NAMES[PROVIDER]
+        return Refusal("missing_input", f"There is no API key for {name}: add one in Settings")
+    return api_key
 
 
 async def _locked_if_under_way[R: LlmRun](
@@ -248,6 +267,13 @@ def requeue(run: LlmRun) -> None:
     run.queued_at = _now()
     run.started_at = run.finished_at = None
     run.failure_kind = run.failure_reason = None
+
+
+def _refuse(run: LlmRun, refusal: Refusal) -> None:
+    """Fail a run before its call; retrying would not help, as the feature or the Settings
+    have to change first."""
+    run.model = run.prompt_version = None
+    _fail(run, refusal.kind, refusal.reason)
 
 
 def _fail(run: LlmRun, kind: RunFailureKind, reason: str) -> None:

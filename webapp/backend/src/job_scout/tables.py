@@ -13,5 +13,6 @@ from job_scout.evaluations import models as evaluations  # noqa: F401
 from job_scout.job_postings import models as job_postings  # noqa: F401
 from job_scout.notes import models as notes  # noqa: F401
 from job_scout.posting_view import models as posting_view  # noqa: F401
+from job_scout.settings import models as settings  # noqa: F401
 from job_scout.triage import models as triage  # noqa: F401
 from job_scout.user_inputs import models as user_inputs  # noqa: F401

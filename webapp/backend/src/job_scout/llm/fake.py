@@ -1,4 +1,5 @@
-"""The fake LLM for tests: canned results or failures per step, and a record of the inputs."""
+"""The fakes for tests: the LLM, with canned results or failures per step and a record of
+the inputs, and the model lister, with canned listings that can refuse a key."""
 
 from collections.abc import Awaitable, Callable
 
@@ -6,7 +7,8 @@ from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Settings
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
-from job_scout.llm.interface import Failure, Outcome
+from job_scout.llm.interface import Failure, KeyRefused, Outcome, Provider
+from job_scout.llm.providers import ADAPTERS
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 
@@ -75,9 +77,14 @@ A_LETTER = CoverLetterResult(
 
 
 class FakeLlm:
-    """Reports the models configured in `settings`, as the real adapter would."""
+    """Reports the models configured in `settings`, as the real adapter would.
+
+    `connect` stands in for connecting to a Provider: it answers with this one fake,
+    whatever the Provider and key, and records each in `connections`.
+    """
 
     def __init__(self, settings: Settings) -> None:
+        self.connections: list[tuple[Provider, str]] = []
         self.manual_entry_extraction = FakeStep[str, ManualEntryExtraction](
             default=NOTHING_FOUND,
             model=settings.extraction_model,
@@ -94,6 +101,10 @@ class FakeLlm:
             prompt=COVER_LETTER,
         )
 
+    def connect(self, provider: Provider, api_key: str) -> "FakeLlm":
+        self.connections.append((provider, api_key))
+        return self
+
     async def extract_manual_entry(self, pasted_text: str) -> Outcome[ManualEntryExtraction]:
         return await self.manual_entry_extraction(pasted_text)
 
@@ -102,3 +113,23 @@ class FakeLlm:
 
     async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
         return await self.cover_letter(prompt)
+
+
+class FakeModelLister:
+    """Lists `models` for any key, and records each Provider and key it was asked about in
+    `calls`; after `refuse`, refuses every key with the reason. The Providers available are
+    the app's own."""
+
+    available: tuple[Provider, ...] = tuple(ADAPTERS)
+
+    def __init__(self, models: list[str] | None = None) -> None:
+        self.models = models if models is not None else ["claude-opus-5-5"]
+        self.calls: list[tuple[Provider, str]] = []
+        self._refusal: KeyRefused | None = None
+
+    def refuse(self, reason: str) -> None:
+        self._refusal = KeyRefused(reason)
+
+    async def list_models(self, provider: Provider, api_key: str) -> list[str] | KeyRefused:
+        self.calls.append((provider, api_key))
+        return self._refusal or list(self.models)

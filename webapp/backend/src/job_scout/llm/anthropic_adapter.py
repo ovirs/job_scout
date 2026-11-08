@@ -1,4 +1,5 @@
-"""The real LLM adapter: the Anthropic API, with structured output.
+"""The real LLM adapter: the Anthropic API, with structured output, called with the run
+owner's key; and the listing of Anthropic's models, which checks a key.
 
 Not covered by automated tests; prompt quality is judged by reading results.
 """
@@ -11,7 +12,7 @@ from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Effort, Settings
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
-from job_scout.llm.interface import Failure, Outcome
+from job_scout.llm.interface import Failure, KeyRefused, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 MAX_TOKENS = 8192
@@ -21,10 +22,8 @@ type Content = str | list[TextBlockParam]
 
 
 class AnthropicLlm:
-    def __init__(self, settings: Settings) -> None:
-        secret = settings.anthropic_api_key
-        api_key = secret.get_secret_value() if secret else ""  # blank counts as not set
-        self._client = anthropic.AsyncAnthropic(api_key=api_key) if api_key else None
+    def __init__(self, settings: Settings, api_key: str) -> None:
+        self._api_key = api_key
         self._extraction_model = settings.extraction_model
         self._extraction_effort = settings.extraction_effort
         self._evaluation_model = settings.evaluation_model
@@ -95,21 +94,21 @@ class AnthropicLlm:
         content: Content,
         schema: type[T],
     ) -> T | Failure:
-        if self._client is None:
-            return Failure("error", "ANTHROPIC_API_KEY is not set")
         output_config: OutputConfigParam = {
             "format": {"type": "json_schema", "schema": anthropic.transform_schema(schema)}
         }
         if effort:
             output_config["effort"] = effort
         try:
-            response = await self._client.messages.create(
-                model=model,
-                max_tokens=MAX_TOKENS,
-                system=prompt.text,
-                messages=[{"role": "user", "content": content}],
-                output_config=output_config,
-            )
+            # A client per call, closed after it: the worker connects afresh on every attempt
+            async with anthropic.AsyncAnthropic(api_key=self._api_key) as client:
+                response = await client.messages.create(
+                    model=model,
+                    max_tokens=MAX_TOKENS,
+                    system=prompt.text,
+                    messages=[{"role": "user", "content": content}],
+                    output_config=output_config,
+                )
         except anthropic.APIError as error:
             return Failure("error", f"The Anthropic API call failed: {error}")
         if response.stop_reason == "refusal":
@@ -121,3 +120,12 @@ class AnthropicLlm:
             return schema.model_validate_json(text)
         except ValidationError as error:
             return Failure("malformed", f"The answer did not have the expected shape: {error}")
+
+
+async def list_models(api_key: str) -> list[str] | KeyRefused:
+    """The ids of the models Anthropic lists for the key; or why the listing failed."""
+    try:
+        async with anthropic.AsyncAnthropic(api_key=api_key) as client:
+            return [model.id async for model in client.models.list()]
+    except anthropic.APIError as error:
+        return KeyRefused(str(error))

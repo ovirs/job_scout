@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Any
 
@@ -25,7 +24,6 @@ class Evaluation(Base, LlmRun):
     __tablename__ = "evaluations"
     __table_args__ = (failure_complete(),)
 
-    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     job_posting_id: Mapped[int] = mapped_column(ForeignKey("job_postings.id"), index=True)
     status: Mapped[RunStatus] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())

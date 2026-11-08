@@ -27,10 +27,13 @@ from testcontainers.community.postgres import PostgresContainer
 from job_scout import migrations, queue, worker
 from job_scout.app import create_app
 from job_scout.config import Settings
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 from job_scout.llm_runs.domain import STUCK_AFTER
 
 TEMPLATE_DATABASE = "job_scout_template"
+
+# The Anthropic key the `client` fixture sets up, which the fake lister accepts
+TEST_KEY = "sk-ant-test-0000000000000000"
 FRONTEND = Path(__file__).parents[2] / "frontend"
 
 
@@ -55,12 +58,33 @@ def settings(postgres_server: PostgresContainer) -> Iterator[Settings]:
 
 
 @pytest.fixture
-async def client(settings: Settings) -> AsyncIterator[httpx.AsyncClient]:
-    app = create_app(settings)
+def fake_lister() -> FakeModelLister:
+    """What the API checks a key with in tests: lists canned models, or refuses."""
+    return FakeModelLister()
+
+
+@pytest.fixture
+async def client_without_provider(
+    settings: Settings, fake_lister: FakeModelLister
+) -> AsyncIterator[httpx.AsyncClient]:
+    """The API on an empty database, with no Provider set up yet."""
+    app = create_app(settings, model_lister=fake_lister)
     async with LifespanManager(app) as manager:
         transport = httpx.ASGITransport(app=manager.app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
             yield client
+
+
+@pytest.fixture
+async def client(client_without_provider: httpx.AsyncClient) -> httpx.AsyncClient:
+    """The API with Anthropic set up, with `TEST_KEY`."""
+    await set_up_provider(client_without_provider)
+    return client_without_provider
+
+
+async def set_up_provider(client: httpx.AsyncClient) -> None:
+    response = await client.put("/api/settings/providers/anthropic/key", json={"api_key": TEST_KEY})
+    response.raise_for_status()
 
 
 @pytest.fixture
@@ -74,7 +98,7 @@ def run_queued_tasks(settings: Settings, fake_llm: FakeLlm) -> Callable[[], Awai
     """Run every queued task to completion, retries included, then return."""
 
     async def run() -> None:
-        await worker.run(settings, llm=fake_llm, wait=False)
+        await worker.run(settings, connect=fake_llm.connect, wait=False)
 
     return run
 
@@ -112,7 +136,12 @@ def make_stuck(settings: Settings) -> Callable[[str, int], None]:
 async def api_url(settings: Settings) -> AsyncIterator[str]:
     port = _free_port()
     server = uvicorn.Server(
-        uvicorn.Config(create_app(settings), host="127.0.0.1", port=port, log_level="warning")
+        uvicorn.Config(
+            create_app(settings, model_lister=FakeModelLister()),
+            host="127.0.0.1",
+            port=port,
+            log_level="warning",
+        )
     )
     serving = asyncio.create_task(server.serve())
     while not server.started:

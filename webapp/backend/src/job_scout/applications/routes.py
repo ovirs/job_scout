@@ -15,6 +15,7 @@ from job_scout.job_postings.models import JobPosting
 from job_scout.posting_view import domain as posting_view
 from job_scout.posting_view.schemas import JobPostingRead
 from job_scout.routing import Owner, Session, TaskQueue
+from job_scout.settings.routes import PROVIDER_SET_UP
 from job_scout.triage.schemas import TriageSet
 
 router = APIRouter(prefix="/api")
@@ -36,7 +37,9 @@ async def set_job_posting_triage(
     return await posting_view.read(session, posting)
 
 
-@router.post("/job-postings/{job_posting_id}/applications", status_code=201)
+@router.post(
+    "/job-postings/{job_posting_id}/applications", status_code=201, dependencies=[PROVIDER_SET_UP]
+)
 async def start_application(
     job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ApplicationRead:
@@ -51,7 +54,7 @@ async def start_application(
 
 
 # The Applications package's, since the acted-on rule needs the Triage and the Application
-@router.post("/evaluations/rerun-unacted", status_code=201)
+@router.post("/evaluations/rerun-unacted", status_code=201, dependencies=[PROVIDER_SET_UP])
 async def rerun_unacted_evaluations(
     session: Session, task_queue: TaskQueue, owner: Owner
 ) -> list[EvaluationRead]:

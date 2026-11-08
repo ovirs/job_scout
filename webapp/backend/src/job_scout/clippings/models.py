@@ -1,4 +1,3 @@
-import uuid
 from datetime import datetime
 from typing import Any, Literal
 
@@ -27,7 +26,6 @@ class Clipping(Base, LlmRun):
     __tablename__ = "clippings"
     __table_args__ = (failure_complete(),)
 
-    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     pasted_text: Mapped[str]
     url: Mapped[str | None]  # a reference, never fetched
     status: Mapped[ClippingStatus] = mapped_column(String)

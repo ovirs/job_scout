@@ -1,4 +1,5 @@
-"""The browser smoke test: paste, confirm and save, through the React app.
+"""The browser smoke test: set up a Provider on an empty database, then paste, confirm and
+save, through the React app.
 
 It checks the wiring from the frontend to the database; the API tests cover the
 behaviour. The browser fixtures are in conftest.py.
@@ -17,7 +18,7 @@ from job_scout.llm.fake import FakeLlm
 pytestmark = pytest.mark.browser
 
 
-async def test_paste_confirm_and_save_a_manual_entry(
+async def test_set_up_then_paste_confirm_and_save_a_manual_entry(
     page: Page,
     api_url: str,
     fake_llm: FakeLlm,
@@ -25,7 +26,13 @@ async def test_paste_confirm_and_save_a_manual_entry(
 ) -> None:
     fake_llm.manual_entry_extraction.respond_with(an_extraction())
 
-    await page.goto("/")
+    await page.goto("/#/deal-breakers")
+    await expect(page.get_by_role("heading", name="Set up Job Scout")).to_be_visible()
+    await expect(page.get_by_role("button", name="Add posting", exact=True)).to_be_hidden()
+    await page.get_by_label("Anthropic API key").fill("sk-ant-browser-0000000000")
+    await page.get_by_role("button", name="Save key").click()
+    await expect(page.get_by_role("heading", name="Deal Breakers")).to_be_visible()
+
     await page.get_by_role("button", name="Add posting", exact=True).click()
     overlay = page.get_by_role("dialog", name="Add a job posting")
     await overlay.get_by_label("Paste the whole page").fill(PASTED_TEXT)

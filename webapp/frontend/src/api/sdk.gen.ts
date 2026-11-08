@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteCoverLetterDraftData, DeleteCoverLetterDraftErrors, DeleteCoverLetterDraftResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GenerateCoverLetterData, GenerateCoverLetterErrors, GenerateCoverLetterResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCoverLetterData, GetCoverLetterErrors, GetCoverLetterResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponses, RestoreCoverLetterDraftData, RestoreCoverLetterDraftErrors, RestoreCoverLetterDraftResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, ReviseCoverLetterData, ReviseCoverLetterErrors, ReviseCoverLetterResponses, SaveCoverLetterDraftData, SaveCoverLetterDraftErrors, SaveCoverLetterDraftResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteCoverLetterDraftData, DeleteCoverLetterDraftErrors, DeleteCoverLetterDraftResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GenerateCoverLetterData, GenerateCoverLetterErrors, GenerateCoverLetterResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCoverLetterData, GetCoverLetterErrors, GetCoverLetterResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, GetSetupData, GetSetupResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ListProvidersData, ListProvidersResponses, RemoveProviderKeyData, RemoveProviderKeyErrors, RemoveProviderKeyResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponses, RestoreCoverLetterDraftData, RestoreCoverLetterDraftErrors, RestoreCoverLetterDraftResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, ReviseCoverLetterData, ReviseCoverLetterErrors, ReviseCoverLetterResponses, SaveCoverLetterDraftData, SaveCoverLetterDraftErrors, SaveCoverLetterDraftResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SaveProviderKeyData, SaveProviderKeyErrors, SaveProviderKeyResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -386,3 +386,43 @@ export const editDealBreaker = <ThrowOnError extends boolean = false>(options: O
  * Get Deal Breaker Set Version
  */
 export const getDealBreakerSetVersion = <ThrowOnError extends boolean = false>(options: Options<GetDealBreakerSetVersionData, ThrowOnError>): RequestResult<GetDealBreakerSetVersionResponses, GetDealBreakerSetVersionErrors, ThrowOnError> => (options.client ?? client).get<GetDealBreakerSetVersionResponses, GetDealBreakerSetVersionErrors, ThrowOnError>({ url: '/api/deal-breakers/versions/{version_id}', ...options });
+
+/**
+ * Get Setup
+ *
+ * Whether the owner has set up a Provider; until they have, the app shows only the
+ * setup screen.
+ */
+export const getSetup = <ThrowOnError extends boolean = false>(options?: Options<GetSetupData, ThrowOnError>): RequestResult<GetSetupResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSetupResponses, unknown, ThrowOnError>({ url: '/api/setup', ...options });
+
+/**
+ * List Providers
+ *
+ * Every Provider, whether it can be set up yet, and the owner's key for it, masked.
+ */
+export const listProviders = <ThrowOnError extends boolean = false>(options?: Options<ListProvidersData, ThrowOnError>): RequestResult<ListProvidersResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListProvidersResponses, unknown, ThrowOnError>({ url: '/api/settings/providers', ...options });
+
+/**
+ * Remove Provider Key
+ *
+ * Remove the owner's key for the Provider. Removing the last one returns the app to
+ * the setup screen.
+ */
+export const removeProviderKey = <ThrowOnError extends boolean = false>(options: Options<RemoveProviderKeyData, ThrowOnError>): RequestResult<RemoveProviderKeyResponses, RemoveProviderKeyErrors, ThrowOnError> => (options.client ?? client).delete<RemoveProviderKeyResponses, RemoveProviderKeyErrors, ThrowOnError>({ url: '/api/settings/providers/{provider}/key', ...options });
+
+/**
+ * Save Provider Key
+ *
+ * Save the owner's key for the Provider, replacing any earlier one; it takes effect on
+ * the next LLM call. Checked first by listing the Provider's models with it: a refused
+ * key is not saved, and the Provider's reason is returned. Refused for a Provider that
+ * is not available yet.
+ */
+export const saveProviderKey = <ThrowOnError extends boolean = false>(options: Options<SaveProviderKeyData, ThrowOnError>): RequestResult<SaveProviderKeyResponses, SaveProviderKeyErrors, ThrowOnError> => (options.client ?? client).put<SaveProviderKeyResponses, SaveProviderKeyErrors, ThrowOnError>({
+    url: '/api/settings/providers/{provider}/key',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});

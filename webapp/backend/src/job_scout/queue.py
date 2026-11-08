@@ -9,7 +9,7 @@ import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from job_scout.config import Settings
-from job_scout.llm.interface import Llm
+from job_scout.llm.interface import Connect
 
 
 def build(settings: Settings) -> procrastinate.App:
@@ -19,6 +19,9 @@ def build(settings: Settings) -> procrastinate.App:
     )
 
 
-def worker_context(sessions: async_sessionmaker[AsyncSession], llm: Llm) -> dict[str, object]:
-    """What the worker hands every task, as `JobContext.additional_context`."""
-    return {"sessions": sessions, "llm": llm}
+def worker_context(
+    sessions: async_sessionmaker[AsyncSession], connect: Connect
+) -> dict[str, object]:
+    """What the worker hands every task, as `JobContext.additional_context`: the database
+    sessions, and how to connect to a Provider with a key."""
+    return {"sessions": sessions, "connect": connect}

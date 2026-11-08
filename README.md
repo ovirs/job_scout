@@ -16,9 +16,10 @@ Then open <http://localhost:5173>. Compose starts Postgres, applies the migratio
 
 All configuration comes from environment variables, each with a default in [compose.yaml](compose.yaml): `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `API_PORT` and `FRONTEND_PORT`. Set them in your shell or in a `.env` file next to `compose.yaml`. The backend itself reads `DATABASE_URL`.
 
-The background worker makes every LLM call, through the Anthropic API:
+On first run the app opens on a setup screen: add an API key for a Provider (Anthropic for now) and the app checks it against the Provider before saving it. Keys live in the app's database, per owner and unencrypted ([ADR-0006](docs/adr/0006-provider-keys-are-stored-per-owner-unencrypted.md)); replace or remove them on the Settings page, without a restart. A key left in an old `.env` is ignored.
 
-- `ANTHROPIC_API_KEY`: your API key. Without it the app still runs, but every LLM step fails with a reason saying the key is not set.
+The background worker makes every LLM call, through the Anthropic API with your key:
+
 - `EXTRACTION_MODEL`: the model that reads a pasted Job Posting (default `claude-opus-5-5`).
 - `EXTRACTION_EFFORT`: how hard that model thinks, one of `low`, `medium`, `high`, `xhigh` or `max`. Unset, the API's default applies; not every model accepts every level.
 - `EVALUATION_MODEL` and `EVALUATION_EFFORT`: the same for the model that evaluates a saved Job Posting against the Career Profile, Preferences and Deal Breakers.
@@ -39,7 +40,7 @@ uv run ruff check .    # lint
 uv run lint-imports    # the backend's package order (also run by the tests)
 ```
 
-The browser tests drive the React app in headless Chromium, against the API and the fake LLM: a smoke test that pastes, confirms and saves a posting, and tests of the Markdown editor on the Document pages. They need the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave them out with `uv run pytest -m "not browser"`.
+The browser tests drive the React app in headless Chromium, against the API and the fake LLM: a smoke test that sets up a Provider on an empty database, then pastes, confirms and saves a posting, a test of the Settings page, and tests of the Markdown editor on the Document pages. They need the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave them out with `uv run pytest -m "not browser"`.
 
 Type-check the frontend with `npm run typecheck` in `webapp/frontend`.
 
@@ -66,9 +67,9 @@ A package imports only from the packages below it. From the top:
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
-6. `user_inputs`, `job_postings`
+6. `user_inputs`, `job_postings`, `settings`: how the owner has set the app up to run (their Provider keys), which every LLM run reads
 
-Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters in `llm/`. Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
+Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters and model listings in `llm/` (`llm/providers.py` picks them by Provider). Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 
 - **Coordinating several concepts:** code that does this goes in the highest package involved. It never goes in a lower package reaching up.
 - **Shared code:** goes in a module named for a concept, never `utils` or `common`.

@@ -1731,6 +1731,139 @@
           }
         }
       }
+    },
+    "/api/setup": {
+      "get": {
+        "summary": "Get Setup",
+        "description": "Whether the owner has set up a Provider; until they have, the app shows only the\nsetup screen.",
+        "operationId": "get_setup",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SetupRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/providers": {
+      "get": {
+        "summary": "List Providers",
+        "description": "Every Provider, whether it can be set up yet, and the owner's key for it, masked.",
+        "operationId": "list_providers",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Providers"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/providers/{provider}/key": {
+      "put": {
+        "summary": "Save Provider Key",
+        "description": "Save the owner's key for the Provider, replacing any earlier one; it takes effect on\nthe next LLM call. Checked first by listing the Provider's models with it: a refused\nkey is not saved, and the Provider's reason is returned. Refused for a Provider that\nis not available yet.",
+        "operationId": "save_provider_key",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProviderKeySave"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProviderRead"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove Provider Key",
+        "description": "Remove the owner's key for the Provider. Removing the last one returns the app to\nthe setup screen.",
+        "operationId": "remove_provider_key",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3672,6 +3805,85 @@
         "title": "PostingCopyRead",
         "description": "The posting as it was when the Application first moved to Applied."
       },
+      "Provider": {
+        "type": "string",
+        "enum": [
+          "anthropic",
+          "openai",
+          "google"
+        ]
+      },
+      "ProviderKeyRead": {
+        "properties": {
+          "masked": {
+            "type": "string",
+            "title": "Masked",
+            "examples": [
+              "sk-\u2026a1b2"
+            ]
+          },
+          "saved_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Saved At"
+          }
+        },
+        "type": "object",
+        "required": [
+          "masked",
+          "saved_at"
+        ],
+        "title": "ProviderKeyRead",
+        "description": "A stored key, never in full."
+      },
+      "ProviderKeySave": {
+        "properties": {
+          "api_key": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Api Key"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_key"
+        ],
+        "title": "ProviderKeySave"
+      },
+      "ProviderRead": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "available": {
+            "type": "boolean",
+            "title": "Available"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProviderKeyRead"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "name",
+          "available",
+          "key"
+        ],
+        "title": "ProviderRead",
+        "description": "A Provider: whether it can be set up yet (it has an adapter), and the owner's key."
+      },
       "SalaryRange": {
         "properties": {
           "minimum": {
@@ -3757,6 +3969,20 @@
         ],
         "title": "SentCoverLetterRead",
         "description": "The Cover Letter sent on the latest move to Applied."
+      },
+      "SetupRead": {
+        "properties": {
+          "has_provider": {
+            "type": "boolean",
+            "title": "Has Provider"
+          }
+        },
+        "type": "object",
+        "required": [
+          "has_provider"
+        ],
+        "title": "SetupRead",
+        "description": "Whether the app is set up: until it is, the UI shows only the setup screen."
       },
       "Technology": {
         "properties": {

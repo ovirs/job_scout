@@ -1,5 +1,7 @@
-"""The columns every LLM run's table shares: its status, timestamps, model and failure."""
+"""The columns every LLM run's table shares: its owner, status, timestamps, model and
+failure."""
 
+import uuid
 from datetime import datetime
 from typing import Literal
 
@@ -19,10 +21,13 @@ RunFailureKind = FailureKind | Literal["missing_input", "locked", "stuck"]
 class LlmRun:
     """One run of an LLM task, mixed into the feature's own table.
 
-    A feature narrows `status` to its own statuses, which include every `RunStatus`.
+    A feature narrows `status` to its own statuses, which include every `RunStatus`; it
+    redeclares no other column.
     """
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    # Whose run it is, and so whose Provider keys it calls the LLM with
+    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     status: Mapped[str] = mapped_column(String)
     queued_at: Mapped[datetime] = mapped_column(server_default=func.now())
     started_at: Mapped[datetime | None]  # when its first attempt started

@@ -5,20 +5,21 @@ import logging
 
 from job_scout import queue, tables  # noqa: F401  # tables: registers every table
 from job_scout.config import Settings
-from job_scout.llm.anthropic_adapter import AnthropicLlm
-from job_scout.llm.interface import Llm
+from job_scout.llm.interface import Connect
+from job_scout.llm.providers import connector
 from job_scout.runtime import open_runtime
 
 
-async def run(settings: Settings, *, llm: Llm | None = None, wait: bool = True) -> None:
+async def run(settings: Settings, *, connect: Connect | None = None, wait: bool = True) -> None:
     """Run queued tasks; with `wait=False`, return once the queue is empty.
 
-    LLM calls go to the Anthropic API unless another `llm` is given.
+    Each LLM call goes to the Provider's API with the run owner's key, read afresh for
+    every attempt, unless another `connect` is given.
     """
-    llm = llm or AnthropicLlm(settings)
+    connect = connect or connector(settings)
     async with open_runtime(settings) as runtime:
         await runtime.task_queue.run_worker_async(
-            additional_context=queue.worker_context(runtime.sessions, llm),
+            additional_context=queue.worker_context(runtime.sessions, connect),
             wait=wait,
         )
 

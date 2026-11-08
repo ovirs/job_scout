@@ -2,10 +2,11 @@
 table, run through the real queue and worker, with the fake LLM."""
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from clipping_helpers import an_extraction
+from conftest import TEST_KEY
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -16,6 +17,8 @@ from job_scout.llm.fake import FakeLlm
 from job_scout.llm.interface import Failure, Llm, Outcome
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
+from job_scout.owners import LOCAL_USER_ID
+from job_scout.settings.models import ProviderKey
 
 
 class ExampleBase(DeclarativeBase):
@@ -77,7 +80,17 @@ async def sessions(settings: Settings) -> AsyncIterator[async_sessionmaker[Async
     engine = db.create_engine(settings)
     async with engine.begin() as connection:
         await connection.run_sync(ExampleBase.metadata.create_all)
-    yield db.create_sessionmaker(engine)
+    sessions = db.create_sessionmaker(engine)
+    async with sessions.begin() as session:  # the runs' owner has set up Anthropic
+        session.add(
+            ProviderKey(
+                owner_id=LOCAL_USER_ID,
+                provider="anthropic",
+                api_key=TEST_KEY,
+                saved_at=datetime.now(UTC),
+            )
+        )
+    yield sessions
     await engine.dispose()
 
 
@@ -90,7 +103,10 @@ def queue_runs(
     async def store(*subjects: str) -> list[int]:
         task_queue = queue.build(settings)
         async with task_queue.open_async(), sessions() as session:
-            runs = [ExampleRun(subject=subject, status="queued") for subject in subjects]
+            runs = [
+                ExampleRun(owner_id=LOCAL_USER_ID, subject=subject, status="queued")
+                for subject in subjects
+            ]
             session.add_all(runs)
             await llm_runs.commit_and_enqueue(session, task_queue, TASK, *runs)
             return [run.id for run in runs]
@@ -109,7 +125,7 @@ def run_worker(
         llm_runs.register(task_queue, settings, [task])
         async with task_queue.open_async():
             await task_queue.run_worker_async(
-                additional_context=queue.worker_context(sessions, fake_llm), wait=False
+                additional_context=queue.worker_context(sessions, fake_llm.connect), wait=False
             )
 
     return run
@@ -348,7 +364,7 @@ async def test_a_run_whose_enqueue_fails_is_failed_at_once_so_it_can_be_retried(
     unopened = queue.build(settings)  # deferring on it raises
 
     async with sessions() as session:
-        run = ExampleRun(subject="a pasted posting", status="queued")
+        run = ExampleRun(owner_id=LOCAL_USER_ID, subject="a pasted posting", status="queued")
         session.add(run)
         await llm_runs.commit_and_enqueue(session, unopened, TASK, run)
 

@@ -8,6 +8,7 @@ it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
 
@@ -18,6 +19,11 @@ if TYPE_CHECKING:
     from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 
 FailureKind = Literal["error", "refusal", "malformed"]
+
+# A company whose models the app can call
+type Provider = Literal["anthropic", "openai", "google"]
+
+PROVIDERS: tuple[Provider, ...] = ("anthropic", "openai", "google")
 
 
 @dataclass(frozen=True)
@@ -49,4 +55,26 @@ class Llm(Protocol):
 
     async def write_cover_letter(self, prompt: CoverLetterPrompt) -> Outcome[CoverLetterResult]:
         """Write a Cover Letter draft for one Job Posting, as laid out in `prompt`."""
+        ...
+
+
+# An `Llm` calling the Provider with the given API key
+type Connect = Callable[[Provider, str], Llm]
+
+
+@dataclass(frozen=True)
+class KeyRefused:
+    """Why a Provider would not list its models for an API key, in its own words."""
+
+    reason: str
+
+
+class ModelLister(Protocol):
+    @property
+    def available(self) -> tuple[Provider, ...]:
+        """The Providers with an adapter: only these can be set up."""
+        ...
+
+    async def list_models(self, provider: Provider, api_key: str) -> list[str] | KeyRefused:
+        """The ids of the models the Provider lists for the key; or why it refused."""
         ...

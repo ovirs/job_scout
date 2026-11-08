@@ -9,11 +9,12 @@ from job_scout.clippings.schemas import ClippingConfirm, ClippingRead, ClippingS
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view.schemas import JobPostingRead
 from job_scout.routing import Owner, Session, TaskQueue
+from job_scout.settings.routes import PROVIDER_SET_UP
 
 router = APIRouter(prefix="/api")
 
 
-@router.post("/clippings", status_code=201)
+@router.post("/clippings", status_code=201, dependencies=[PROVIDER_SET_UP])
 async def submit_clipping(
     body: ClippingSubmit, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ClippingRead:
@@ -32,7 +33,7 @@ async def get_clipping(clipping_id: int, session: Session, owner: Owner) -> Clip
     return ClippingRead.of(clipping)
 
 
-@router.post("/clippings/{clipping_id}/retry")
+@router.post("/clippings/{clipping_id}/retry", dependencies=[PROVIDER_SET_UP])
 async def retry_clipping(
     clipping_id: int, session: Session, task_queue: TaskQueue, owner: Owner
 ) -> ClippingRead:
@@ -44,7 +45,7 @@ async def retry_clipping(
     return ClippingRead.of(clipping)
 
 
-@router.post("/clippings/{clipping_id}/confirm", status_code=201)
+@router.post("/clippings/{clipping_id}/confirm", status_code=201, dependencies=[PROVIDER_SET_UP])
 async def confirm_clipping(
     clipping_id: int,
     body: ClippingConfirm,

@@ -35,7 +35,6 @@ class CoverLetterGeneration(Base, LlmRun):
         ),
     )
 
-    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
     application_id: Mapped[int] = mapped_column(ForeignKey("applications.id"), index=True)
     status: Mapped[RunStatus] = mapped_column(String)
     instruction: Mapped[str | None]  # typed by the user for this one letter

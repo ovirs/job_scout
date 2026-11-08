@@ -3,22 +3,33 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 import httpx
 import pytest
 from clipping_helpers import ENVELOPE, PASTED_TEXT, an_extraction, submit_and_extract
+from conftest import TEST_KEY
 
 from job_scout.clippings import domain as clippings
 from job_scout.clippings.models import Clipping
 from job_scout.config import Settings
 from job_scout.llm import Failure
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 from job_scout.owners import LOCAL_USER_ID
 from job_scout.prompts import MANUAL_ENTRY_EXTRACTION
 from job_scout.runtime import Runtime, open_runtime
+from job_scout.settings import domain as provider_settings
 
 # The Clipping rules, at the package's interface
 
 
 @pytest.fixture
 async def runtime(settings: Settings) -> AsyncIterator[Runtime]:
+    """The resources the package works with, the local user having set up Anthropic."""
     async with open_runtime(settings) as runtime:
+        async with runtime.sessions() as session:
+            await provider_settings.save_key(
+                session,
+                FakeModelLister(),
+                owner_id=LOCAL_USER_ID,
+                provider="anthropic",
+                api_key=TEST_KEY,
+            )
         yield runtime
 
 

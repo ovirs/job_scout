@@ -11,6 +11,7 @@ import {
 } from './api/@tanstack/react-query.gen'
 import type { CoverLetterDraftRead, CoverLetterRead } from './api/types.gen'
 import { Badge } from './Badge'
+import { refusal } from './refusal'
 import { Loading, Working } from './Waiting'
 
 type EvaluationCase = CoverLetterRead['evaluation']['case']
@@ -37,12 +38,6 @@ const CASE_NOTES: Record<EvaluationCase, string> = {
   current: "with the Evaluation's flags",
   outdated: "with an outdated Evaluation's flags",
   missing: 'without flags: there was no Evaluation',
-}
-
-/** The detail the API gives for a refused request, if it gives one. */
-function refusal(error: unknown): string | null {
-  const detail = (error as { detail?: unknown } | null)?.detail
-  return typeof detail === 'string' ? detail : null
 }
 
 /** An Application's Cover Letter: its latest draft beside the requirements the Career
