@@ -95,7 +95,9 @@ def reopen(posting: JobPosting) -> None:
 def set_text(
     posting: JobPosting, *, title: str, location_text: str | None, description: str
 ) -> None:
-    """The one path that changes a posting's text; it recomputes the content hash."""
+    """Set the posting's text, recomputing the content hash. A stored posting's text
+    changes only through its update path, `applications.update_text`, which calls this
+    and applies the re-evaluation rule."""
     posting.title = title
     posting.location_text = location_text
     posting.description = description

@@ -17,8 +17,10 @@ class JobPosting(Base):
     when the posting arrives. The extracted fields are filled by the LLM and
     stay null until extraction has run.
 
-    Change the title, location text or description only through
-    `job_scout.job_postings.domain.set_text`, which keeps the content hash in step.
+    Change a stored posting's title, location text or description only through
+    `job_scout.applications.domain.update_text`, its update path, which keeps the content
+    hash in step and applies the re-evaluation rule; a new posting's are set with
+    `job_scout.job_postings.domain.set_text`.
     """
 
     __tablename__ = "job_postings"

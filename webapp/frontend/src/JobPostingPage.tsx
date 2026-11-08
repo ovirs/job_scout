@@ -101,6 +101,7 @@ function JobPostingView({
           postingId={posting.id}
           runs={runs}
           current={current}
+          triaged={posting.triage !== null}
           showQuote={showQuote}
         />
       ) : (

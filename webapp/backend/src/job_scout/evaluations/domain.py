@@ -296,6 +296,16 @@ async def queued_unless_evaluated(session: AsyncSession, posting: JobPosting) ->
     return run
 
 
+async def rerun_unless_under_way(session: AsyncSession, posting: JobPosting) -> Evaluation | None:
+    """A new queued Evaluation of the posting, as `rerun`, unless another is under way
+    (a queued one reads the user inputs and the posting when it starts). A stuck one is
+    failed and replaced."""
+    try:
+        return await rerun(session, posting)
+    except llm_runs.RunUnderWay:
+        return None
+
+
 def current(runs: list[Evaluation]) -> Evaluation | None:
     """The current Evaluation among a posting's history: the latest done one."""
     return next((run for run in runs if run.status == "done"), None)

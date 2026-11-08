@@ -101,11 +101,13 @@ export function EvaluationPanel({
   postingId,
   runs,
   current,
+  triaged,
   showQuote,
 }: {
   postingId: number
   runs: EvaluationRead[] // the latest first
   current: EvaluationRead | undefined
+  triaged: boolean
   showQuote: ShowQuote
 }) {
   const latest = runs.at(0)
@@ -117,7 +119,7 @@ export function EvaluationPanel({
       {current && (
         <>
           {latest !== current && <h4>The current Evaluation, from {age(current.created_at)}</h4>}
-          <CurrentEvaluation evaluation={current} showQuote={showQuote} />
+          <CurrentEvaluation evaluation={current} triaged={triaged} showQuote={showQuote} />
         </>
       )}
       {runs.length > 0 && <History runs={runs} />}
@@ -181,9 +183,11 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
 
 function CurrentEvaluation({
   evaluation,
+  triaged,
   showQuote,
 }: {
   evaluation: EvaluationRead
+  triaged: boolean
   showQuote: ShowQuote
 }) {
   const violated = evaluation.deal_breaker_verdicts.filter((v) => v.verdict === 'violated')
@@ -194,7 +198,12 @@ function CurrentEvaluation({
         <RecommendationBadge recommendation={evaluation.recommendation!} />
         <ScoreBadge score={evaluation.score!} />
         {evaluation.outdated && (
-          <Badge tone="warn">Outdated: the posting changed since it was evaluated</Badge>
+          // A triaged posting keeps its Evaluation when its text changes
+          <Badge tone="warn">
+            {triaged
+              ? 'Edited since you triaged it: this Evaluation is of the earlier text'
+              : 'Outdated: the posting changed since it was evaluated'}
+          </Badge>
         )}
       </p>
       <p>{evaluation.summary}</p>

@@ -1185,6 +1185,24 @@ export type StartApplicationResponses = {
 
 export type StartApplicationResponse = StartApplicationResponses[keyof StartApplicationResponses];
 
+export type RerunUnactedEvaluationsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/evaluations/rerun-unacted';
+};
+
+export type RerunUnactedEvaluationsResponses = {
+    /**
+     * Response Rerun Unacted Evaluations
+     *
+     * Successful Response
+     */
+    201: Array<EvaluationRead>;
+};
+
+export type RerunUnactedEvaluationsResponse = RerunUnactedEvaluationsResponses[keyof RerunUnactedEvaluationsResponses];
+
 export type ListApplicationsData = {
     body?: never;
     path?: never;

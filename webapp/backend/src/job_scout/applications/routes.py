@@ -8,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout.applications import domain as applications
 from job_scout.applications.models import Application
 from job_scout.applications.schemas import ApplicationRead, ApplicationStateSet
+from job_scout.evaluations.schemas import EvaluationRead
+from job_scout.job_postings.models import JobPosting
 
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view import domain as posting_view
@@ -46,6 +48,21 @@ async def start_application(
             session, task_queue, owner_id=owner, job_posting_id=job_posting_id
         )
     return ApplicationRead.of(application)
+
+
+# The Applications package's, since the acted-on rule needs the Triage and the Application
+@router.post("/evaluations/rerun-unacted", status_code=201)
+async def rerun_unacted_evaluations(
+    session: Session, task_queue: TaskQueue, owner: Owner
+) -> list[EvaluationRead]:
+    """Queue a new Evaluation, with the current user inputs, of every open posting not
+    acted on (with no Triage and no live Application); returns them. A posting whose
+    Evaluation is already under way is left to it."""
+    runs = await applications.rerun_unacted(session, task_queue, owner_id=owner)
+    return [
+        EvaluationRead.of(run, await session.get_one(JobPosting, run.job_posting_id))
+        for run in runs
+    ]
 
 
 @router.get("/applications")

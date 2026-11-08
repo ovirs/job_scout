@@ -6,6 +6,11 @@ is Interested and locked.
 
 Each operation enforces these rules and refuses with a `Refused` error otherwise; an
 unknown posting or Application raises `NoSuchJobPosting` or `NoSuchApplication`.
+
+The package also holds the acted-on rule, which needs both the Triage and the
+Application: a posting with any Triage or a live Application is acted on, and its
+Evaluation is no longer re-run, by a re-run of every unacted posting or by a change to
+the posting's text, which leaves it outdated instead.
 """
 
 import uuid
@@ -13,17 +18,18 @@ from datetime import UTC, datetime
 from typing import get_args
 
 import procrastinate
-from sqlalchemy import select
+from sqlalchemy import Exists, exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.applications.models import Application, ApplicationState, ApplicationStateChange
 from job_scout.evaluations import domain as evaluations
+from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.triage import domain as triage
-from job_scout.triage.models import TriageValue
+from job_scout.triage.models import Triage, TriageValue
 
 # The usual progression, Preparing to No response; lists follow it
 STATES: tuple[ApplicationState, ...] = get_args(ApplicationState)
@@ -239,3 +245,79 @@ async def by_state(
     members.sort(key=state_changed_at, reverse=True)
     members.sort(key=lambda a: STATES.index(a.state))
     return members
+
+
+async def rerun_unacted(
+    session: AsyncSession, task_queue: procrastinate.App, *, owner_id: uuid.UUID
+) -> list[Evaluation]:
+    """Queue a new Evaluation, with the current user inputs, of every open posting the
+    user has not acted on, committed; returns them. A posting whose Evaluation is under
+    way is left to it."""
+    postings = await session.scalars(
+        select(JobPosting)
+        .where(JobPosting.owner_id == owner_id, JobPosting.closed_at.is_(None))
+        .where(~_has_triage(), ~_has_live_application())
+        .order_by(JobPosting.id)
+    )
+    runs = []
+    for posting in postings:
+        await job_postings.lock(session, posting)
+        # Triaged, applied for or closed since it was found
+        if posting.closed_at is not None or await acted_on(session, posting):
+            continue
+        run = await evaluations.rerun_unless_under_way(session, posting)
+        if run is not None:
+            runs.append(run)
+    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, *runs)
+    return runs
+
+
+async def acted_on(session: AsyncSession, posting: JobPosting) -> bool:
+    """Whether the user has acted on the posting: it has a Triage or a live Application."""
+    found = await session.scalar(
+        select(JobPosting.id).where(
+            JobPosting.id == posting.id, _has_triage() | _has_live_application()
+        )
+    )
+    return found is not None
+
+
+async def update_text(
+    session: AsyncSession,
+    task_queue: procrastinate.App,
+    posting: JobPosting,
+    *,
+    title: str,
+    location_text: str | None,
+    description: str,
+) -> Evaluation | None:
+    """The update path for a stored posting's text, committed. The content hash is
+    recomputed, and when it changes, a posting the user has not acted on gets a new
+    Evaluation, returned, unless one is under way (a queued one reads the new text when it
+    starts; a running one has read the old text, so its result shows outdated until the
+    posting is re-run by hand or by a re-run of every unacted one); an acted-on posting keeps its
+    Evaluation, which is now outdated. Pipelines will use it; phase 1 offers the user no
+    action for it. Other changes the caller made to the posting (its dates, its metadata)
+    are committed with it, and trigger nothing."""
+    await session.flush()  # so the lock, which reloads the posting, keeps those changes
+    await job_postings.lock(session, posting)
+    before = posting.content_hash
+    job_postings.set_text(
+        posting, title=title, location_text=location_text, description=description
+    )
+    runs = []
+    if posting.content_hash != before and not await acted_on(session, posting):
+        run = await evaluations.rerun_unless_under_way(session, posting)
+        runs = [] if run is None else [run]
+    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, *runs)
+    return runs[0] if runs else None
+
+
+def _has_triage() -> Exists:
+    return exists().where(Triage.job_posting_id == JobPosting.id)
+
+
+def _has_live_application() -> Exists:
+    return exists().where(
+        Application.job_posting_id == JobPosting.id, Application.deleted_at.is_(None)
+    )

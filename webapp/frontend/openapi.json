@@ -267,6 +267,29 @@
         }
       }
     },
+    "/api/evaluations/rerun-unacted": {
+      "post": {
+        "summary": "Rerun Unacted Evaluations",
+        "description": "Queue a new Evaluation, with the current user inputs, of every open posting not\nacted on (with no Triage and no live Application); returns them. A posting whose\nEvaluation is already under way is left to it.",
+        "operationId": "rerun_unacted_evaluations",
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/EvaluationRead"
+                  },
+                  "type": "array",
+                  "title": "Response Rerun Unacted Evaluations"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/applications": {
       "get": {
         "summary": "List Applications",

@@ -28,6 +28,10 @@ _Avoid_: Mark, Decision, Rating, Screening (which is done by Screening Rules)
 The user's tracked progress in applying for a specific Job Posting, from preparing it through to its outcome (e.g., applied, interview loop, rejected). It exists only once the user starts applying; Triage comes before it.
 _Avoid_: Job
 
+**Acted on**:
+A Job Posting is acted on once it has a Triage or a live (not deleted) Application, and unacted while it has neither.
+_Avoid_: Handled, Processed, Decided, Reviewed
+
 **Note**:
 A free-text, dated remark the user writes on a Job Posting or on an Application, such as an interview round, a contact or an impression. A Job Posting's Notes stay on the posting and are shown alongside its Application.
 _Avoid_: Comment, Annotation, Document (which is a User Input)

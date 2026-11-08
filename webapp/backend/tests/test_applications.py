@@ -6,9 +6,9 @@ import httpx
 from test_evaluations import write_career_profile
 from test_triage import add_posting, triage
 
-from job_scout import db
+from job_scout import db, queue
+from job_scout.applications import domain as applications
 from job_scout.config import Settings
-from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm.fake import FakeLlm
 
@@ -127,19 +127,26 @@ async def test_an_unknown_application_is_not_found(client: httpx.AsyncClient) ->
 
 
 async def edit_posting_text(
-    settings: Settings, posting_id: int, *, title: str, description: str
+    settings: Settings, posting_id: int, metadata: dict[str, Any] | None = None, **text: Any
 ) -> None:
-    """Change the posting's text through its update path. Phase 1 offers the user no
-    action for it; Pipelines will use it."""
+    """Change the posting's text through its update path, keeping what is not given, after
+    setting any `metadata` fields on it as a Pipeline update would. Phase 1 offers the user
+    no action for it; Pipelines will use it."""
     engine = db.create_engine(settings)
+    task_queue = queue.build(settings)
     try:
-        async with db.create_sessionmaker(engine)() as session:
-            found = await session.get(JobPosting, posting_id)
-            assert found is not None
-            job_postings.set_text(
-                found, title=title, location_text=found.location_text, description=description
+        async with task_queue.open_async(), db.create_sessionmaker(engine)() as session:
+            found = await session.get_one(JobPosting, posting_id)
+            for field, value in (metadata or {}).items():
+                setattr(found, field, value)
+            await applications.update_text(
+                session,
+                task_queue,
+                found,
+                title=text.get("title", found.title),
+                location_text=text.get("location_text", found.location_text),
+                description=text.get("description", found.description),
             )
-            await session.commit()
     finally:
         await engine.dispose()
 

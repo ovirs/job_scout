@@ -6,6 +6,7 @@ import {
   listJobPostingsOptions,
   listJobPostingsQueryKey,
   rerunEvaluationMutation,
+  rerunUnactedEvaluationsMutation,
 } from './api/@tanstack/react-query.gen'
 import type { JobPostingRead, ListJobPostingsData } from './api/types.gen'
 import { Badge } from './Badge'
@@ -67,6 +68,7 @@ export function PostingLists() {
           <option value="age">Age, newest first</option>
         </select>
       </label>
+      <RerunUnacted />
       {postings.isPending && <Loading />}
       {postings.isError && <p role="alert">Could not load the job postings.</p>}
       {postings.data?.length === 0 && <p>{list.empty}</p>}
@@ -103,7 +105,13 @@ function PostingRow({ posting }: { posting: JobPostingRead }) {
       {posting.closed_at && <Badge>Closed on {posting.closed_at.slice(0, 10)}</Badge>}
       {evaluation && (
         <>
-          {evaluation.outdated && <Badge tone="warn">Edited since evaluated</Badge>}
+          {evaluation.outdated && (
+            // An acted-on posting keeps its Evaluation when its text changes; an untriaged
+            // one is evaluated again
+            <Badge tone="warn">
+              {posting.triage ? 'Edited since you triaged it' : 'Edited since evaluated'}
+            </Badge>
+          )}
           {evaluation.disqualified_but_recommended && (
             <Badge tone="bad" dot>
               Disqualified but recommended:{' '}
@@ -118,6 +126,36 @@ function PostingRow({ posting }: { posting: JobPostingRead }) {
       {!evaluation && <NotEvaluated posting={posting} />}
       <TriageButtons posting={posting} />
     </li>
+  )
+}
+
+/** Re-run the Evaluation of every open posting not acted on, after the user inputs change. */
+function RerunUnacted() {
+  const queryClient = useQueryClient()
+  const rerun = useMutation({
+    ...rerunUnactedEvaluationsMutation(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: listJobPostingsQueryKey() }),
+  })
+  const queued = rerun.data?.length
+  return (
+    <p className="actions">
+      <button
+        type="button"
+        disabled={rerun.isPending}
+        aria-busy={rerun.isPending}
+        onClick={() => rerun.mutate({})}
+      >
+        {rerun.isPending ? 'Queuing…' : 'Re-run all I have not acted on'}
+      </button>
+      <span className="hint">
+        {queued === undefined
+          ? 'Evaluates every open, untriaged posting again with your current inputs.'
+          : queued === 1
+            ? 'Queued 1 Evaluation.'
+            : `Queued ${queued} Evaluations.`}
+      </span>
+      {rerun.isError && <span role="alert">Could not queue the Evaluations. Try again.</span>}
+    </p>
   )
 }
 
