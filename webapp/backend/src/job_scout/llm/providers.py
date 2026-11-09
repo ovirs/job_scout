@@ -8,8 +8,8 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 from job_scout.config import Settings
-from job_scout.llm import anthropic_adapter
-from job_scout.llm.interface import Connect, KeyRefused, Llm, Provider
+from job_scout.llm import anthropic_adapter, anthropic_models
+from job_scout.llm.interface import Connect, KeyRefused, ListedModel, Llm, Provider
 
 
 @dataclass(frozen=True)
@@ -17,12 +17,13 @@ class Adapter:
     """One Provider's adapter, on its official SDK."""
 
     llm: Callable[[Settings, str], Llm]  # an `Llm` calling the Provider with a key
-    list_models: Callable[[str], Awaitable[list[str] | KeyRefused]]
+    # The models it lists for a key that the app can use, filtered by its own rules
+    list_models: Callable[[str], Awaitable[list[ListedModel] | KeyRefused]]
 
 
 # A Provider is available, and can be set up, once it is here
 ADAPTERS: dict[Provider, Adapter] = {
-    "anthropic": Adapter(anthropic_adapter.AnthropicLlm, anthropic_adapter.list_models),
+    "anthropic": Adapter(anthropic_adapter.AnthropicLlm, anthropic_models.list_models),
 }
 
 
@@ -40,5 +41,5 @@ class ProviderModelLister:
 
     available: tuple[Provider, ...] = tuple(ADAPTERS)
 
-    async def list_models(self, provider: Provider, api_key: str) -> list[str] | KeyRefused:
+    async def list_models(self, provider: Provider, api_key: str) -> list[ListedModel] | KeyRefused:
         return await ADAPTERS[provider].list_models(api_key)

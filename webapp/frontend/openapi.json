@@ -1864,6 +1864,191 @@
           }
         }
       }
+    },
+    "/api/models": {
+      "get": {
+        "summary": "List Offered Models",
+        "description": "The models every picker offers: each Provider's listing for the owner's key, less\nthe models the owner hid, and less dated snapshots unless the owner shows them. A\nlisting is fetched again once it is a day old.",
+        "operationId": "list_offered_models",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OfferedModelRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Offered Models"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/models": {
+      "get": {
+        "summary": "List Models",
+        "description": "Each Provider's models for the owner's key, hidden ones included, and whether dated\nsnapshots are offered. A listing is fetched again once it is a day old.",
+        "operationId": "list_models",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/models/refresh": {
+      "post": {
+        "summary": "Refresh Models",
+        "description": "Fetch every Provider's listing again now, as `list_models` returns it. A Provider\nthat refuses keeps the list it gave before, with its reason.",
+        "operationId": "refresh_models",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ModelsRead"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/show-snapshots": {
+      "put": {
+        "summary": "Save Show Snapshots",
+        "description": "Offer dated snapshots, such as `gpt-5-2025-08-07`, in every picker, or stop.",
+        "operationId": "save_show_snapshots",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShowSnapshotsSave"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/hidden-models/{provider}/{model_id}": {
+      "put": {
+        "summary": "Hide Model",
+        "description": "Hide the model from every picker; a hidden model cannot be used.",
+        "operationId": "hide_model",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Unhide Model",
+        "description": "Offer the hidden model again.",
+        "operationId": "unhide_model",
+        "parameters": [
+          {
+            "name": "provider",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "anthropic",
+                "openai",
+                "google"
+              ],
+              "type": "string",
+              "title": "Provider"
+            }
+          },
+          {
+            "name": "model_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Model Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3687,6 +3872,72 @@
         "title": "LlmRunFailureRead",
         "description": "Why an LLM run failed."
       },
+      "ModelRead": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "examples": [
+              "claude-opus-5-5"
+            ]
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "snapshot": {
+            "type": "boolean",
+            "title": "Snapshot"
+          },
+          "efforts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Efforts"
+          },
+          "hidden": {
+            "type": "boolean",
+            "title": "Hidden"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "id",
+          "display_name",
+          "snapshot",
+          "efforts",
+          "hidden"
+        ],
+        "title": "ModelRead",
+        "description": "A model as Settings lists it: hidden ones are listed too, to offer again."
+      },
+      "ModelsRead": {
+        "properties": {
+          "show_snapshots": {
+            "type": "boolean",
+            "title": "Show Snapshots"
+          },
+          "providers": {
+            "items": {
+              "$ref": "#/components/schemas/ProviderModelsRead"
+            },
+            "type": "array",
+            "title": "Providers"
+          }
+        },
+        "type": "object",
+        "required": [
+          "show_snapshots",
+          "providers"
+        ],
+        "title": "ModelsRead",
+        "description": "The models of every Provider the owner has set up, and whether dated snapshots are\noffered."
+      },
       "NoteAdd": {
         "properties": {
           "text": {
@@ -3750,6 +4001,45 @@
         ],
         "title": "NoteRead",
         "description": "A note, on a posting or on an Application: exactly one of the two ids is set."
+      },
+      "OfferedModelRead": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "examples": [
+              "claude-opus-5-5"
+            ]
+          },
+          "display_name": {
+            "type": "string",
+            "title": "Display Name"
+          },
+          "snapshot": {
+            "type": "boolean",
+            "title": "Snapshot"
+          },
+          "efforts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Efforts"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "id",
+          "display_name",
+          "snapshot",
+          "efforts"
+        ],
+        "title": "OfferedModelRead",
+        "description": "A model a picker offers: the owner's Provider lists it for their key, and the owner\nhas not hidden it."
       },
       "PostingCopyRead": {
         "properties": {
@@ -3849,6 +4139,57 @@
           "api_key"
         ],
         "title": "ProviderKeySave"
+      },
+      "ProviderModelsRead": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "refused": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refused"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/ModelRead"
+            },
+            "type": "array",
+            "title": "Models"
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "name",
+          "fetched_at",
+          "refused",
+          "models"
+        ],
+        "title": "ProviderModelsRead",
+        "description": "One Provider's models, as its listing for the owner's key holds them."
       },
       "ProviderRead": {
         "properties": {
@@ -3983,6 +4324,19 @@
         ],
         "title": "SetupRead",
         "description": "Whether the app is set up: until it is, the UI shows only the setup screen."
+      },
+      "ShowSnapshotsSave": {
+        "properties": {
+          "show_snapshots": {
+            "type": "boolean",
+            "title": "Show Snapshots"
+          }
+        },
+        "type": "object",
+        "required": [
+          "show_snapshots"
+        ],
+        "title": "ShowSnapshotsSave"
       },
       "Technology": {
         "properties": {

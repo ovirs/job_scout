@@ -1,5 +1,5 @@
 """The real LLM adapter: the Anthropic API, with structured output, called with the run
-owner's key; and the listing of Anthropic's models, which checks a key.
+owner's key. The listing of Anthropic's models is next to it, in `anthropic_models`.
 
 Not covered by automated tests; prompt quality is judged by reading results.
 """
@@ -12,7 +12,7 @@ from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Effort, Settings
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
-from job_scout.llm.interface import Failure, KeyRefused, Outcome
+from job_scout.llm.interface import Failure, Outcome
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
 MAX_TOKENS = 8192
@@ -120,12 +120,3 @@ class AnthropicLlm:
             return schema.model_validate_json(text)
         except ValidationError as error:
             return Failure("malformed", f"The answer did not have the expected shape: {error}")
-
-
-async def list_models(api_key: str) -> list[str] | KeyRefused:
-    """The ids of the models Anthropic lists for the key; or why the listing failed."""
-    try:
-        async with anthropic.AsyncAnthropic(api_key=api_key) as client:
-            return [model.id async for model in client.models.list()]
-    except anthropic.APIError as error:
-        return KeyRefused(str(error))

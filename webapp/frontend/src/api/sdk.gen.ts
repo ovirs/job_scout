@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteCoverLetterDraftData, DeleteCoverLetterDraftErrors, DeleteCoverLetterDraftResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GenerateCoverLetterData, GenerateCoverLetterErrors, GenerateCoverLetterResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCoverLetterData, GetCoverLetterErrors, GetCoverLetterResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, GetSetupData, GetSetupResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ListProvidersData, ListProvidersResponses, RemoveProviderKeyData, RemoveProviderKeyErrors, RemoveProviderKeyResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponses, RestoreCoverLetterDraftData, RestoreCoverLetterDraftErrors, RestoreCoverLetterDraftResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, ReviseCoverLetterData, ReviseCoverLetterErrors, ReviseCoverLetterResponses, SaveCoverLetterDraftData, SaveCoverLetterDraftErrors, SaveCoverLetterDraftResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SaveProviderKeyData, SaveProviderKeyErrors, SaveProviderKeyResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses } from './types.gen';
+import type { AbandonClippingData, AbandonClippingErrors, AbandonClippingResponses, AddApplicationNoteData, AddApplicationNoteErrors, AddApplicationNoteResponses, AddDealBreakerData, AddDealBreakerErrors, AddDealBreakerResponses, AddJobPostingNoteData, AddJobPostingNoteErrors, AddJobPostingNoteResponses, CloseJobPostingData, CloseJobPostingErrors, CloseJobPostingResponses, ConfirmClippingData, ConfirmClippingErrors, ConfirmClippingResponses, DeleteApplicationData, DeleteApplicationErrors, DeleteApplicationResponses, DeleteCoverLetterDraftData, DeleteCoverLetterDraftErrors, DeleteCoverLetterDraftResponses, DeleteDealBreakerData, DeleteDealBreakerErrors, DeleteDealBreakerResponses, DeleteNoteData, DeleteNoteErrors, DeleteNoteResponses, EditDealBreakerData, EditDealBreakerErrors, EditDealBreakerResponses, FindSimilarJobPostingsData, FindSimilarJobPostingsErrors, FindSimilarJobPostingsResponses, GenerateCoverLetterData, GenerateCoverLetterErrors, GenerateCoverLetterResponses, GetApplicationData, GetApplicationErrors, GetApplicationResponses, GetClippingData, GetClippingErrors, GetClippingResponses, GetCoverLetterData, GetCoverLetterErrors, GetCoverLetterResponses, GetCurrentDealBreakersData, GetCurrentDealBreakersResponses, GetCurrentDocumentData, GetCurrentDocumentErrors, GetCurrentDocumentResponses, GetCurrentEvaluationData, GetCurrentEvaluationErrors, GetCurrentEvaluationResponses, GetDealBreakerSetVersionData, GetDealBreakerSetVersionErrors, GetDealBreakerSetVersionResponses, GetDocumentVersionData, GetDocumentVersionErrors, GetDocumentVersionResponses, GetJobPostingData, GetJobPostingErrors, GetJobPostingResponses, GetSetupData, GetSetupResponses, HideModelData, HideModelErrors, HideModelResponses, ListApplicationNotesData, ListApplicationNotesErrors, ListApplicationNotesResponses, ListApplicationsData, ListApplicationsErrors, ListApplicationsResponses, ListEvaluationsData, ListEvaluationsErrors, ListEvaluationsResponses, ListJobPostingNotesData, ListJobPostingNotesErrors, ListJobPostingNotesResponses, ListJobPostingsData, ListJobPostingsErrors, ListJobPostingsResponses, ListModelsData, ListModelsResponses, ListOfferedModelsData, ListOfferedModelsResponses, ListProvidersData, ListProvidersResponses, RefreshModelsData, RefreshModelsResponses, RemoveProviderKeyData, RemoveProviderKeyErrors, RemoveProviderKeyResponses, ReopenJobPostingData, ReopenJobPostingErrors, ReopenJobPostingResponses, RerunEvaluationData, RerunEvaluationErrors, RerunEvaluationResponses, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponses, RestoreCoverLetterDraftData, RestoreCoverLetterDraftErrors, RestoreCoverLetterDraftResponses, RetryClippingData, RetryClippingErrors, RetryClippingResponses, ReviseCoverLetterData, ReviseCoverLetterErrors, ReviseCoverLetterResponses, SaveCoverLetterDraftData, SaveCoverLetterDraftErrors, SaveCoverLetterDraftResponses, SaveDocumentData, SaveDocumentErrors, SaveDocumentResponses, SaveProviderKeyData, SaveProviderKeyErrors, SaveProviderKeyResponses, SaveShowSnapshotsData, SaveShowSnapshotsErrors, SaveShowSnapshotsResponses, SetApplicationStateData, SetApplicationStateErrors, SetApplicationStateResponses, SetJobPostingTriageData, SetJobPostingTriageErrors, SetJobPostingTriageResponses, StartApplicationData, StartApplicationErrors, StartApplicationResponses, SubmitClippingData, SubmitClippingErrors, SubmitClippingResponses, UnhideModelData, UnhideModelErrors, UnhideModelResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -426,3 +426,56 @@ export const saveProviderKey = <ThrowOnError extends boolean = false>(options: O
         ...options.headers
     }
 });
+
+/**
+ * List Offered Models
+ *
+ * The models every picker offers: each Provider's listing for the owner's key, less
+ * the models the owner hid, and less dated snapshots unless the owner shows them. A
+ * listing is fetched again once it is a day old.
+ */
+export const listOfferedModels = <ThrowOnError extends boolean = false>(options?: Options<ListOfferedModelsData, ThrowOnError>): RequestResult<ListOfferedModelsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListOfferedModelsResponses, unknown, ThrowOnError>({ url: '/api/models', ...options });
+
+/**
+ * List Models
+ *
+ * Each Provider's models for the owner's key, hidden ones included, and whether dated
+ * snapshots are offered. A listing is fetched again once it is a day old.
+ */
+export const listModels = <ThrowOnError extends boolean = false>(options?: Options<ListModelsData, ThrowOnError>): RequestResult<ListModelsResponses, unknown, ThrowOnError> => (options?.client ?? client).get<ListModelsResponses, unknown, ThrowOnError>({ url: '/api/settings/models', ...options });
+
+/**
+ * Refresh Models
+ *
+ * Fetch every Provider's listing again now, as `list_models` returns it. A Provider
+ * that refuses keeps the list it gave before, with its reason.
+ */
+export const refreshModels = <ThrowOnError extends boolean = false>(options?: Options<RefreshModelsData, ThrowOnError>): RequestResult<RefreshModelsResponses, unknown, ThrowOnError> => (options?.client ?? client).post<RefreshModelsResponses, unknown, ThrowOnError>({ url: '/api/settings/models/refresh', ...options });
+
+/**
+ * Save Show Snapshots
+ *
+ * Offer dated snapshots, such as `gpt-5-2025-08-07`, in every picker, or stop.
+ */
+export const saveShowSnapshots = <ThrowOnError extends boolean = false>(options: Options<SaveShowSnapshotsData, ThrowOnError>): RequestResult<SaveShowSnapshotsResponses, SaveShowSnapshotsErrors, ThrowOnError> => (options.client ?? client).put<SaveShowSnapshotsResponses, SaveShowSnapshotsErrors, ThrowOnError>({
+    url: '/api/settings/show-snapshots',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Unhide Model
+ *
+ * Offer the hidden model again.
+ */
+export const unhideModel = <ThrowOnError extends boolean = false>(options: Options<UnhideModelData, ThrowOnError>): RequestResult<UnhideModelResponses, UnhideModelErrors, ThrowOnError> => (options.client ?? client).delete<UnhideModelResponses, UnhideModelErrors, ThrowOnError>({ url: '/api/settings/hidden-models/{provider}/{model_id}', ...options });
+
+/**
+ * Hide Model
+ *
+ * Hide the model from every picker; a hidden model cannot be used.
+ */
+export const hideModel = <ThrowOnError extends boolean = false>(options: Options<HideModelData, ThrowOnError>): RequestResult<HideModelResponses, HideModelErrors, ThrowOnError> => (options.client ?? client).put<HideModelResponses, HideModelErrors, ThrowOnError>({ url: '/api/settings/hidden-models/{provider}/{model_id}', ...options });

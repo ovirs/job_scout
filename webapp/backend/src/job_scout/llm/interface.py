@@ -69,12 +69,28 @@ class KeyRefused:
     reason: str
 
 
+@dataclass(frozen=True)
+class ListedModel:
+    """A model a Provider lists for a key that the app can use: a text model, kept by that
+    Provider's filtering rules."""
+
+    provider: Provider
+    id: str
+    display_name: str
+    # A dated or versioned name, pinned to one release, rather than a moving name such as
+    # `gpt-5` that follows the family's latest
+    snapshot: bool
+    # The effort levels it accepts, in the Provider's own names; none without an effort control
+    efforts: tuple[str, ...]
+
+
 class ModelLister(Protocol):
     @property
     def available(self) -> tuple[Provider, ...]:
         """The Providers with an adapter: only these can be set up."""
         ...
 
-    async def list_models(self, provider: Provider, api_key: str) -> list[str] | KeyRefused:
-        """The ids of the models the Provider lists for the key; or why it refused."""
+    async def list_models(self, provider: Provider, api_key: str) -> list[ListedModel] | KeyRefused:
+        """The models the Provider lists for the key that the app can use; or why it
+        refused the key."""
         ...

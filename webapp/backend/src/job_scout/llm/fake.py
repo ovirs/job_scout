@@ -7,7 +7,7 @@ from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Settings
 from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
 from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
-from job_scout.llm.interface import Failure, KeyRefused, Outcome, Provider
+from job_scout.llm.interface import Failure, KeyRefused, ListedModel, Outcome, Provider
 from job_scout.llm.providers import ADAPTERS
 from job_scout.prompts import COVER_LETTER, EVALUATION, MANUAL_ENTRY_EXTRACTION, Prompt
 
@@ -115,21 +115,30 @@ class FakeLlm:
         return await self.cover_letter(prompt)
 
 
+OPUS = ListedModel(
+    provider="anthropic",
+    id="claude-opus-5-5",
+    display_name="Claude Opus 5.5",
+    snapshot=False,
+    efforts=("low", "medium", "high", "xhigh", "max"),
+)
+
+
 class FakeModelLister:
-    """Lists `models` for any key, and records each Provider and key it was asked about in
-    `calls`; after `refuse`, refuses every key with the reason. The Providers available are
-    the app's own."""
+    """Lists each Provider's models in `listings` for any key, as already filtered, and
+    records each Provider and key it was asked about in `calls`; after `refuse`, refuses
+    every key with the reason. The Providers available are the app's own."""
 
     available: tuple[Provider, ...] = tuple(ADAPTERS)
 
-    def __init__(self, models: list[str] | None = None) -> None:
-        self.models = models if models is not None else ["claude-opus-5-5"]
+    def __init__(self) -> None:
+        self.listings: dict[Provider, list[ListedModel]] = {"anthropic": [OPUS]}
         self.calls: list[tuple[Provider, str]] = []
         self._refusal: KeyRefused | None = None
 
     def refuse(self, reason: str) -> None:
         self._refusal = KeyRefused(reason)
 
-    async def list_models(self, provider: Provider, api_key: str) -> list[str] | KeyRefused:
+    async def list_models(self, provider: Provider, api_key: str) -> list[ListedModel] | KeyRefused:
         self.calls.append((provider, api_key))
-        return self._refusal or list(self.models)
+        return self._refusal or list(self.listings.get(provider, []))

@@ -187,6 +187,13 @@ label > select {
   font-size: 0.9375rem;
 }
 
+/* A checkbox on the line of its text, rather than above it */
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 select {
   justify-self: start;
 }

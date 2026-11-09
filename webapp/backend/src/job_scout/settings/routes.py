@@ -6,7 +6,14 @@ from fastapi import APIRouter, Depends, HTTPException
 from job_scout.llm.interface import PROVIDERS, Provider
 from job_scout.routing import Lister, Owner, Session
 from job_scout.settings import domain as settings
-from job_scout.settings.schemas import ProviderKeySave, ProviderRead, SetupRead
+from job_scout.settings.schemas import (
+    ModelsRead,
+    OfferedModelRead,
+    ProviderKeySave,
+    ProviderRead,
+    SetupRead,
+    ShowSnapshotsSave,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -49,6 +56,49 @@ async def remove_provider_key(provider: Provider, session: Session, owner: Owner
     the setup screen."""
     with _refusals():
         await settings.remove_key(session, owner_id=owner, provider=provider)
+
+
+@router.get("/models")
+async def list_offered_models(
+    session: Session, lister: Lister, owner: Owner
+) -> list[OfferedModelRead]:
+    """The models every picker offers: each Provider's listing for the owner's key, less
+    the models the owner hid, and less dated snapshots unless the owner shows them. A
+    listing is fetched again once it is a day old."""
+    offered = await settings.offered(session, lister, owner_id=owner)
+    return [OfferedModelRead.of(model) for model in offered]
+
+
+@router.get("/settings/models")
+async def list_models(session: Session, lister: Lister, owner: Owner) -> ModelsRead:
+    """Each Provider's models for the owner's key, hidden ones included, and whether dated
+    snapshots are offered. A listing is fetched again once it is a day old."""
+    return ModelsRead.of(await settings.models(session, lister, owner_id=owner))
+
+
+@router.post("/settings/models/refresh")
+async def refresh_models(session: Session, lister: Lister, owner: Owner) -> ModelsRead:
+    """Fetch every Provider's listing again now, as `list_models` returns it. A Provider
+    that refuses keeps the list it gave before, with its reason."""
+    return ModelsRead.of(await settings.models(session, lister, owner_id=owner, refresh=True))
+
+
+@router.put("/settings/show-snapshots", status_code=204)
+async def save_show_snapshots(body: ShowSnapshotsSave, session: Session, owner: Owner) -> None:
+    """Offer dated snapshots, such as `gpt-5-2025-08-07`, in every picker, or stop."""
+    await settings.show_snapshots(session, owner_id=owner, show=body.show_snapshots)
+
+
+@router.put("/settings/hidden-models/{provider}/{model_id}", status_code=204)
+async def hide_model(provider: Provider, model_id: str, session: Session, owner: Owner) -> None:
+    """Hide the model from every picker; a hidden model cannot be used."""
+    await settings.hide_model(session, owner_id=owner, provider=provider, model_id=model_id)
+
+
+@router.delete("/settings/hidden-models/{provider}/{model_id}", status_code=204)
+async def unhide_model(provider: Provider, model_id: str, session: Session, owner: Owner) -> None:
+    """Offer the hidden model again."""
+    await settings.unhide_model(session, owner_id=owner, provider=provider, model_id=model_id)
 
 
 async def require_provider(session: Session, owner: Owner) -> None:

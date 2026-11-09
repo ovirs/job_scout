@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, getSetup, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, listProviders, type Options, removeProviderKey, reopenJobPosting, rerunEvaluation, rerunUnactedEvaluations, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, saveProviderKey, setApplicationState, setJobPostingTriage, startApplication, submitClipping } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, GetSetupData, GetSetupResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ListProvidersData, ListProvidersResponse, RemoveProviderKeyData, RemoveProviderKeyError, RemoveProviderKeyResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SaveProviderKeyData, SaveProviderKeyError, SaveProviderKeyResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, getSetup, hideModel, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, listModels, listOfferedModels, listProviders, type Options, refreshModels, removeProviderKey, reopenJobPosting, rerunEvaluation, rerunUnactedEvaluations, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, saveProviderKey, saveShowSnapshots, setApplicationState, setJobPostingTriage, startApplication, submitClipping, unhideModel } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, GetSetupData, GetSetupResponse, HideModelData, HideModelError, HideModelResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ListModelsData, ListModelsResponse, ListOfferedModelsData, ListOfferedModelsResponse, ListProvidersData, ListProvidersResponse, RefreshModelsData, RefreshModelsResponse, RemoveProviderKeyData, RemoveProviderKeyError, RemoveProviderKeyResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SaveProviderKeyData, SaveProviderKeyError, SaveProviderKeyResponse, SaveShowSnapshotsData, SaveShowSnapshotsError, SaveShowSnapshotsResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse, UnhideModelData, UnhideModelError, UnhideModelResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -880,6 +880,126 @@ export const saveProviderKeyMutation = (options?: Partial<Options<SaveProviderKe
     const mutationOptions: UseMutationOptions<SaveProviderKeyResponse, SaveProviderKeyError, Options<SaveProviderKeyData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await saveProviderKey({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listOfferedModelsQueryKey = (options?: Options<ListOfferedModelsData>) => createQueryKey('listOfferedModels', options);
+
+/**
+ * List Offered Models
+ *
+ * The models every picker offers: each Provider's listing for the owner's key, less
+ * the models the owner hid, and less dated snapshots unless the owner shows them. A
+ * listing is fetched again once it is a day old.
+ */
+export const listOfferedModelsOptions = (options?: Options<ListOfferedModelsData>) => queryOptions<ListOfferedModelsResponse, DefaultError, ListOfferedModelsResponse, ReturnType<typeof listOfferedModelsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listOfferedModels({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listOfferedModelsQueryKey(options)
+});
+
+export const listModelsQueryKey = (options?: Options<ListModelsData>) => createQueryKey('listModels', options);
+
+/**
+ * List Models
+ *
+ * Each Provider's models for the owner's key, hidden ones included, and whether dated
+ * snapshots are offered. A listing is fetched again once it is a day old.
+ */
+export const listModelsOptions = (options?: Options<ListModelsData>) => queryOptions<ListModelsResponse, DefaultError, ListModelsResponse, ReturnType<typeof listModelsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listModels({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listModelsQueryKey(options)
+});
+
+/**
+ * Refresh Models
+ *
+ * Fetch every Provider's listing again now, as `list_models` returns it. A Provider
+ * that refuses keeps the list it gave before, with its reason.
+ */
+export const refreshModelsMutation = (options?: Partial<Options<RefreshModelsData>>): UseMutationOptions<RefreshModelsResponse, DefaultError, Options<RefreshModelsData>> => {
+    const mutationOptions: UseMutationOptions<RefreshModelsResponse, DefaultError, Options<RefreshModelsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await refreshModels({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Save Show Snapshots
+ *
+ * Offer dated snapshots, such as `gpt-5-2025-08-07`, in every picker, or stop.
+ */
+export const saveShowSnapshotsMutation = (options?: Partial<Options<SaveShowSnapshotsData>>): UseMutationOptions<SaveShowSnapshotsResponse, SaveShowSnapshotsError, Options<SaveShowSnapshotsData>> => {
+    const mutationOptions: UseMutationOptions<SaveShowSnapshotsResponse, SaveShowSnapshotsError, Options<SaveShowSnapshotsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveShowSnapshots({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Unhide Model
+ *
+ * Offer the hidden model again.
+ */
+export const unhideModelMutation = (options?: Partial<Options<UnhideModelData>>): UseMutationOptions<UnhideModelResponse, UnhideModelError, Options<UnhideModelData>> => {
+    const mutationOptions: UseMutationOptions<UnhideModelResponse, UnhideModelError, Options<UnhideModelData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await unhideModel({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Hide Model
+ *
+ * Hide the model from every picker; a hidden model cannot be used.
+ */
+export const hideModelMutation = (options?: Partial<Options<HideModelData>>): UseMutationOptions<HideModelResponse, HideModelError, Options<HideModelData>> => {
+    const mutationOptions: UseMutationOptions<HideModelResponse, HideModelError, Options<HideModelData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await hideModel({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

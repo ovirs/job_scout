@@ -67,9 +67,9 @@ A package imports only from the packages below it. From the top:
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
-6. `user_inputs`, `job_postings`, `settings`: how the owner has set the app up to run (their Provider keys), which every LLM run reads
+6. `user_inputs`, `job_postings`, `settings`: how the owner has set the app up to run (their Provider keys, and the models offered with them: each Provider's listing cached for a day, hidden models and the snapshots switch), which every LLM run reads
 
-Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters and model listings in `llm/` (`llm/providers.py` picks them by Provider). Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
+Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters and model listings in `llm/` (`llm/providers.py` picks them by Provider; each Provider's filtering rules for its listing are in `llm/<provider>_models.py`). Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 
 - **Coordinating several concepts:** code that does this goes in the highest package involved. It never goes in a lower package reaching up.
 - **Shared code:** goes in a module named for a concept, never `utils` or `common`.

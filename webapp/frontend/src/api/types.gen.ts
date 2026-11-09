@@ -823,6 +823,52 @@ export type LlmRunFailureRead = {
 };
 
 /**
+ * ModelRead
+ *
+ * A model as Settings lists it: hidden ones are listed too, to offer again.
+ */
+export type ModelRead = {
+    provider: Provider;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Snapshot
+     */
+    snapshot: boolean;
+    /**
+     * Efforts
+     */
+    efforts: Array<string>;
+    /**
+     * Hidden
+     */
+    hidden: boolean;
+};
+
+/**
+ * ModelsRead
+ *
+ * The models of every Provider the owner has set up, and whether dated snapshots are
+ * offered.
+ */
+export type ModelsRead = {
+    /**
+     * Show Snapshots
+     */
+    show_snapshots: boolean;
+    /**
+     * Providers
+     */
+    providers: Array<ProviderModelsRead>;
+};
+
+/**
  * NoteAdd
  */
 export type NoteAdd = {
@@ -858,6 +904,32 @@ export type NoteRead = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * OfferedModelRead
+ *
+ * A model a picker offers: the owner's Provider lists it for their key, and the owner
+ * has not hidden it.
+ */
+export type OfferedModelRead = {
+    provider: Provider;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Snapshot
+     */
+    snapshot: boolean;
+    /**
+     * Efforts
+     */
+    efforts: Array<string>;
 };
 
 /**
@@ -918,6 +990,31 @@ export type ProviderKeySave = {
      * Api Key
      */
     api_key: string;
+};
+
+/**
+ * ProviderModelsRead
+ *
+ * One Provider's models, as its listing for the owner's key holds them.
+ */
+export type ProviderModelsRead = {
+    provider: Provider;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Fetched At
+     */
+    fetched_at: string | null;
+    /**
+     * Refused
+     */
+    refused: string | null;
+    /**
+     * Models
+     */
+    models: Array<ModelRead>;
 };
 
 /**
@@ -987,6 +1084,16 @@ export type SetupRead = {
      * Has Provider
      */
     has_provider: boolean;
+};
+
+/**
+ * ShowSnapshotsSave
+ */
+export type ShowSnapshotsSave = {
+    /**
+     * Show Snapshots
+     */
+    show_snapshots: boolean;
 };
 
 /**
@@ -2346,3 +2453,146 @@ export type SaveProviderKeyResponses = {
 };
 
 export type SaveProviderKeyResponse = SaveProviderKeyResponses[keyof SaveProviderKeyResponses];
+
+export type ListOfferedModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/models';
+};
+
+export type ListOfferedModelsResponses = {
+    /**
+     * Response List Offered Models
+     *
+     * Successful Response
+     */
+    200: Array<OfferedModelRead>;
+};
+
+export type ListOfferedModelsResponse = ListOfferedModelsResponses[keyof ListOfferedModelsResponses];
+
+export type ListModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/settings/models';
+};
+
+export type ListModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelsRead;
+};
+
+export type ListModelsResponse = ListModelsResponses[keyof ListModelsResponses];
+
+export type RefreshModelsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/settings/models/refresh';
+};
+
+export type RefreshModelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ModelsRead;
+};
+
+export type RefreshModelsResponse = RefreshModelsResponses[keyof RefreshModelsResponses];
+
+export type SaveShowSnapshotsData = {
+    body: ShowSnapshotsSave;
+    path?: never;
+    query?: never;
+    url: '/api/settings/show-snapshots';
+};
+
+export type SaveShowSnapshotsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveShowSnapshotsError = SaveShowSnapshotsErrors[keyof SaveShowSnapshotsErrors];
+
+export type SaveShowSnapshotsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SaveShowSnapshotsResponse = SaveShowSnapshotsResponses[keyof SaveShowSnapshotsResponses];
+
+export type UnhideModelData = {
+    body?: never;
+    path: {
+        /**
+         * Provider
+         */
+        provider: 'anthropic' | 'openai' | 'google';
+        /**
+         * Model Id
+         */
+        model_id: string;
+    };
+    query?: never;
+    url: '/api/settings/hidden-models/{provider}/{model_id}';
+};
+
+export type UnhideModelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UnhideModelError = UnhideModelErrors[keyof UnhideModelErrors];
+
+export type UnhideModelResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type UnhideModelResponse = UnhideModelResponses[keyof UnhideModelResponses];
+
+export type HideModelData = {
+    body?: never;
+    path: {
+        /**
+         * Provider
+         */
+        provider: 'anthropic' | 'openai' | 'google';
+        /**
+         * Model Id
+         */
+        model_id: string;
+    };
+    query?: never;
+    url: '/api/settings/hidden-models/{provider}/{model_id}';
+};
+
+export type HideModelErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HideModelError = HideModelErrors[keyof HideModelErrors];
+
+export type HideModelResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type HideModelResponse = HideModelResponses[keyof HideModelResponses];
