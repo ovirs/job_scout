@@ -6,7 +6,7 @@ Preview (the text rendered). The Document is stored as the plain Markdown text.
 
 import httpx
 import pytest
-from conftest import set_up_provider
+from conftest import set_up_defaults, set_up_provider
 from playwright.async_api import Locator, Page, expect
 
 pytestmark = pytest.mark.browser
@@ -17,6 +17,7 @@ async def provider_set_up(api_url: str) -> None:
     """Past the setup screen, which shows until a Provider is set up."""
     async with httpx.AsyncClient(base_url=api_url) as client:
         await set_up_provider(client)
+        await set_up_defaults(client)
 
 
 async def save_document(api_url: str, kind: str, text: str) -> None:

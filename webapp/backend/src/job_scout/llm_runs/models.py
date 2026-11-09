@@ -8,7 +8,7 @@ from typing import Literal
 from sqlalchemy import CheckConstraint, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from job_scout.llm.interface import FailureKind
+from job_scout.llm.interface import FailureKind, ModelChoice, Provider
 
 # Queued until the worker picks it up, running while it calls the LLM, then done or failed
 RunStatus = Literal["queued", "running", "done", "failed"]
@@ -33,13 +33,38 @@ class LlmRun:
     started_at: Mapped[datetime | None]  # when its first attempt started
     finished_at: Mapped[datetime | None]
 
-    # The last LLM call it made; null when it made none
+    # The model choice it was queued with; null when it had none to take (no default was
+    # chosen, or it ran before choices were stored and never called the LLM)
+    requested_provider: Mapped[Provider | None] = mapped_column(String)
+    requested_model: Mapped[str | None]
+    requested_effort: Mapped[str | None]  # null also for the Provider's default
+
+    # The last LLM call it made: the Provider that answered, and the model it reported;
+    # null when it made none
+    provider: Mapped[Provider | None] = mapped_column(String)
     model: Mapped[str | None]
     prompt_version: Mapped[str | None]
 
     # Once failed
     failure_kind: Mapped[RunFailureKind | None] = mapped_column(String)
     failure_reason: Mapped[str | None]
+
+    @property
+    def requested(self) -> ModelChoice | None:
+        """The model choice it was queued with, if it had one."""
+        if self.requested_provider is None or self.requested_model is None:
+            return None
+        return ModelChoice(
+            provider=self.requested_provider,
+            model=self.requested_model,
+            effort=self.requested_effort,
+        )
+
+    @requested.setter
+    def requested(self, choice: ModelChoice | None) -> None:
+        self.requested_provider = None if choice is None else choice.provider
+        self.requested_model = None if choice is None else choice.model
+        self.requested_effort = None if choice is None else choice.effort
 
 
 def failure_complete() -> CheckConstraint:

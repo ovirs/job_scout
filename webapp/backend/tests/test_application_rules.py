@@ -17,7 +17,7 @@ from job_scout.config import Settings
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
 from job_scout.llm import Failure
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 from job_scout.owners import LOCAL_USER_ID
 from job_scout.posting_view import domain as posting_view
 from job_scout.posting_view.schemas import JobPostingRead
@@ -46,7 +46,11 @@ async def posting_id(
 async def start(runtime: Runtime, posting_id: int) -> Application:
     async with runtime.sessions() as session:
         return await applications.start(
-            session, runtime.task_queue, owner_id=LOCAL_USER_ID, job_posting_id=posting_id
+            session,
+            runtime.task_queue,
+            FakeModelLister(),
+            owner_id=LOCAL_USER_ID,
+            job_posting_id=posting_id,
         )
 
 

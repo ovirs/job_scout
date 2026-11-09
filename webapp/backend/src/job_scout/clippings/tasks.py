@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.clippings.models import Clipping
-from job_scout.llm.interface import Llm, Outcome
+from job_scout.llm.interface import Llm, Outcome, Step
 from job_scout.llm_runs.domain import Refusal
 
 
@@ -17,6 +17,7 @@ class ClippingExtraction:
 
     task_name = "extract_clipping"
     run_type = Clipping
+    step: Step = "extraction"
 
     async def gather(self, session: AsyncSession, run: Clipping) -> str | Refusal:
         return run.pasted_text

@@ -28,6 +28,7 @@ from job_scout import migrations, queue, worker
 from job_scout.app import create_app
 from job_scout.config import Settings
 from job_scout.llm.fake import FakeLlm, FakeModelLister
+from job_scout.llm.interface import ModelChoice
 from job_scout.llm_runs.domain import STUCK_AFTER
 
 TEMPLATE_DATABASE = "job_scout_template"
@@ -76,10 +77,23 @@ async def client_without_provider(
 
 
 @pytest.fixture
-async def client(client_without_provider: httpx.AsyncClient) -> httpx.AsyncClient:
-    """The API with Anthropic set up, with `TEST_KEY`."""
+async def client_with_provider_only(
+    client_without_provider: httpx.AsyncClient,
+) -> httpx.AsyncClient:
+    """The API with Anthropic's key saved, `TEST_KEY`, and no default model chosen yet."""
     await set_up_provider(client_without_provider)
     return client_without_provider
+
+
+@pytest.fixture
+async def client(client_with_provider_only: httpx.AsyncClient) -> httpx.AsyncClient:
+    """The API set up: Anthropic with `TEST_KEY`, and `DEFAULT_CHOICE` for every step."""
+    await set_up_defaults(client_with_provider_only)
+    return client_with_provider_only
+
+
+# The default model choice the `client` fixture sets up for every step
+DEFAULT_CHOICE = ModelChoice(provider="anthropic", model="claude-opus-5-5", effort=None)
 
 
 async def set_up_provider(client: httpx.AsyncClient) -> None:
@@ -87,10 +101,19 @@ async def set_up_provider(client: httpx.AsyncClient) -> None:
     response.raise_for_status()
 
 
+async def set_up_defaults(client: httpx.AsyncClient) -> None:
+    choice = {"provider": "anthropic", "model": DEFAULT_CHOICE.model, "effort": None}
+    response = await client.put(
+        "/api/settings/defaults",
+        json={"extraction": choice, "evaluation": choice, "cover_letter": choice},
+    )
+    response.raise_for_status()
+
+
 @pytest.fixture
-def fake_llm(settings: Settings) -> FakeLlm:
+def fake_llm() -> FakeLlm:
     """The LLM the worker calls in tests: give it canned outcomes, read its calls."""
-    return FakeLlm(settings)
+    return FakeLlm()
 
 
 @pytest.fixture

@@ -19,6 +19,7 @@ from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.extraction import WorkplaceType
 from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import ModelLister
 from job_scout.llm_runs import domain as llm_runs
 
 
@@ -33,6 +34,7 @@ class WrongStatus(Exception):
 async def submit(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     *,
     owner_id: uuid.UUID,
     pasted_text: str,
@@ -41,7 +43,7 @@ async def submit(
     """Store the pasted text as a new Clipping and queue its extraction."""
     clipping = Clipping(owner_id=owner_id, pasted_text=pasted_text, url=url, status="queued")
     session.add(clipping)
-    await llm_runs.commit_and_enqueue(session, task_queue, EXTRACTION, clipping)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EXTRACTION, clipping)
     return clipping
 
 
@@ -58,7 +60,12 @@ async def clipping(
 
 
 async def retry(
-    session: AsyncSession, task_queue: procrastinate.App, *, owner_id: uuid.UUID, clipping_id: int
+    session: AsyncSession,
+    task_queue: procrastinate.App,
+    lister: ModelLister,
+    *,
+    owner_id: uuid.UUID,
+    clipping_id: int,
 ) -> Clipping:
     """Queue the extraction of a failed clipping, or of one stuck being read, again.
     Raises `WrongStatus` for any other."""
@@ -69,7 +76,7 @@ async def retry(
         raise WrongStatus(
             "Only a failed Clipping, or one stuck being read, can be retried"
         ) from None
-    await llm_runs.commit_and_enqueue(session, task_queue, EXTRACTION, found)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EXTRACTION, found)
     return found
 
 
@@ -84,6 +91,7 @@ class Confirmed:
 async def confirm(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     *,
     owner_id: uuid.UUID,
     clipping_id: int,
@@ -123,7 +131,7 @@ async def confirm(
     await session.flush()  # assigns the posting's id
     run = evaluations.queued(posting)
     session.add(run)
-    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, run)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EVALUATION, run)
     return Confirmed(posting, run)
 
 

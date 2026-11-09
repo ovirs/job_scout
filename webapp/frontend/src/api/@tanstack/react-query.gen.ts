@@ -3,8 +3,8 @@
 import { type DefaultError, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, getSetup, hideModel, listApplicationNotes, listApplications, listEvaluations, listJobPostingNotes, listJobPostings, listModels, listOfferedModels, listProviders, type Options, refreshModels, removeProviderKey, reopenJobPosting, rerunEvaluation, rerunUnactedEvaluations, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDocument, saveProviderKey, saveShowSnapshots, setApplicationState, setJobPostingTriage, startApplication, submitClipping, unhideModel } from '../sdk.gen';
-import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, GetSetupData, GetSetupResponse, HideModelData, HideModelError, HideModelResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ListModelsData, ListModelsResponse, ListOfferedModelsData, ListOfferedModelsResponse, ListProvidersData, ListProvidersResponse, RefreshModelsData, RefreshModelsResponse, RemoveProviderKeyData, RemoveProviderKeyError, RemoveProviderKeyResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SaveProviderKeyData, SaveProviderKeyError, SaveProviderKeyResponse, SaveShowSnapshotsData, SaveShowSnapshotsError, SaveShowSnapshotsResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse, UnhideModelData, UnhideModelError, UnhideModelResponse } from '../types.gen';
+import { abandonClipping, addApplicationNote, addDealBreaker, addJobPostingNote, closeJobPosting, confirmClipping, deleteApplication, deleteCoverLetterDraft, deleteDealBreaker, deleteNote, editDealBreaker, findSimilarJobPostings, generateCoverLetter, getApplication, getClipping, getCoverLetter, getCurrentDealBreakers, getCurrentDocument, getCurrentEvaluation, getDealBreakerSetVersion, getDocumentVersion, getJobPosting, getSetup, hideModel, listApplicationNotes, listApplications, listDefaults, listEvaluations, listJobPostingNotes, listJobPostings, listModels, listOfferedModels, listProviders, type Options, refreshModels, removeProviderKey, reopenJobPosting, rerunEvaluation, rerunUnactedEvaluations, restoreCoverLetterDraft, retryClipping, reviseCoverLetter, saveCoverLetterDraft, saveDefaults, saveDocument, saveProviderKey, saveShowSnapshots, setApplicationState, setJobPostingTriage, startApplication, submitClipping, unhideModel } from '../sdk.gen';
+import type { AbandonClippingData, AbandonClippingError, AbandonClippingResponse, AddApplicationNoteData, AddApplicationNoteError, AddApplicationNoteResponse, AddDealBreakerData, AddDealBreakerError, AddDealBreakerResponse, AddJobPostingNoteData, AddJobPostingNoteError, AddJobPostingNoteResponse, CloseJobPostingData, CloseJobPostingError, CloseJobPostingResponse, ConfirmClippingData, ConfirmClippingError, ConfirmClippingResponse, DeleteApplicationData, DeleteApplicationError, DeleteApplicationResponse, DeleteCoverLetterDraftData, DeleteCoverLetterDraftError, DeleteCoverLetterDraftResponse, DeleteDealBreakerData, DeleteDealBreakerError, DeleteDealBreakerResponse, DeleteNoteData, DeleteNoteError, DeleteNoteResponse, EditDealBreakerData, EditDealBreakerError, EditDealBreakerResponse, FindSimilarJobPostingsData, FindSimilarJobPostingsError, FindSimilarJobPostingsResponse, GenerateCoverLetterData, GenerateCoverLetterError, GenerateCoverLetterResponse, GetApplicationData, GetApplicationError, GetApplicationResponse, GetClippingData, GetClippingError, GetClippingResponse, GetCoverLetterData, GetCoverLetterError, GetCoverLetterResponse, GetCurrentDealBreakersData, GetCurrentDealBreakersResponse, GetCurrentDocumentData, GetCurrentDocumentError, GetCurrentDocumentResponse, GetCurrentEvaluationData, GetCurrentEvaluationError, GetCurrentEvaluationResponse, GetDealBreakerSetVersionData, GetDealBreakerSetVersionError, GetDealBreakerSetVersionResponse, GetDocumentVersionData, GetDocumentVersionError, GetDocumentVersionResponse, GetJobPostingData, GetJobPostingError, GetJobPostingResponse, GetSetupData, GetSetupResponse, HideModelData, HideModelError, HideModelResponse, ListApplicationNotesData, ListApplicationNotesError, ListApplicationNotesResponse, ListApplicationsData, ListApplicationsError, ListApplicationsResponse, ListDefaultsData, ListDefaultsResponse, ListEvaluationsData, ListEvaluationsError, ListEvaluationsResponse, ListJobPostingNotesData, ListJobPostingNotesError, ListJobPostingNotesResponse, ListJobPostingsData, ListJobPostingsError, ListJobPostingsResponse, ListModelsData, ListModelsResponse, ListOfferedModelsData, ListOfferedModelsResponse, ListProvidersData, ListProvidersResponse, RefreshModelsData, RefreshModelsResponse, RemoveProviderKeyData, RemoveProviderKeyError, RemoveProviderKeyResponse, ReopenJobPostingData, ReopenJobPostingError, ReopenJobPostingResponse, RerunEvaluationData, RerunEvaluationError, RerunEvaluationResponse, RerunUnactedEvaluationsData, RerunUnactedEvaluationsResponse, RestoreCoverLetterDraftData, RestoreCoverLetterDraftError, RestoreCoverLetterDraftResponse, RetryClippingData, RetryClippingError, RetryClippingResponse, ReviseCoverLetterData, ReviseCoverLetterError, ReviseCoverLetterResponse, SaveCoverLetterDraftData, SaveCoverLetterDraftError, SaveCoverLetterDraftResponse, SaveDefaultsData, SaveDefaultsError, SaveDefaultsResponse, SaveDocumentData, SaveDocumentError, SaveDocumentResponse, SaveProviderKeyData, SaveProviderKeyError, SaveProviderKeyResponse, SaveShowSnapshotsData, SaveShowSnapshotsError, SaveShowSnapshotsResponse, SetApplicationStateData, SetApplicationStateError, SetApplicationStateResponse, SetJobPostingTriageData, SetJobPostingTriageError, SetJobPostingTriageResponse, StartApplicationData, StartApplicationError, StartApplicationResponse, SubmitClippingData, SubmitClippingError, SubmitClippingResponse, UnhideModelData, UnhideModelError, UnhideModelResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -812,8 +812,8 @@ export const getSetupQueryKey = (options?: Options<GetSetupData>) => createQuery
 /**
  * Get Setup
  *
- * Whether the owner has set up a Provider; until they have, the app shows only the
- * setup screen.
+ * Whether the owner has set up a Provider, and a default model for every step; until
+ * they have both, the app shows only the setup screen.
  */
 export const getSetupOptions = (options?: Options<GetSetupData>) => queryOptions<GetSetupResponse, DefaultError, GetSetupResponse, ReturnType<typeof getSetupQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {
@@ -1000,6 +1000,48 @@ export const hideModelMutation = (options?: Partial<Options<HideModelData>>): Us
     const mutationOptions: UseMutationOptions<HideModelResponse, HideModelError, Options<HideModelData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await hideModel({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const listDefaultsQueryKey = (options?: Options<ListDefaultsData>) => createQueryKey('listDefaults', options);
+
+/**
+ * List Defaults
+ *
+ * Each step's default model choice, which its runs take when queued, and why a run
+ * cannot take it now, if it cannot: its Provider's key is gone, or its model is hidden or
+ * no longer listed. Read from the cached listing.
+ */
+export const listDefaultsOptions = (options?: Options<ListDefaultsData>) => queryOptions<ListDefaultsResponse, DefaultError, ListDefaultsResponse, ReturnType<typeof listDefaultsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listDefaults({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listDefaultsQueryKey(options)
+});
+
+/**
+ * Save Defaults
+ *
+ * Make each choice given its step's default; a step left out keeps its own. Refused,
+ * saving none, when one is not offered, or its model does not take its effort.
+ */
+export const saveDefaultsMutation = (options?: Partial<Options<SaveDefaultsData>>): UseMutationOptions<SaveDefaultsResponse, SaveDefaultsError, Options<SaveDefaultsData>> => {
+    const mutationOptions: UseMutationOptions<SaveDefaultsResponse, SaveDefaultsError, Options<SaveDefaultsData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await saveDefaults({
                 ...options,
                 ...fnOptions,
                 throwOnError: true

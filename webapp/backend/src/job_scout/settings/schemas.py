@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
 
-from job_scout.llm.interface import ListedModel, Provider
+from job_scout.llm.interface import ListedModel, ModelChoice, Provider, Step
 from job_scout.settings import domain as settings
 from job_scout.settings.models import ProviderKey
 
@@ -43,9 +43,11 @@ class ProviderRead(BaseModel):
 
 
 class SetupRead(BaseModel):
-    """Whether the app is set up: until it is, the UI shows only the setup screen."""
+    """Whether the app is set up: until the owner has a Provider and a default model for
+    every step, the UI shows only the setup screen."""
 
     has_provider: bool
+    has_defaults: bool
 
 
 class OfferedModelRead(BaseModel):
@@ -121,3 +123,53 @@ class ModelsRead(BaseModel):
 
 class ShowSnapshotsSave(BaseModel):
     show_snapshots: bool
+
+
+class ModelChoiceBody(BaseModel):
+    """A Provider's model, and its effort level in the Provider's own names; a null effort
+    leaves it to the Provider's default."""
+
+    provider: Provider
+    model: str = Field(examples=["claude-opus-5-5"])
+    effort: str | None = Field(default=None, examples=["high"])
+
+    def choice(self) -> ModelChoice:
+        return ModelChoice(provider=self.provider, model=self.model, effort=self.effort)
+
+    @classmethod
+    def of(cls, choice: ModelChoice) -> "ModelChoiceBody":
+        return cls(provider=choice.provider, model=choice.model, effort=choice.effort)
+
+
+class DefaultsSave(BaseModel):
+    """The new default of each step given; a step left out keeps its own."""
+
+    extraction: ModelChoiceBody | None = None
+    evaluation: ModelChoiceBody | None = None
+    cover_letter: ModelChoiceBody | None = None
+
+    def choices(self) -> dict[Step, ModelChoice]:
+        given: dict[Step, ModelChoiceBody | None] = {
+            "extraction": self.extraction,
+            "evaluation": self.evaluation,
+            "cover_letter": self.cover_letter,
+        }
+        return {step: body.choice() for step, body in given.items() if body is not None}
+
+
+class DefaultRead(BaseModel):
+    """A step's default model choice, and why a run cannot take it now, if it cannot."""
+
+    step: Step
+    name: str
+    choice: ModelChoiceBody | None  # null until one is chosen
+    problem: str | None
+
+    @classmethod
+    def of(cls, default: settings.Default) -> "DefaultRead":
+        return cls(
+            step=default.step,
+            name=settings.STEP_NAMES[default.step],
+            choice=None if default.choice is None else ModelChoiceBody.of(default.choice),
+            problem=default.problem,
+        )

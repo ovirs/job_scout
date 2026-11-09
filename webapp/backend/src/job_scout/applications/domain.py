@@ -27,6 +27,7 @@ from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import ModelLister
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.triage import domain as triage
 from job_scout.triage.models import Triage, TriageValue
@@ -74,6 +75,7 @@ class TriageLocked(Refused):
 async def start(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     *,
     owner_id: uuid.UUID,
     job_posting_id: int,
@@ -96,7 +98,7 @@ async def start(
     session.add(application)
     run = await evaluations.queued_unless_evaluated(session, posting)
     await llm_runs.commit_and_enqueue(
-        session, task_queue, EVALUATION, *([] if run is None else [run])
+        session, task_queue, lister, EVALUATION, *([] if run is None else [run])
     )
     return application
 
@@ -248,7 +250,11 @@ async def by_state(
 
 
 async def rerun_unacted(
-    session: AsyncSession, task_queue: procrastinate.App, *, owner_id: uuid.UUID
+    session: AsyncSession,
+    task_queue: procrastinate.App,
+    lister: ModelLister,
+    *,
+    owner_id: uuid.UUID,
 ) -> list[Evaluation]:
     """Queue a new Evaluation, with the current user inputs, of every open posting the
     user has not acted on, committed; returns them. A posting whose Evaluation is under
@@ -268,7 +274,7 @@ async def rerun_unacted(
         run = await evaluations.rerun_unless_under_way(session, posting)
         if run is not None:
             runs.append(run)
-    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, *runs)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EVALUATION, *runs)
     return runs
 
 
@@ -285,6 +291,7 @@ async def acted_on(session: AsyncSession, posting: JobPosting) -> bool:
 async def update_text(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     posting: JobPosting,
     *,
     title: str,
@@ -309,7 +316,7 @@ async def update_text(
     if posting.content_hash != before and not await acted_on(session, posting):
         run = await evaluations.rerun_unless_under_way(session, posting)
         runs = [] if run is None else [run]
-    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, *runs)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EVALUATION, *runs)
     return runs[0] if runs else None
 
 

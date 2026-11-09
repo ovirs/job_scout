@@ -5,12 +5,6 @@ x-backend: &backend
   build: ./webapp/backend
   environment:
     DATABASE_URL: postgresql://${POSTGRES_USER:-job_scout}:${POSTGRES_PASSWORD:-job_scout}@db:5432/${POSTGRES_DB:-job_scout}
-    EXTRACTION_MODEL: ${EXTRACTION_MODEL:-claude-opus-5-5}
-    EXTRACTION_EFFORT: ${EXTRACTION_EFFORT:-}
-    EVALUATION_MODEL: ${EVALUATION_MODEL:-claude-opus-5-5}
-    EVALUATION_EFFORT: ${EVALUATION_EFFORT:-}
-    COVER_LETTER_MODEL: ${COVER_LETTER_MODEL:-claude-opus-5-5}
-    COVER_LETTER_EFFORT: ${COVER_LETTER_EFFORT:-}
     LLM_RETRY_WAIT_SECONDS: ${LLM_RETRY_WAIT_SECONDS:-30}
   depends_on:
     migrate:

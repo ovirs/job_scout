@@ -4,6 +4,7 @@ from typing import Any
 import httpx
 import pytest
 from clipping_helpers import an_extraction, save_manual_entry
+from conftest import DEFAULT_CHOICE
 
 from job_scout.config import Settings
 from job_scout.evaluations.prompt import EvaluationResult
@@ -336,8 +337,8 @@ async def test_rerunning_a_posting_adds_an_evaluation_and_keeps_the_earlier_ones
         )
         for e in history
     ] == [
-        (settings.evaluation_model, "v2", second_profile, preferences, second_set, False),
-        (settings.evaluation_model, "v2", first_profile, preferences, first_set, False),
+        (DEFAULT_CHOICE.model, "v2", second_profile, preferences, second_set, False),
+        (DEFAULT_CHOICE.model, "v2", first_profile, preferences, first_set, False),
     ]
     # Numbered as the user sees the versions on the pages that edit them
     assert [

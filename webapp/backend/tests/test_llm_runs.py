@@ -2,7 +2,7 @@
 table, run through the real queue and worker, with the fake LLM."""
 
 from collections.abc import AsyncIterator, Awaitable, Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import pytest
 from clipping_helpers import an_extraction
@@ -13,12 +13,15 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from job_scout import db, queue
 from job_scout.clippings.extraction import ManualEntryExtraction
 from job_scout.config import Settings
-from job_scout.llm.fake import FakeLlm
-from job_scout.llm.interface import Failure, Llm, Outcome
+from job_scout.llm.fake import FakeLlm, FakeModelLister
+from job_scout.llm.interface import STEPS, Failure, Llm, ModelChoice, Outcome, Step
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
 from job_scout.owners import LOCAL_USER_ID
-from job_scout.settings.models import ProviderKey
+from job_scout.settings import domain as provider_settings
+
+# The default model choice of every step for the runs' owner
+CHOICE = ModelChoice(provider="anthropic", model="claude-opus-5-5", effort="high")
 
 
 class ExampleBase(DeclarativeBase):
@@ -46,6 +49,7 @@ class ExampleTask:
 
     task_name = "example_run"
     run_type = ExampleRun
+    step: Step = "extraction"
 
     def __init__(self, during_call: Callable[[], Awaitable[None]] | None = None) -> None:
         self._during_call = during_call  # runs while the LLM is answering
@@ -81,14 +85,19 @@ async def sessions(settings: Settings) -> AsyncIterator[async_sessionmaker[Async
     async with engine.begin() as connection:
         await connection.run_sync(ExampleBase.metadata.create_all)
     sessions = db.create_sessionmaker(engine)
-    async with sessions.begin() as session:  # the runs' owner has set up Anthropic
-        session.add(
-            ProviderKey(
-                owner_id=LOCAL_USER_ID,
-                provider="anthropic",
-                api_key=TEST_KEY,
-                saved_at=datetime.now(UTC),
-            )
+    async with sessions() as session:  # the runs' owner has set up Anthropic and defaults
+        await provider_settings.save_key(
+            session,
+            FakeModelLister(),
+            owner_id=LOCAL_USER_ID,
+            provider="anthropic",
+            api_key=TEST_KEY,
+        )
+        await provider_settings.save_defaults(
+            session,
+            FakeModelLister(),
+            owner_id=LOCAL_USER_ID,
+            choices=dict.fromkeys(STEPS, CHOICE),
         )
     yield sessions
     await engine.dispose()
@@ -108,7 +117,7 @@ def queue_runs(
                 for subject in subjects
             ]
             session.add_all(runs)
-            await llm_runs.commit_and_enqueue(session, task_queue, TASK, *runs)
+            await llm_runs.commit_and_enqueue(session, task_queue, FakeModelLister(), TASK, *runs)
             return [run.id for run in runs]
 
     return store
@@ -136,7 +145,7 @@ async def a_run(sessions: async_sessionmaker[AsyncSession], run_id: int) -> Exam
         return await session.get_one(ExampleRun, run_id)
 
 
-async def test_a_run_the_llm_answers_is_done_with_its_result_model_and_times(
+async def test_a_run_the_llm_answers_is_done_with_its_result_choice_model_and_times(
     sessions: async_sessionmaker[AsyncSession],
     fake_llm: FakeLlm,
     queue_runs: Callable[..., Awaitable[list[int]]],
@@ -150,12 +159,61 @@ async def test_a_run_the_llm_answers_is_done_with_its_result_model_and_times(
     run = await a_run(sessions, run_id)
     assert run.status == "done"
     assert run.answer == "Data Engineer"
-    assert run.model == "claude-opus-5-5"
+    assert run.requested == CHOICE  # its step's default when it was queued
+    assert (run.provider, run.model) == ("anthropic", "claude-opus-5-5")  # what answered
     assert run.prompt_version is not None
     assert run.failure_kind is None
     assert isinstance(run.started_at, datetime) and isinstance(run.finished_at, datetime)
     assert run.queued_at <= run.started_at <= run.finished_at
     assert fake_llm.manual_entry_extraction.calls == ["a pasted posting"]
+    assert fake_llm.connections == [(CHOICE, TEST_KEY)]
+
+
+async def test_a_call_the_provider_rejected_fails_the_run_at_once_without_a_retry(
+    sessions: async_sessionmaker[AsyncSession],
+    fake_llm: FakeLlm,
+    queue_runs: Callable[..., Awaitable[list[int]]],
+    run_worker: Callable[..., Awaitable[None]],
+) -> None:
+    fake_llm.manual_entry_extraction.respond_with(
+        Failure("rejected", "effort: Input should be 'low', 'medium' or 'high'"), an_extraction()
+    )
+    [run_id] = await queue_runs("a pasted posting")
+
+    await run_worker()
+    await run_worker()  # nothing is left on the queue
+
+    run = await a_run(sessions, run_id)
+    assert run.status == "failed"
+    assert (run.failure_kind, run.failure_reason) == (
+        "rejected",
+        "effort: Input should be 'low', 'medium' or 'high'",
+    )
+    assert (run.provider, run.model) == ("anthropic", "claude-opus-5-5")
+    assert len(fake_llm.manual_entry_extraction.calls) == 1
+
+
+async def test_a_run_whose_default_cannot_be_used_fails_when_queued_without_a_call(
+    sessions: async_sessionmaker[AsyncSession],
+    fake_llm: FakeLlm,
+    queue_runs: Callable[..., Awaitable[list[int]]],
+    run_worker: Callable[..., Awaitable[None]],
+) -> None:
+    async with sessions() as session:
+        await provider_settings.remove_key(session, owner_id=LOCAL_USER_ID, provider="anthropic")
+    [run_id] = await queue_runs("a pasted posting")
+    await run_worker()
+
+    run = await a_run(sessions, run_id)
+    assert run.status == "failed"
+    assert run.started_at is None and run.finished_at is not None
+    assert (run.failure_kind, run.failure_reason) == (
+        "missing_input",
+        "The default model for this step cannot be used: There is no API key for Anthropic."
+        " Choose another in Settings",
+    )
+    assert run.requested == CHOICE  # kept, to show what could not be used
+    assert fake_llm.connections == []
 
 
 async def test_a_failed_call_is_retried_and_a_later_answer_is_kept(
@@ -321,7 +379,7 @@ async def test_a_failed_or_stuck_run_is_requeued_in_place_and_runs_again(
         for run in runs:
             llm_runs.requeue(run)
             assert (run.status, run.failure_kind, run.started_at) == ("queued", None, None)
-        await llm_runs.commit_and_enqueue(session, task_queue, TASK, *runs)
+        await llm_runs.commit_and_enqueue(session, task_queue, FakeModelLister(), TASK, *runs)
     await run_worker()
 
     assert [(await a_run(sessions, id)).status for id in (failed, under_way)] == ["done", "done"]
@@ -366,7 +424,7 @@ async def test_a_run_whose_enqueue_fails_is_failed_at_once_so_it_can_be_retried(
     async with sessions() as session:
         run = ExampleRun(owner_id=LOCAL_USER_ID, subject="a pasted posting", status="queued")
         session.add(run)
-        await llm_runs.commit_and_enqueue(session, unopened, TASK, run)
+        await llm_runs.commit_and_enqueue(session, unopened, FakeModelLister(), TASK, run)
 
     stored = await a_run(sessions, run.id)
     assert (stored.status, stored.failure_kind) == ("failed", "error")

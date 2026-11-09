@@ -507,6 +507,35 @@ export type DealBreakerVerdictRead = {
 };
 
 /**
+ * DefaultRead
+ *
+ * A step's default model choice, and why a run cannot take it now, if it cannot.
+ */
+export type DefaultRead = {
+    step: Step;
+    /**
+     * Name
+     */
+    name: string;
+    choice: ModelChoiceBody | null;
+    /**
+     * Problem
+     */
+    problem: string | null;
+};
+
+/**
+ * DefaultsSave
+ *
+ * The new default of each step given; a step left out keeps its own.
+ */
+export type DefaultsSave = {
+    extraction?: ModelChoiceBody | null;
+    evaluation?: ModelChoiceBody | null;
+    cover_letter?: ModelChoiceBody | null;
+};
+
+/**
  * DocumentSave
  */
 export type DocumentSave = {
@@ -815,11 +844,29 @@ export type LlmRunFailureRead = {
     /**
      * Kind
      */
-    kind: 'error' | 'refusal' | 'malformed' | 'missing_input' | 'locked' | 'stuck';
+    kind: 'error' | 'refusal' | 'malformed' | 'rejected' | 'missing_input' | 'locked' | 'stuck';
     /**
      * Reason
      */
     reason: string;
+};
+
+/**
+ * ModelChoiceBody
+ *
+ * A Provider's model, and its effort level in the Provider's own names; a null effort
+ * leaves it to the Provider's default.
+ */
+export type ModelChoiceBody = {
+    provider: Provider;
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Effort
+     */
+    effort?: string | null;
 };
 
 /**
@@ -1077,13 +1124,18 @@ export type SentCoverLetterRead = {
 /**
  * SetupRead
  *
- * Whether the app is set up: until it is, the UI shows only the setup screen.
+ * Whether the app is set up: until the owner has a Provider and a default model for
+ * every step, the UI shows only the setup screen.
  */
 export type SetupRead = {
     /**
      * Has Provider
      */
     has_provider: boolean;
+    /**
+     * Has Defaults
+     */
+    has_defaults: boolean;
 };
 
 /**
@@ -1095,6 +1147,8 @@ export type ShowSnapshotsSave = {
      */
     show_snapshots: boolean;
 };
+
+export type Step = 'extraction' | 'evaluation' | 'cover_letter';
 
 /**
  * Technology
@@ -2596,3 +2650,46 @@ export type HideModelResponses = {
 };
 
 export type HideModelResponse = HideModelResponses[keyof HideModelResponses];
+
+export type ListDefaultsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/settings/defaults';
+};
+
+export type ListDefaultsResponses = {
+    /**
+     * Response List Defaults
+     *
+     * Successful Response
+     */
+    200: Array<DefaultRead>;
+};
+
+export type ListDefaultsResponse = ListDefaultsResponses[keyof ListDefaultsResponses];
+
+export type SaveDefaultsData = {
+    body: DefaultsSave;
+    path?: never;
+    query?: never;
+    url: '/api/settings/defaults';
+};
+
+export type SaveDefaultsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveDefaultsError = SaveDefaultsErrors[keyof SaveDefaultsErrors];
+
+export type SaveDefaultsResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SaveDefaultsResponse = SaveDefaultsResponses[keyof SaveDefaultsResponses];

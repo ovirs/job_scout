@@ -1,17 +1,22 @@
-"""Settings: how the owner has set the app up to run. For now, their Provider keys and the
-models offered with them.
+"""Settings: how the owner has set the app up to run: their Provider keys, the models
+offered with them, and the default model choice for each LLM step.
 
 A key is checked before it is saved: the Provider must list its models with it. The app
-is set up once the owner has a key for at least one Provider; until then nothing that
-calls an LLM may start.
+is set up once the owner has a key for at least one Provider and a default for every
+step; until then nothing that calls an LLM may start.
 
 The models listed with a key are cached for a day, then fetched again; the owner can
 also refresh them at once. Every picker offers the cached models less the ones the owner
 hid, and less dated snapshots unless the owner shows them. A run may use only a model
-that is offered.
+that is offered, with an effort level it takes.
+
+A step's default is checked when it is saved, and again whenever a run takes it: it is
+kept when it can no longer be used (its key removed, its model hidden or no longer
+listed), so Settings can show why, and a run that takes it fails at once.
 """
 
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -20,13 +25,33 @@ from sqlalchemy import delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from job_scout.llm.interface import KeyRefused, ListedModel, ModelLister, Provider
-from job_scout.settings.models import HiddenModel, ModelListing, ModelOptions, ProviderKey
+from job_scout.llm.interface import (
+    STEPS,
+    KeyRefused,
+    ListedModel,
+    ModelChoice,
+    ModelLister,
+    Provider,
+    Step,
+)
+from job_scout.settings.models import (
+    HiddenModel,
+    ModelListing,
+    ModelOptions,
+    ProviderKey,
+    StepDefault,
+)
 
 PROVIDER_NAMES: dict[Provider, str] = {
     "anthropic": "Anthropic",
     "openai": "OpenAI",
     "google": "Google",
+}
+
+STEP_NAMES: dict[Step, str] = {
+    "extraction": "Reading a Clipping",
+    "evaluation": "Evaluating a Job Posting",
+    "cover_letter": "Writing a Cover Letter",
 }
 
 # How long a Provider's listing of models is cached before it is fetched again
@@ -47,6 +72,14 @@ class NoSuchKey(Exception):
 
 class NoProvider(Exception):
     """The owner has no Provider set up, so no LLM run can start."""
+
+
+class NoDefaults(Exception):
+    """A step has no default model choice yet, so the app is not set up."""
+
+
+class NotUsable(Exception):
+    """A run may not use the model choice; the message says why."""
 
 
 async def keys(session: AsyncSession, *, owner_id: uuid.UUID) -> dict[Provider, ProviderKey]:
@@ -73,10 +106,18 @@ async def has_provider(session: AsyncSession, *, owner_id: uuid.UUID) -> bool:
     return found is not None
 
 
-async def require_provider(session: AsyncSession, *, owner_id: uuid.UUID) -> None:
-    """Raises `NoProvider` while the owner has no Provider set up."""
+async def has_defaults(session: AsyncSession, *, owner_id: uuid.UUID) -> bool:
+    """Whether every step has a default model choice, usable or not."""
+    return set(await _stored_defaults(session, owner_id=owner_id)) == set(STEPS)
+
+
+async def require_set_up(session: AsyncSession, *, owner_id: uuid.UUID) -> None:
+    """Raises `NoProvider` while the owner has no Provider set up, then `NoDefaults` while
+    a step has no default."""
     if not await has_provider(session, owner_id=owner_id):
         raise NoProvider("Set up a Provider in Settings before running the LLM")
+    if not await has_defaults(session, owner_id=owner_id):
+        raise NoDefaults("Choose a default model for every step in Settings")
 
 
 async def save_key(
@@ -179,7 +220,105 @@ async def usable(
     """Whether a run may use the model: its Provider is available and the owner has a key
     for it, and the model is offered from the cached listing. Never fetches a listing."""
     cached = await _models(session, lister, owner_id=owner_id, fetch="never")
-    return any(model.provider == provider and model.id == model_id for model in cached.offered())
+    choice = ModelChoice(provider=provider, model=model_id, effort=None)
+    return _problem(cached, choice) is None
+
+
+@dataclass(frozen=True)
+class Default:
+    """A step's default model choice, and why a run cannot take it now, if it cannot."""
+
+    step: Step
+    choice: ModelChoice | None  # None until one is chosen
+    problem: str | None
+
+
+async def defaults(
+    session: AsyncSession, lister: ModelLister, *, owner_id: uuid.UUID
+) -> list[Default]:
+    """Every step's default, in the order of `STEPS`. Never fetches a listing."""
+    cached = await _models(session, lister, owner_id=owner_id, fetch="never")
+    stored = await _stored_defaults(session, owner_id=owner_id)
+    found = []
+    for step in STEPS:
+        row = stored.get(step)
+        choice = None if row is None else _choice(row)
+        found.append(
+            Default(
+                step=step,
+                choice=choice,
+                problem="No default model is chosen for this step"
+                if choice is None
+                else _problem(cached, choice),
+            )
+        )
+    return found
+
+
+async def default(
+    session: AsyncSession, lister: ModelLister, *, owner_id: uuid.UUID, step: Step
+) -> Default:
+    """The step's default, as a run takes it when queued."""
+    found = await defaults(session, lister, owner_id=owner_id)
+    return next(entry for entry in found if entry.step == step)
+
+
+async def save_defaults(
+    session: AsyncSession,
+    lister: ModelLister,
+    *,
+    owner_id: uuid.UUID,
+    choices: Mapping[Step, ModelChoice],
+) -> None:
+    """Make each choice its step's default, committed; the other steps keep theirs. Raises
+    `NotUsable`, saving none, when a run could not use one of them."""
+    cached = await _models(session, lister, owner_id=owner_id, fetch="never")
+    for choice in choices.values():
+        reason = _problem(cached, choice)
+        if reason is not None:
+            raise NotUsable(reason)
+    stored = await _stored_defaults(session, owner_id=owner_id)
+    for step, choice in choices.items():
+        row = stored.get(step)
+        if row is None:
+            row = StepDefault(owner_id=owner_id, step=step)
+            session.add(row)
+        row.provider = choice.provider
+        row.model_id = choice.model
+        row.effort = choice.effort
+    await session.commit()
+
+
+def _problem(cached: Models, choice: ModelChoice) -> str | None:
+    """Why a run may not use the choice, if it may not: its Provider has no key (or is not
+    available), its model is not offered, or the model does not take its effort."""
+    name = PROVIDER_NAMES[choice.provider]
+    if all(provider.provider != choice.provider for provider in cached.providers):
+        return f"There is no API key for {name}"
+    model = next(
+        (
+            model
+            for model in cached.offered()
+            if model.provider == choice.provider and model.id == choice.model
+        ),
+        None,
+    )
+    if model is None:
+        return f"{name} does not offer {choice.model}, or it is hidden"
+    if choice.effort is not None and choice.effort not in model.efforts:
+        return f"{choice.model} does not take the effort {choice.effort}"
+    return None
+
+
+async def _stored_defaults(
+    session: AsyncSession, *, owner_id: uuid.UUID
+) -> dict[Step, StepDefault]:
+    found = await session.scalars(select(StepDefault).where(StepDefault.owner_id == owner_id))
+    return {row.step: row for row in found}
+
+
+def _choice(row: StepDefault) -> ModelChoice:
+    return ModelChoice(provider=row.provider, model=row.model_id, effort=row.effort)
 
 
 async def show_snapshots(session: AsyncSession, *, owner_id: uuid.UUID, show: bool) -> None:

@@ -7,6 +7,8 @@ from job_scout.llm.interface import PROVIDERS, Provider
 from job_scout.routing import Lister, Owner, Session
 from job_scout.settings import domain as settings
 from job_scout.settings.schemas import (
+    DefaultRead,
+    DefaultsSave,
     ModelsRead,
     OfferedModelRead,
     ProviderKeySave,
@@ -20,9 +22,12 @@ router = APIRouter(prefix="/api")
 
 @router.get("/setup")
 async def get_setup(session: Session, owner: Owner) -> SetupRead:
-    """Whether the owner has set up a Provider; until they have, the app shows only the
-    setup screen."""
-    return SetupRead(has_provider=await settings.has_provider(session, owner_id=owner))
+    """Whether the owner has set up a Provider, and a default model for every step; until
+    they have both, the app shows only the setup screen."""
+    return SetupRead(
+        has_provider=await settings.has_provider(session, owner_id=owner),
+        has_defaults=await settings.has_defaults(session, owner_id=owner),
+    )
 
 
 @router.get("/settings/providers")
@@ -101,14 +106,32 @@ async def unhide_model(provider: Provider, model_id: str, session: Session, owne
     await settings.unhide_model(session, owner_id=owner, provider=provider, model_id=model_id)
 
 
-async def require_provider(session: Session, owner: Owner) -> None:
-    """For any route that starts an LLM run: a 409 while the owner has no Provider."""
+@router.get("/settings/defaults")
+async def list_defaults(session: Session, lister: Lister, owner: Owner) -> list[DefaultRead]:
+    """Each step's default model choice, which its runs take when queued, and why a run
+    cannot take it now, if it cannot: its Provider's key is gone, or its model is hidden or
+    no longer listed. Read from the cached listing."""
+    found = await settings.defaults(session, lister, owner_id=owner)
+    return [DefaultRead.of(default) for default in found]
+
+
+@router.put("/settings/defaults", status_code=204)
+async def save_defaults(body: DefaultsSave, session: Session, lister: Lister, owner: Owner) -> None:
+    """Make each choice given its step's default; a step left out keeps its own. Refused,
+    saving none, when one is not offered, or its model does not take its effort."""
     with _refusals():
-        await settings.require_provider(session, owner_id=owner)
+        await settings.save_defaults(session, lister, owner_id=owner, choices=body.choices())
 
 
-# Add to a route that starts an LLM run, as `dependencies=[PROVIDER_SET_UP]`
-PROVIDER_SET_UP = Depends(require_provider)
+async def require_set_up(session: Session, owner: Owner) -> None:
+    """For any route that starts an LLM run: a 409 while the owner has no Provider, or a
+    step has no default."""
+    with _refusals():
+        await settings.require_set_up(session, owner_id=owner)
+
+
+# Add to a route that starts an LLM run, as `dependencies=[SET_UP]`
+SET_UP = Depends(require_set_up)
 
 
 @contextmanager
@@ -118,7 +141,7 @@ def _refusals() -> Iterator[None]:
         yield
     except settings.NoSuchKey:
         raise HTTPException(status_code=404, detail="No key for this Provider") from None
-    except settings.Refused as refusal:
+    except (settings.Refused, settings.NotUsable) as refusal:
         raise HTTPException(status_code=422, detail=str(refusal)) from None
-    except (settings.NotAvailable, settings.NoProvider) as refusal:
+    except (settings.NotAvailable, settings.NoProvider, settings.NoDefaults) as refusal:
         raise HTTPException(status_code=409, detail=str(refusal)) from None

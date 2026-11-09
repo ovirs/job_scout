@@ -13,7 +13,7 @@ from job_scout.cover_letters import generation
 from job_scout.cover_letters.generation import Inputs
 from job_scout.cover_letters.models import CoverLetterGeneration
 from job_scout.cover_letters.prompt import CoverLetterResult
-from job_scout.llm.interface import Llm, Outcome
+from job_scout.llm.interface import Llm, Outcome, Step
 from job_scout.llm_runs.domain import Refusal
 
 
@@ -22,6 +22,7 @@ class CoverLetterGenerationTask:
 
     task_name = "generate_cover_letter"
     run_type = CoverLetterGeneration
+    step: Step = "cover_letter"
 
     async def gather(self, session: AsyncSession, run: CoverLetterGeneration) -> Inputs | Refusal:
         locked = await _locked(session, run)

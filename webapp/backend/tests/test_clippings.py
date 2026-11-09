@@ -3,13 +3,14 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 import httpx
 import pytest
 from clipping_helpers import ENVELOPE, PASTED_TEXT, an_extraction, submit_and_extract
-from conftest import TEST_KEY
+from conftest import DEFAULT_CHOICE, TEST_KEY
 
 from job_scout.clippings import domain as clippings
 from job_scout.clippings.models import Clipping
 from job_scout.config import Settings
 from job_scout.llm import Failure
 from job_scout.llm.fake import FakeLlm, FakeModelLister
+from job_scout.llm.interface import STEPS
 from job_scout.owners import LOCAL_USER_ID
 from job_scout.prompts import MANUAL_ENTRY_EXTRACTION
 from job_scout.runtime import Runtime, open_runtime
@@ -20,7 +21,8 @@ from job_scout.settings import domain as provider_settings
 
 @pytest.fixture
 async def runtime(settings: Settings) -> AsyncIterator[Runtime]:
-    """The resources the package works with, the local user having set up Anthropic."""
+    """The resources the package works with, the local user set up with Anthropic and a
+    default for every step."""
     async with open_runtime(settings) as runtime:
         async with runtime.sessions() as session:
             await provider_settings.save_key(
@@ -29,6 +31,12 @@ async def runtime(settings: Settings) -> AsyncIterator[Runtime]:
                 owner_id=LOCAL_USER_ID,
                 provider="anthropic",
                 api_key=TEST_KEY,
+            )
+            await provider_settings.save_defaults(
+                session,
+                FakeModelLister(),
+                owner_id=LOCAL_USER_ID,
+                choices=dict.fromkeys(STEPS, DEFAULT_CHOICE),
             )
         yield runtime
 
@@ -39,7 +47,12 @@ async def a_clipping(
     """A Clipping of the local user in `status`: queued, done or failed; its id."""
     async with runtime.sessions() as session:
         clipping = await clippings.submit(
-            session, runtime.task_queue, owner_id=LOCAL_USER_ID, pasted_text=PASTED_TEXT, url=None
+            session,
+            runtime.task_queue,
+            FakeModelLister(),
+            owner_id=LOCAL_USER_ID,
+            pasted_text=PASTED_TEXT,
+            url=None,
         )
     if status != "queued":
         await run_queued_tasks()
@@ -61,7 +74,11 @@ async def test_only_a_failed_or_stuck_clipping_can_be_retried(
     with pytest.raises(clippings.WrongStatus):
         async with runtime.sessions() as session:
             await clippings.retry(
-                session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+                session,
+                runtime.task_queue,
+                FakeModelLister(),
+                owner_id=LOCAL_USER_ID,
+                clipping_id=clipping_id,
             )
 
     assert (await read(runtime, clipping_id)).status == status
@@ -77,7 +94,11 @@ async def test_a_clipping_stuck_being_read_can_be_retried(
 
     async with runtime.sessions() as session:
         await clippings.retry(
-            session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+            session,
+            runtime.task_queue,
+            FakeModelLister(),
+            owner_id=LOCAL_USER_ID,
+            clipping_id=clipping_id,
         )
     await run_queued_tasks()
 
@@ -108,7 +129,11 @@ async def test_a_done_or_failed_clipping_can_be_abandoned_and_is_kept(
     with pytest.raises(clippings.WrongStatus):
         async with runtime.sessions() as session:
             await clippings.retry(
-                session, runtime.task_queue, owner_id=LOCAL_USER_ID, clipping_id=clipping_id
+                session,
+                runtime.task_queue,
+                FakeModelLister(),
+                owner_id=LOCAL_USER_ID,
+                clipping_id=clipping_id,
             )
 
 
@@ -133,6 +158,7 @@ async def confirm(runtime: Runtime, clipping_id: int) -> clippings.Confirmed:
         return await clippings.confirm(
             session,
             runtime.task_queue,
+            FakeModelLister(),
             owner_id=LOCAL_USER_ID,
             clipping_id=clipping_id,
             title="Senior Data Engineer",

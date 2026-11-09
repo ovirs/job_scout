@@ -133,7 +133,12 @@ def check(outcome: Outcome[EvaluationResult], inputs: Inputs) -> Outcome[Checked
     malformed failure naming what it failed."""
     result = outcome.result
     checked = result if isinstance(result, Failure) else _check(result, inputs)
-    return Outcome(result=checked, model=outcome.model, prompt_version=outcome.prompt_version)
+    return Outcome(
+        result=checked,
+        provider=outcome.provider,
+        model=outcome.model,
+        prompt_version=outcome.prompt_version,
+    )
 
 
 def _check(result: EvaluationResult, inputs: Inputs) -> CheckedResult | Failure:

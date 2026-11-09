@@ -7,16 +7,15 @@ Adding a Provider (ADR-0005) means writing its adapter and adding it to `ADAPTER
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from job_scout.config import Settings
 from job_scout.llm import anthropic_adapter, anthropic_models
-from job_scout.llm.interface import Connect, KeyRefused, ListedModel, Llm, Provider
+from job_scout.llm.interface import KeyRefused, ListedModel, Llm, ModelChoice, Provider
 
 
 @dataclass(frozen=True)
 class Adapter:
     """One Provider's adapter, on its official SDK."""
 
-    llm: Callable[[Settings, str], Llm]  # an `Llm` calling the Provider with a key
+    llm: Callable[[ModelChoice, str], Llm]  # an `Llm` calling a model choice with a key
     # The models it lists for a key that the app can use, filtered by its own rules
     list_models: Callable[[str], Awaitable[list[ListedModel] | KeyRefused]]
 
@@ -27,13 +26,9 @@ ADAPTERS: dict[Provider, Adapter] = {
 }
 
 
-def connector(settings: Settings) -> Connect:
-    """Connects to a Provider's adapter with a key, for one run attempt."""
-
-    def connect(provider: Provider, api_key: str) -> Llm:
-        return ADAPTERS[provider].llm(settings, api_key)
-
-    return connect
+def connect(choice: ModelChoice, api_key: str) -> Llm:
+    """Connects to the adapter of the choice's Provider with a key, for one run attempt."""
+    return ADAPTERS[choice.provider].llm(choice, api_key)
 
 
 class ProviderModelLister:

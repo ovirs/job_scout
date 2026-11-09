@@ -3,6 +3,7 @@
 import httpx
 import psycopg
 import pytest
+from clipping_helpers import save_manual_entry
 from test_applications import move
 from test_cover_letter_drafts import delete_draft, generated_application, save_draft
 from test_cover_letters import RunTasks, cover_letter
@@ -75,3 +76,29 @@ async def test_dropping_the_pointer_is_refused_when_a_stored_sent_letter_differs
 
     with pytest.raises(RuntimeError, match=rf"\[{changed[0]}\]"):
         migrations.upgrade(settings.database_url)
+
+
+def model_choices(settings: Settings, table: str) -> list[tuple[str | None, ...]]:
+    """Each run's requested Provider, model and effort, and the Provider that answered."""
+    with psycopg.connect(settings.database_url) as conn:
+        rows = conn.execute(
+            "SELECT requested_provider, requested_model, requested_effort, provider, model"
+            f" FROM {table} ORDER BY id"
+        ).fetchall()
+    return [tuple(row) for row in rows]
+
+
+async def test_runs_stored_before_model_choices_are_filled_in_as_anthropic_runs(
+    client: httpx.AsyncClient, settings: Settings, run_queued_tasks: RunTasks
+) -> None:
+    # A Clipping read by the LLM, and an Evaluation that failed before calling it, as
+    # there is no Career Profile
+    await save_manual_entry(client, run_queued_tasks)
+    await run_queued_tasks()
+    migrations.downgrade(settings.database_url, "0016")
+
+    migrations.upgrade(settings.database_url)
+
+    opus = "claude-opus-5-5"
+    assert model_choices(settings, "clippings") == [("anthropic", opus, None, "anthropic", opus)]
+    assert model_choices(settings, "evaluations") == [(None, None, None, None, None)]

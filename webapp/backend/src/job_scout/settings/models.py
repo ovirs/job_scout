@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from job_scout.db import Base
-from job_scout.llm.interface import Provider
+from job_scout.llm.interface import Provider, Step
 
 
 class ProviderKey(Base):
@@ -59,3 +59,19 @@ class ModelOptions(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[uuid.UUID] = mapped_column(unique=True)
     show_snapshots: Mapped[bool]
+
+
+class StepDefault(Base):
+    """The model choice a step's runs take when queued, unless one is given: a Provider's
+    model, and its effort in the Provider's own names, null for the Provider's default.
+    Kept when it can no longer be used, so Settings can warn about it."""
+
+    __tablename__ = "step_defaults"
+    __table_args__ = (UniqueConstraint("owner_id", "step"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[uuid.UUID] = mapped_column(index=True)
+    step: Mapped[Step] = mapped_column(String)
+    provider: Mapped[Provider] = mapped_column(String)
+    model_id: Mapped[str]
+    effort: Mapped[str | None]

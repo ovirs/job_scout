@@ -15,7 +15,7 @@ from job_scout.config import Settings
 from job_scout.cover_letters import domain as cover_letters
 from job_scout.cover_letters.models import CoverLetterGeneration, EvaluationCase
 from job_scout.llm import Failure
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 from job_scout.owners import LOCAL_USER_ID
 from job_scout.runtime import Runtime, open_runtime
 
@@ -52,6 +52,7 @@ async def generate(
         return await cover_letters.generate(
             session,
             runtime.task_queue,
+            FakeModelLister(),
             owner_id=LOCAL_USER_ID,
             application_id=application_id,
             evaluation_case=evaluation_case,
@@ -69,6 +70,7 @@ async def revise(
         return await cover_letters.revise(
             session,
             runtime.task_queue,
+            FakeModelLister(),
             owner_id=LOCAL_USER_ID,
             application_id=application_id,
             evaluation_case=evaluation_case,

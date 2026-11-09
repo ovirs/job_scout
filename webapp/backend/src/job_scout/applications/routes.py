@@ -14,8 +14,8 @@ from job_scout.job_postings.models import JobPosting
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view import domain as posting_view
 from job_scout.posting_view.schemas import JobPostingRead
-from job_scout.routing import Owner, Session, TaskQueue
-from job_scout.settings.routes import PROVIDER_SET_UP
+from job_scout.routing import Lister, Owner, Session, TaskQueue
+from job_scout.settings.routes import SET_UP
 from job_scout.triage.schemas import TriageSet
 
 router = APIRouter(prefix="/api")
@@ -37,31 +37,29 @@ async def set_job_posting_triage(
     return await posting_view.read(session, posting)
 
 
-@router.post(
-    "/job-postings/{job_posting_id}/applications", status_code=201, dependencies=[PROVIDER_SET_UP]
-)
+@router.post("/job-postings/{job_posting_id}/applications", status_code=201, dependencies=[SET_UP])
 async def start_application(
-    job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+    job_posting_id: int, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> ApplicationRead:
     """Start applying: a new Application in Preparing, with the posting's Triage set to
     Interested. Refused while the posting has a live Application. Queues an Evaluation
     of a posting that has none done or under way."""
     with _refusals():
         application = await applications.start(
-            session, task_queue, owner_id=owner, job_posting_id=job_posting_id
+            session, task_queue, lister, owner_id=owner, job_posting_id=job_posting_id
         )
     return ApplicationRead.of(application)
 
 
 # The Applications package's, since the acted-on rule needs the Triage and the Application
-@router.post("/evaluations/rerun-unacted", status_code=201, dependencies=[PROVIDER_SET_UP])
+@router.post("/evaluations/rerun-unacted", status_code=201, dependencies=[SET_UP])
 async def rerun_unacted_evaluations(
-    session: Session, task_queue: TaskQueue, owner: Owner
+    session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> list[EvaluationRead]:
     """Queue a new Evaluation, with the current user inputs, of every open posting not
     acted on (with no Triage and no live Application); returns them. A posting whose
     Evaluation is already under way is left to it."""
-    runs = await applications.rerun_unacted(session, task_queue, owner_id=owner)
+    runs = await applications.rerun_unacted(session, task_queue, lister, owner_id=owner)
     return [
         EvaluationRead.of(run, await session.get_one(JobPosting, run.job_posting_id))
         for run in runs

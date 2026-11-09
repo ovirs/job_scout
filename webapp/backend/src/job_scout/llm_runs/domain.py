@@ -4,16 +4,18 @@ A feature stores a queued run in its own table (with the `LlmRun` columns) and h
 it here with its `LlmRunTask`, which only gathers the inputs, calls the LLM and records
 the result. This module owns the rest:
 
-- queueing: the run is enqueued after the commit that stores it; a run whose enqueue
-  fails is failed at once, so the user can retry it;
+- queueing: the run takes its step's default model choice, then is enqueued after the
+  commit that stores it; a run whose default cannot be used, or whose enqueue fails, is
+  failed at once, so the user can fix Settings or retry it;
 - the status, from queued to running to done or failed, and its timestamps;
 - attempts: a failed call, or an unexpected error, is retried on the queue, and only
-  the last attempt's failure is stored;
+  the last attempt's failure is stored; a call the Provider rejected as invalid is not
+  retried, since the same request would be rejected again;
 - refusals: the task may refuse a run before the call (an input is missing) or after it
   (its target no longer takes the result), failing it without a retry;
-- the Provider: every attempt calls the LLM with the run owner's key, read afresh, so a
-  replaced key takes effect on the next attempt; a run whose owner has no key is failed
-  without a retry;
+- the Provider: every attempt calls the run's model choice with the run owner's key for
+  its Provider, read afresh, so a replaced key takes effect on the next attempt; a run
+  whose owner has no key is failed without a retry;
 - one policy for runs under way: a feature never starts a second run of the same thing
   while one is under way, unless that one is stuck, queued or running for longer than
   `STUCK_AFTER`. A stuck run is failed and replaced, or requeued in place.
@@ -22,6 +24,7 @@ No transaction is held open while the LLM call runs.
 """
 
 import logging
+import uuid
 from collections.abc import Awaitable, Callable, Iterable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -31,14 +34,24 @@ import procrastinate
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from job_scout.config import Settings
-from job_scout.llm.interface import Connect, Failure, Llm, Outcome, Provider
+from job_scout.llm.interface import (
+    Connect,
+    Failure,
+    FailureKind,
+    Llm,
+    ModelLister,
+    Outcome,
+    Provider,
+    Step,
+)
 from job_scout.llm_runs.models import LlmRun, RunFailureKind
 from job_scout.settings import domain as provider_settings
 
 logger = logging.getLogger(__name__)
 
-# Every run calls Anthropic, the only Provider with an adapter, until runs store a choice
-PROVIDER: Provider = "anthropic"
+# A failed call of these kinds fails the run at once: the Provider refused the request as
+# invalid, and would refuse it again
+NOT_RETRIED: frozenset[FailureKind] = frozenset({"rejected"})
 
 # A run calls the LLM at most this many times before it records the failure
 ATTEMPTS = 3
@@ -70,6 +83,11 @@ class LlmRunTask[R: LlmRun, I, T](Protocol):
     @property
     def run_type(self) -> type[R]:
         """The table its runs are stored in."""
+        ...
+
+    @property
+    def step(self) -> Step:
+        """The LLM step it calls, whose default model choice its runs take."""
         ...
 
     async def gather(self, session: AsyncSession, run: R) -> I | Refusal:
@@ -124,21 +142,49 @@ def _task_body(task: AnyTask) -> TaskBody:
 
 
 async def commit_and_enqueue(
-    session: AsyncSession, task_queue: procrastinate.App, task: AnyTask, *runs: LlmRun
+    session: AsyncSession,
+    task_queue: procrastinate.App,
+    lister: ModelLister,
+    task: AnyTask,
+    *runs: LlmRun,
 ) -> None:
-    """Commit the session, which holds the queued runs, then put each on the queue.
+    """Give each queued run its step's default model choice, commit the session, which
+    holds the runs, then put each on the queue.
 
-    A run whose enqueue fails is failed with the reason, so the user can retry it rather
-    than wait for it to count as stuck.
+    A run whose default cannot be used is failed at once, pointing to Settings, and never
+    queued: it never switches to another model. A run whose enqueue fails is failed with
+    the reason, so the user can retry it rather than wait for it to count as stuck.
     """
+    for run in runs:
+        await _choose_default(session, lister, task.step, run)
     await session.commit()
     for run in runs:
+        if run.status != "queued":
+            continue
         try:
             await task_queue.configure_task(task.task_name).defer_async(run_id=run.id)
         except Exception as error:
             logger.exception("Could not queue run %s of %s", run.id, task.task_name)
             _fail(run, "error", f"Could not queue the run: {error!r}")
             await session.commit()
+
+
+async def _choose_default(
+    session: AsyncSession, lister: ModelLister, step: Step, run: LlmRun
+) -> None:
+    """Store the step's default on the run as its choice; fail it, without a call, when the
+    default cannot be used."""
+    default = await provider_settings.default(session, lister, owner_id=run.owner_id, step=step)
+    run.requested = default.choice
+    if default.problem is not None:
+        _refuse(
+            run,
+            Refusal(
+                "missing_input",
+                f"The default model for this step cannot be used: {default.problem}."
+                " Choose another in Settings",
+            ),
+        )
 
 
 async def execute[R: LlmRun, I, T](
@@ -163,7 +209,7 @@ async def execute[R: LlmRun, I, T](
         async with sessions.begin() as session:
             run = await _locked_if_under_way(session, task, run_id)
             if run is not None:
-                run.model = run.prompt_version = None
+                run.provider = run.model = run.prompt_version = None
                 _fail(run, "error", f"Unexpected error: {error!r}")
 
 
@@ -186,18 +232,25 @@ async def _attempt[R: LlmRun, I, T](
         if isinstance(gathered, Refusal):
             _refuse(run, gathered)
             return
-        api_key = await _api_key(session, run)
+        choice = run.requested
+        if choice is None:
+            _refuse(
+                run, Refusal("missing_input", "The run has no model chosen: choose one in Settings")
+            )
+            return
+        api_key = await _api_key(session, run.owner_id, choice.provider)
         if isinstance(api_key, Refusal):
             _refuse(run, api_key)
             return
-    outcome = await task.call(connect(PROVIDER, api_key), gathered)
+    outcome = await task.call(connect(choice, api_key), gathered)
     result = outcome.result
-    if isinstance(result, Failure) and not last_attempt:
+    if isinstance(result, Failure) and result.kind not in NOT_RETRIED and not last_attempt:
         raise LlmCallFailed(result.reason)
     async with sessions.begin() as session:
         run = await _locked_if_under_way(session, task, run_id, queued_at)
         if run is None:
             return
+        run.provider = outcome.provider
         run.model = outcome.model
         run.prompt_version = outcome.prompt_version
         if isinstance(result, Failure):
@@ -212,12 +265,12 @@ async def _attempt[R: LlmRun, I, T](
         run.failure_kind = run.failure_reason = None
 
 
-async def _api_key(session: AsyncSession, run: LlmRun) -> str | Refusal:
-    """The run owner's key for the Provider, read afresh for each attempt; or a refusal
+async def _api_key(session: AsyncSession, owner_id: uuid.UUID, provider: Provider) -> str | Refusal:
+    """The owner's key for the Provider, read afresh for each attempt; or a refusal
     pointing to Settings when they have none."""
-    api_key = await provider_settings.api_key(session, owner_id=run.owner_id, provider=PROVIDER)
+    api_key = await provider_settings.api_key(session, owner_id=owner_id, provider=provider)
     if api_key is None:
-        name = provider_settings.PROVIDER_NAMES[PROVIDER]
+        name = provider_settings.PROVIDER_NAMES[provider]
         return Refusal("missing_input", f"There is no API key for {name}: add one in Settings")
     return api_key
 
@@ -272,7 +325,7 @@ def requeue(run: LlmRun) -> None:
 def _refuse(run: LlmRun, refusal: Refusal) -> None:
     """Fail a run before its call; retrying would not help, as the feature or the Settings
     have to change first."""
-    run.model = run.prompt_version = None
+    run.provider = run.model = run.prompt_version = None
     _fail(run, refusal.kind, refusal.reason)
 
 

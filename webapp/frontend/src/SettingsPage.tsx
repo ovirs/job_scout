@@ -4,19 +4,32 @@ import { age } from './age'
 import {
   getSetupQueryKey,
   hideModelMutation,
+  listDefaultsOptions,
+  listDefaultsQueryKey,
   listModelsOptions,
   listModelsQueryKey,
+  listOfferedModelsOptions,
   listOfferedModelsQueryKey,
   listProvidersOptions,
   listProvidersQueryKey,
   refreshModelsMutation,
   removeProviderKeyMutation,
+  saveDefaultsMutation,
   saveProviderKeyMutation,
   saveShowSnapshotsMutation,
   unhideModelMutation,
 } from './api/@tanstack/react-query.gen'
-import type { ModelRead, Provider, ProviderModelsRead, ProviderRead } from './api/types.gen'
+import type {
+  DefaultRead,
+  ModelChoiceBody,
+  ModelRead,
+  OfferedModelRead,
+  Provider,
+  ProviderModelsRead,
+  ProviderRead,
+} from './api/types.gen'
 import { Badge } from './Badge'
+import { ModelChoiceFields, offeredModel, validChoice } from './ModelChoiceFields'
 import { refusal } from './refusal'
 import { Loading } from './Waiting'
 
@@ -27,6 +40,7 @@ export function SettingsPage() {
       <h2>Settings</h2>
       <ProvidersSection />
       <ModelsSection />
+      <DefaultsSection />
     </section>
   )
 }
@@ -44,13 +58,25 @@ function useKeyChanged() {
     ])
 }
 
-/** Every change to the models offered shows in Settings and in every picker. */
+/** Every change to the models offered shows in Settings and in every picker, and can make a
+ * step's default usable or not. */
 function useModelsChanged() {
   const queryClient = useQueryClient()
   return () =>
     Promise.all([
       queryClient.invalidateQueries({ queryKey: listModelsQueryKey() }),
       queryClient.invalidateQueries({ queryKey: listOfferedModelsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: listDefaultsQueryKey() }),
+    ])
+}
+
+/** Saving defaults shows in Settings, and can finish setting the app up. */
+function useDefaultsChanged() {
+  const queryClient = useQueryClient()
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: listDefaultsQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getSetupQueryKey() }),
     ])
 }
 
@@ -244,6 +270,86 @@ function ModelItem({ model }: { model: ModelRead }) {
   )
 }
 
+function DefaultsSection() {
+  const defaults = useQuery(listDefaultsOptions())
+  const offered = useQuery(listOfferedModelsOptions())
+
+  return (
+    <>
+      <h3>Defaults</h3>
+      <p>
+        The model each step runs with, and its effort where the model has one. A run takes its
+        step's default when it is queued, and never switches to another model on its own.
+      </p>
+      {(defaults.isPending || offered.isPending) && <Loading />}
+      {(defaults.isError || offered.isError) && <p role="alert">Could not load the defaults.</p>}
+      {defaults.data && offered.data && (
+        <ul className="rows" aria-label="Defaults">
+          {defaults.data.map((entry) => (
+            <DefaultItem key={entry.step} entry={entry} models={offered.data} />
+          ))}
+        </ul>
+      )}
+    </>
+  )
+}
+
+function DefaultItem({ entry, models }: { entry: DefaultRead; models: OfferedModelRead[] }) {
+  const defaultsChanged = useDefaultsChanged()
+  const [choice, setChoice] = useState<ModelChoiceBody | null>(entry.choice)
+  const valid = validChoice(models, choice)
+  const save = useMutation({ ...saveDefaultsMutation(), onSuccess: defaultsChanged })
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (valid) save.mutate({ body: { [entry.step]: valid } })
+  }
+
+  return (
+    <li aria-label={entry.name}>
+      <strong>{entry.name}</strong>{' '}
+      {entry.choice ? (
+        <ChoiceText choice={entry.choice} models={models} />
+      ) : (
+        <span className="missing">None chosen</span>
+      )}
+      {entry.choice && entry.problem && (
+        <p role="alert">
+          This default cannot be used: {entry.problem}. Runs of this step fail until you choose
+          another.
+        </p>
+      )}
+      {valid ? (
+        <form onSubmit={submit}>
+          <ModelChoiceFields models={models} value={valid} onChange={setChoice} />
+          <div className="actions">
+            <button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
+              Save
+            </button>
+          </div>
+          {save.isError && (
+            <p role="alert">{refusal(save.error) ?? 'Could not save the default. Try again.'}</p>
+          )}
+        </form>
+      ) : (
+        <p className="missing">No models are offered: add a Provider's key, or offer one again.</p>
+      )}
+    </li>
+  )
+}
+
+/** A model choice as text: the model's name when it is offered, its id and the effort. */
+function ChoiceText({ choice, models }: { choice: ModelChoiceBody; models: OfferedModelRead[] }) {
+  const model = offeredModel(models, choice)
+  return (
+    <span>
+      {model ? `${model.display_name} ` : ''}
+      <code>{choice.model}</code>,{' '}
+      {choice.effort ? `effort ${choice.effort}` : 'Provider default effort'}
+    </span>
+  )
+}
+
 /** Saves a Provider's key once the Provider accepts it; shows the Provider's reason if not. */
 export function KeyForm({
   provider,
@@ -305,13 +411,9 @@ export function KeyForm({
   )
 }
 
-/** The only screen until a Provider is set up: pick a Provider and give its key. */
-export function SetupScreen() {
-  const providers = useQuery(listProvidersOptions())
-  const available = providers.data?.filter((provider) => provider.available) ?? []
-  const [chosen, setChosen] = useState<Provider | null>(null)
-  const provider = available.find((p) => p.provider === chosen) ?? available[0]
-
+/** The only screen until the app is set up: first a Provider and its key, then the model every
+ * step starts with. */
+export function SetupScreen({ hasProvider }: { hasProvider: boolean }) {
   return (
     <main className="setup">
       <h1>
@@ -320,6 +422,62 @@ export function SetupScreen() {
         </span>{' '}
         Set up Job Scout
       </h1>
+      {hasProvider ? <DefaultsSetup /> : <ProviderSetup />}
+    </main>
+  )
+}
+
+/** One model and effort, saved as the default of every step. */
+function DefaultsSetup() {
+  const defaultsChanged = useDefaultsChanged()
+  const offered = useQuery(listOfferedModelsOptions())
+  const [choice, setChoice] = useState<ModelChoiceBody | null>(null)
+  const valid = validChoice(offered.data ?? [], choice)
+  const save = useMutation({ ...saveDefaultsMutation(), onSuccess: defaultsChanged })
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (valid) save.mutate({ body: { extraction: valid, evaluation: valid, cover_letter: valid } })
+  }
+
+  return (
+    <>
+      <h2>Choose a default model</h2>
+      <p>
+        The model, and its effort where it has one, that reads, evaluates and writes. You can
+        choose another for each step later in Settings.
+      </p>
+      {offered.isPending && <Loading />}
+      {offered.isError && <p role="alert">Could not load the models.</p>}
+      {offered.data && !valid && (
+        <p className="missing">Your Provider lists no model the app can use.</p>
+      )}
+      {valid && (
+        <form className="panel" onSubmit={submit}>
+          <ModelChoiceFields models={offered.data ?? []} value={valid} onChange={setChoice} />
+          <div className="actions">
+            <button type="submit" disabled={save.isPending} aria-busy={save.isPending}>
+              {save.isPending ? 'Saving…' : 'Use for every step'}
+            </button>
+          </div>
+          {save.isError && (
+            <p role="alert">{refusal(save.error) ?? 'Could not save the default. Try again.'}</p>
+          )}
+        </form>
+      )}
+    </>
+  )
+}
+
+/** Pick a Provider and give its key. */
+function ProviderSetup() {
+  const providers = useQuery(listProvidersOptions())
+  const available = providers.data?.filter((provider) => provider.available) ?? []
+  const [chosen, setChosen] = useState<Provider | null>(null)
+  const provider = available.find((p) => p.provider === chosen) ?? available[0]
+
+  return (
+    <>
       <p>
         Job Scout reads, evaluates and writes with an LLM. Add an API key for a Provider to start;
         you can add more, or change it, later in Settings.
@@ -344,6 +502,6 @@ export function SetupScreen() {
           <KeyForm key={provider.provider} provider={provider.provider} name={provider.name} />
         </div>
       )}
-    </main>
+    </>
   )
 }

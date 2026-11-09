@@ -5,8 +5,8 @@ from job_scout.evaluations.schemas import EvaluationRead
 from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings.routes import job_posting_or_404
 from job_scout.llm_runs import domain as llm_runs
-from job_scout.routing import Owner, Session, TaskQueue
-from job_scout.settings.routes import PROVIDER_SET_UP
+from job_scout.routing import Lister, Owner, Session, TaskQueue
+from job_scout.settings.routes import SET_UP
 
 router = APIRouter(prefix="/api")
 
@@ -32,11 +32,9 @@ async def get_current_evaluation(
     return None if current is None else EvaluationRead.of(current, posting)
 
 
-@router.post(
-    "/job-postings/{job_posting_id}/evaluations", status_code=201, dependencies=[PROVIDER_SET_UP]
-)
+@router.post("/job-postings/{job_posting_id}/evaluations", status_code=201, dependencies=[SET_UP])
 async def rerun_evaluation(
-    job_posting_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+    job_posting_id: int, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> EvaluationRead:
     """Queue a new Evaluation of the posting, with the current user inputs; earlier ones
     are kept as history. Also the retry of one that failed. Refused while another is
@@ -48,5 +46,5 @@ async def rerun_evaluation(
         raise HTTPException(
             status_code=409, detail="An Evaluation of this posting is already under way"
         ) from None
-    await llm_runs.commit_and_enqueue(session, task_queue, EVALUATION, run)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, EVALUATION, run)
     return EvaluationRead.of(run, posting)

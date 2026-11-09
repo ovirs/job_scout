@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.domain import CheckedResult, Inputs
 from job_scout.evaluations.models import Evaluation
-from job_scout.llm.interface import Llm, Outcome
+from job_scout.llm.interface import Llm, Outcome, Step
 from job_scout.llm_runs.domain import Refusal
 
 
@@ -18,6 +18,7 @@ class EvaluationTask:
 
     task_name = "evaluate"
     run_type = Evaluation
+    step: Step = "evaluation"
 
     async def gather(self, session: AsyncSession, run: Evaluation) -> Inputs | Refusal:
         inputs = await evaluations.gather(session, run)

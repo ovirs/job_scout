@@ -8,20 +8,20 @@ from job_scout.clippings.schemas import ClippingConfirm, ClippingRead, ClippingS
 
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view.schemas import JobPostingRead
-from job_scout.routing import Owner, Session, TaskQueue
-from job_scout.settings.routes import PROVIDER_SET_UP
+from job_scout.routing import Lister, Owner, Session, TaskQueue
+from job_scout.settings.routes import SET_UP
 
 router = APIRouter(prefix="/api")
 
 
-@router.post("/clippings", status_code=201, dependencies=[PROVIDER_SET_UP])
+@router.post("/clippings", status_code=201, dependencies=[SET_UP])
 async def submit_clipping(
-    body: ClippingSubmit, session: Session, task_queue: TaskQueue, owner: Owner
+    body: ClippingSubmit, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> ClippingRead:
     """Store the pasted text as a Clipping and queue its extraction; poll it for the
     result."""
     clipping = await clippings.submit(
-        session, task_queue, owner_id=owner, pasted_text=body.pasted_text, url=body.url
+        session, task_queue, lister, owner_id=owner, pasted_text=body.pasted_text, url=body.url
     )
     return ClippingRead.of(clipping)
 
@@ -33,30 +33,36 @@ async def get_clipping(clipping_id: int, session: Session, owner: Owner) -> Clip
     return ClippingRead.of(clipping)
 
 
-@router.post("/clippings/{clipping_id}/retry", dependencies=[PROVIDER_SET_UP])
+@router.post("/clippings/{clipping_id}/retry", dependencies=[SET_UP])
 async def retry_clipping(
-    clipping_id: int, session: Session, task_queue: TaskQueue, owner: Owner
+    clipping_id: int, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> ClippingRead:
     """Queue the extraction of a failed Clipping again, or of one stuck being read."""
     with _refusals():
         clipping = await clippings.retry(
-            session, task_queue, owner_id=owner, clipping_id=clipping_id
+            session, task_queue, lister, owner_id=owner, clipping_id=clipping_id
         )
     return ClippingRead.of(clipping)
 
 
-@router.post("/clippings/{clipping_id}/confirm", status_code=201, dependencies=[PROVIDER_SET_UP])
+@router.post("/clippings/{clipping_id}/confirm", status_code=201, dependencies=[SET_UP])
 async def confirm_clipping(
     clipping_id: int,
     body: ClippingConfirm,
     session: Session,
     task_queue: TaskQueue,
+    lister: Lister,
     owner: Owner,
 ) -> JobPostingRead:
     """Save a done Clipping as a Manual Entry, with the user's corrections."""
     with _refusals():
         confirmed = await clippings.confirm(
-            session, task_queue, owner_id=owner, clipping_id=clipping_id, **body.model_dump()
+            session,
+            task_queue,
+            lister,
+            owner_id=owner,
+            clipping_id=clipping_id,
+            **body.model_dump(),
         )
     return JobPostingRead.of(confirmed.posting, confirmed.evaluation)
 

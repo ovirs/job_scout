@@ -10,8 +10,8 @@ from job_scout.cover_letters.schemas import (
     CoverLetterRead,
     CoverLetterRevise,
 )
-from job_scout.routing import Owner, Session, TaskQueue
-from job_scout.settings.routes import PROVIDER_SET_UP
+from job_scout.routing import Lister, Owner, Session, TaskQueue
+from job_scout.settings.routes import SET_UP
 
 router = APIRouter(prefix="/api")
 
@@ -28,13 +28,14 @@ async def get_cover_letter(application_id: int, session: Session, owner: Owner) 
 @router.post(
     "/applications/{application_id}/cover-letter/generations",
     status_code=201,
-    dependencies=[PROVIDER_SET_UP],
+    dependencies=[SET_UP],
 )
 async def generate_cover_letter(
     application_id: int,
     body: CoverLetterGenerate,
     session: Session,
     task_queue: TaskQueue,
+    lister: Lister,
     owner: Owner,
 ) -> CoverLetterRead:
     """Queue a new draft written by the LLM from the posting, the Career Profile, the
@@ -47,6 +48,7 @@ async def generate_cover_letter(
         letter = await cover_letters.generate(
             session,
             task_queue,
+            lister,
             owner_id=owner,
             application_id=application_id,
             evaluation_case=body.evaluation_case,
@@ -58,13 +60,14 @@ async def generate_cover_letter(
 @router.post(
     "/applications/{application_id}/cover-letter/revisions",
     status_code=201,
-    dependencies=[PROVIDER_SET_UP],
+    dependencies=[SET_UP],
 )
 async def revise_cover_letter(
     application_id: int,
     body: CoverLetterRevise,
     session: Session,
     task_queue: TaskQueue,
+    lister: Lister,
     owner: Owner,
 ) -> CoverLetterRead:
     """Queue a revision in words of the latest draft, hand edits included: the LLM gets its
@@ -74,6 +77,7 @@ async def revise_cover_letter(
         letter = await cover_letters.revise(
             session,
             task_queue,
+            lister,
             owner_id=owner,
             application_id=application_id,
             evaluation_case=body.evaluation_case,

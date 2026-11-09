@@ -16,15 +16,11 @@ Then open <http://localhost:5173>. Compose starts Postgres, applies the migratio
 
 All configuration comes from environment variables, each with a default in [compose.yaml](compose.yaml): `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `API_PORT` and `FRONTEND_PORT`. Set them in your shell or in a `.env` file next to `compose.yaml`. The backend itself reads `DATABASE_URL`.
 
-On first run the app opens on a setup screen: add an API key for a Provider (Anthropic for now) and the app checks it against the Provider before saving it. Keys live in the app's database, per owner and unencrypted ([ADR-0006](docs/adr/0006-provider-keys-are-stored-per-owner-unencrypted.md)); replace or remove them on the Settings page, without a restart. A key left in an old `.env` is ignored.
+On first run the app opens on a setup screen: add an API key for a Provider (Anthropic for now) and the app checks it against the Provider before saving it, then pick the model (and effort, where the model has one) that every LLM step starts with. Keys live in the app's database, per owner and unencrypted ([ADR-0006](docs/adr/0006-provider-keys-are-stored-per-owner-unencrypted.md)); replace or remove them on the Settings page, without a restart. A key, model or effort left in an old `.env` is ignored.
 
-The background worker makes every LLM call, through the Anthropic API with your key:
+The background worker makes every LLM call, with the model each run was queued with: its step's default from Settings (reading a Clipping, evaluating a Job Posting, writing a Cover Letter), each changed there without a restart. A run whose default can no longer be used (its key removed, its model hidden or no longer listed) fails at once, pointing to Settings, and Settings warns about it. The only LLM setting in the environment is:
 
-- `EXTRACTION_MODEL`: the model that reads a pasted Job Posting (default `claude-opus-5-5`).
-- `EXTRACTION_EFFORT`: how hard that model thinks, one of `low`, `medium`, `high`, `xhigh` or `max`. Unset, the API's default applies; not every model accepts every level.
-- `EVALUATION_MODEL` and `EVALUATION_EFFORT`: the same for the model that evaluates a saved Job Posting against the Career Profile, Preferences and Deal Breakers.
-- `COVER_LETTER_MODEL` and `COVER_LETTER_EFFORT`: the same for the model that writes a Cover Letter draft from the posting, the Career Profile, the Evaluation's flags and the Writing Guide.
-- `LLM_RETRY_WAIT_SECONDS`: how long a failed LLM call waits before the queue tries it again (default 30). After three failed attempts the reason is shown and the user retries by hand. An Evaluation whose answer fails a check (a quote not in the posting, a missing verdict, a score out of range, too many flags) counts as failed too.
+- `LLM_RETRY_WAIT_SECONDS`: how long a failed LLM call waits before the queue tries it again (default 30). After three failed attempts the reason is shown and the user retries by hand. An Evaluation whose answer fails a check (a quote not in the posting, a missing verdict, a score out of range, too many flags) counts as failed too. A request the Provider rejects as invalid (an effort the model does not take, an unknown model, a bad key) fails at once, without a retry.
 
 Prompts live in `webapp/backend/src/job_scout/prompts/`, one file per step, each starting with a `version:` header that every LLM-produced record stores. Bump the version whenever you change a prompt's text.
 
@@ -40,7 +36,7 @@ uv run ruff check .    # lint
 uv run lint-imports    # the backend's package order (also run by the tests)
 ```
 
-The browser tests drive the React app in headless Chromium, against the API and the fake LLM: a smoke test that sets up a Provider on an empty database, then pastes, confirms and saves a posting, a test of the Settings page, and tests of the Markdown editor on the Document pages. They need the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave them out with `uv run pytest -m "not browser"`.
+The browser tests drive the React app in headless Chromium, against the API and the fake LLM: a smoke test that sets up a Provider and a default model on an empty database, then pastes, confirms and saves a posting, a test of the Settings page, and tests of the Markdown editor on the Document pages. They need the frontend's packages (`npm ci` in `webapp/frontend`) and Chromium (`uv run playwright install chromium` in `webapp/backend`, once). Leave them out with `uv run pytest -m "not browser"`.
 
 Type-check the frontend with `npm run typecheck` in `webapp/frontend`.
 
@@ -67,7 +63,7 @@ A package imports only from the packages below it. From the top:
 3. `clippings`, `applications`
 4. `triage`, `evaluations`
 5. `posting_text`: a Job Posting as the LLM reads it, and the check that a quote is in it; `llm_runs`: the lifecycle of every background job that calls the LLM (queueing, status, retries, failures, and stuck runs), which each feature plugs into with a job in its `tasks.py`
-6. `user_inputs`, `job_postings`, `settings`: how the owner has set the app up to run (their Provider keys, and the models offered with them: each Provider's listing cached for a day, hidden models and the snapshots switch), which every LLM run reads
+6. `user_inputs`, `job_postings`, `settings`: how the owner has set the app up to run (their Provider keys; the models offered with them: each Provider's listing cached for a day, hidden models and the snapshots switch; and each step's default model choice), which every LLM run reads
 
 Packages on the same line don't import each other. Above them all is the wiring that starts the app: `app` (the API), `worker`, `runtime`, `tables`, and the LLM adapters and model listings in `llm/` (`llm/providers.py` picks them by Provider; each Provider's filtering rules for its listing are in `llm/<provider>_models.py`). Below them all is what every package may use: `db`, `config`, `prompts`, `llm.interface`, the task `queue`, `owners`, and what routes share (`routing`, `fields`).
 

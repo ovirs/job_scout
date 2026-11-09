@@ -1735,7 +1735,7 @@
     "/api/setup": {
       "get": {
         "summary": "Get Setup",
-        "description": "Whether the owner has set up a Provider; until they have, the app shows only the\nsetup screen.",
+        "description": "Whether the owner has set up a Provider, and a default model for every step; until\nthey have both, the app shows only the setup screen.",
         "operationId": "get_setup",
         "responses": {
           "200": {
@@ -2033,6 +2033,59 @@
             }
           }
         ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings/defaults": {
+      "get": {
+        "summary": "List Defaults",
+        "description": "Each step's default model choice, which its runs take when queued, and why a run\ncannot take it now, if it cannot: its Provider's key is gone, or its model is hidden or\nno longer listed. Read from the cached listing.",
+        "operationId": "list_defaults",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DefaultRead"
+                  },
+                  "type": "array",
+                  "title": "Response List Defaults"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Save Defaults",
+        "description": "Make each choice given its step's default; a step left out keeps its own. Refused,\nsaving none, when one is not offered, or its model does not take its effort.",
+        "operationId": "save_defaults",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DefaultsSave"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "204": {
             "description": "Successful Response"
@@ -3120,6 +3173,84 @@
         ],
         "title": "DealBreakerVerdictRead"
       },
+      "DefaultRead": {
+        "properties": {
+          "step": {
+            "$ref": "#/components/schemas/Step"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "problem": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Problem"
+          }
+        },
+        "type": "object",
+        "required": [
+          "step",
+          "name",
+          "choice",
+          "problem"
+        ],
+        "title": "DefaultRead",
+        "description": "A step's default model choice, and why a run cannot take it now, if it cannot."
+      },
+      "DefaultsSave": {
+        "properties": {
+          "extraction": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "evaluation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cover_letter": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "DefaultsSave",
+        "description": "The new default of each step given; a step left out keeps its own."
+      },
       "DocumentSave": {
         "properties": {
           "text": {
@@ -3845,7 +3976,8 @@
                 "enum": [
                   "error",
                   "refusal",
-                  "malformed"
+                  "malformed",
+                  "rejected"
                 ]
               },
               {
@@ -3871,6 +4003,41 @@
         ],
         "title": "LlmRunFailureRead",
         "description": "Why an LLM run failed."
+      },
+      "ModelChoiceBody": {
+        "properties": {
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          },
+          "model": {
+            "type": "string",
+            "title": "Model",
+            "examples": [
+              "claude-opus-5-5"
+            ]
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort",
+            "examples": [
+              "high"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "provider",
+          "model"
+        ],
+        "title": "ModelChoiceBody",
+        "description": "A Provider's model, and its effort level in the Provider's own names; a null effort\nleaves it to the Provider's default."
       },
       "ModelRead": {
         "properties": {
@@ -4316,14 +4483,19 @@
           "has_provider": {
             "type": "boolean",
             "title": "Has Provider"
+          },
+          "has_defaults": {
+            "type": "boolean",
+            "title": "Has Defaults"
           }
         },
         "type": "object",
         "required": [
-          "has_provider"
+          "has_provider",
+          "has_defaults"
         ],
         "title": "SetupRead",
-        "description": "Whether the app is set up: until it is, the UI shows only the setup screen."
+        "description": "Whether the app is set up: until the owner has a Provider and a default model for\nevery step, the UI shows only the setup screen."
       },
       "ShowSnapshotsSave": {
         "properties": {
@@ -4337,6 +4509,14 @@
           "show_snapshots"
         ],
         "title": "ShowSnapshotsSave"
+      },
+      "Step": {
+        "type": "string",
+        "enum": [
+          "extraction",
+          "evaluation",
+          "cover_letter"
+        ]
       },
       "Technology": {
         "properties": {

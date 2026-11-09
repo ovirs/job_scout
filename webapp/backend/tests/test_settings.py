@@ -6,7 +6,7 @@ from typing import Any
 
 import httpx
 from clipping_helpers import ENVELOPE, PASTED_TEXT, an_extraction, submit_and_extract
-from conftest import TEST_KEY
+from conftest import DEFAULT_CHOICE, TEST_KEY
 from test_applications import start
 from test_evaluations import write_career_profile
 from test_triage import add_posting
@@ -56,7 +56,7 @@ async def test_a_key_the_provider_refuses_is_not_saved_and_its_reason_is_returne
     assert refused.status_code == 422
     assert refused.json()["detail"] == "Anthropic refused the key: invalid x-api-key"
     assert (await providers(client_without_provider))["anthropic"]["key"] is None
-    assert (await client_without_provider.get("/api/setup")).json() == {"has_provider": False}
+    assert (await client_without_provider.get("/api/setup")).json()["has_provider"] is False
 
 
 async def test_a_replaced_key_is_shown_masked_in_place_of_the_old_one(
@@ -91,16 +91,16 @@ async def test_only_a_provider_with_an_adapter_can_be_set_up(
 async def test_the_app_is_set_up_once_a_provider_has_a_key_and_not_after_the_last_is_removed(
     client_without_provider: httpx.AsyncClient,
 ) -> None:
-    before = (await client_without_provider.get("/api/setup")).json()
+    before = (await client_without_provider.get("/api/setup")).json()["has_provider"]
     await save_key(client_without_provider, KEY)
-    after_saving = (await client_without_provider.get("/api/setup")).json()
+    after_saving = (await client_without_provider.get("/api/setup")).json()["has_provider"]
 
     removed = await client_without_provider.delete("/api/settings/providers/anthropic/key")
 
-    assert before == {"has_provider": False}
-    assert after_saving == {"has_provider": True}
+    assert before is False
+    assert after_saving is True
     assert removed.status_code == 204
-    assert (await client_without_provider.get("/api/setup")).json() == {"has_provider": False}
+    assert (await client_without_provider.get("/api/setup")).json()["has_provider"] is False
     assert (await providers(client_without_provider))["anthropic"]["key"] is None
 
 
@@ -155,7 +155,7 @@ async def test_a_run_calls_the_provider_with_the_owners_key(
     clipping = await submit_and_extract(client, run_queued_tasks)
 
     assert clipping["status"] == "done"
-    assert fake_llm.connections == [("anthropic", TEST_KEY)]
+    assert fake_llm.connections == [(DEFAULT_CHOICE, TEST_KEY)]
 
 
 async def test_a_key_replaced_while_a_run_waits_is_used_on_its_next_attempt(
@@ -173,7 +173,7 @@ async def test_a_key_replaced_while_a_run_waits_is_used_on_its_next_attempt(
     clipping = await submit_and_extract(client, run_queued_tasks)
 
     assert clipping["status"] == "done"
-    assert fake_llm.connections == [("anthropic", TEST_KEY), ("anthropic", KEY)]
+    assert fake_llm.connections == [(DEFAULT_CHOICE, TEST_KEY), (DEFAULT_CHOICE, KEY)]
 
 
 async def test_a_run_whose_owner_removed_their_key_fails_at_once_pointing_to_settings(

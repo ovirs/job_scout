@@ -112,6 +112,7 @@ def check(outcome: Outcome[CoverLetterResult]) -> Outcome[CoverLetterResult]:
     if not isinstance(result, Failure) and not result.letter.strip():
         return Outcome(
             result=Failure("malformed", "The answer's letter is blank"),
+            provider=outcome.provider,
             model=outcome.model,
             prompt_version=outcome.prompt_version,
         )

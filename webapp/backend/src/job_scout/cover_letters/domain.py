@@ -27,6 +27,7 @@ from job_scout.cover_letters.models import CoverLetterDraft, CoverLetterGenerati
 from job_scout.cover_letters.tasks import GENERATION
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.models import Evaluation
+from job_scout.llm.interface import ModelLister
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.user_inputs import domain as user_inputs
 
@@ -114,6 +115,7 @@ async def read(session: AsyncSession, *, owner_id: uuid.UUID, application_id: in
 async def generate(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     *,
     owner_id: uuid.UUID,
     application_id: int,
@@ -128,13 +130,14 @@ async def generate(
     it is then failed and replaced.
     """
     application = await _editable(session, owner_id, application_id)
-    await _queue(session, task_queue, application, evaluation_case, instruction, None)
+    await _queue(session, task_queue, lister, application, evaluation_case, instruction, None)
     return await _letter(session, application)
 
 
 async def revise(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     *,
     owner_id: uuid.UUID,
     application_id: int,
@@ -148,7 +151,7 @@ async def revise(
     latest = await _latest_draft(session, application)
     if latest is None:
         raise NothingToRevise("There is no draft to revise: generate or write one first")
-    await _queue(session, task_queue, application, evaluation_case, instruction, latest)
+    await _queue(session, task_queue, lister, application, evaluation_case, instruction, latest)
     return await _letter(session, application)
 
 
@@ -252,6 +255,7 @@ async def _editable(session: AsyncSession, owner_id: uuid.UUID, application_id: 
 async def _queue(
     session: AsyncSession,
     task_queue: procrastinate.App,
+    lister: ModelLister,
     application: Application,
     evaluation_case: EvaluationCase,
     instruction: str | None,
@@ -290,7 +294,7 @@ async def _queue(
         revised_draft=revised,
     )
     session.add(queued)
-    await llm_runs.commit_and_enqueue(session, task_queue, GENERATION, queued)
+    await llm_runs.commit_and_enqueue(session, task_queue, lister, GENERATION, queued)
 
 
 async def _flags_source(session: AsyncSession, application: Application) -> FlagsSource:

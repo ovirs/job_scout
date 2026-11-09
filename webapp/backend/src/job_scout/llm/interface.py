@@ -1,9 +1,10 @@
 """The thin internal interface every LLM call goes through, one method per step.
 
-Each method takes a step's inputs and returns an `Outcome`: the validated
-result, or a typed `Failure`, with the model and prompt version that produced
-it. It never raises for a failed call. `AnthropicLlm` is the real adapter;
-`FakeLlm` replaces it in tests.
+An `Llm` calls one model choice (Provider, model and effort) with one API key. Each
+method takes a step's inputs and returns an `Outcome`: the validated result, or a
+typed `Failure`, with the Provider, model and prompt version that produced it. It
+never raises for a failed call. `AnthropicLlm` is the real adapter; `FakeLlm`
+replaces it in tests.
 """
 
 from __future__ import annotations
@@ -18,12 +19,31 @@ if TYPE_CHECKING:
     from job_scout.cover_letters.prompt import CoverLetterPrompt, CoverLetterResult
     from job_scout.evaluations.prompt import EvaluationPrompt, EvaluationResult
 
-FailureKind = Literal["error", "refusal", "malformed"]
+# The call failed (retried), the model refused, its answer did not have the step's shape,
+# or the Provider refused the request as invalid: an unsupported effort, an unknown model
+# or a bad key, which no retry fixes
+FailureKind = Literal["error", "refusal", "malformed", "rejected"]
 
 # A company whose models the app can call
 type Provider = Literal["anthropic", "openai", "google"]
 
 PROVIDERS: tuple[Provider, ...] = ("anthropic", "openai", "google")
+
+# Each step that calls the LLM: reading a Clipping, evaluating a Job Posting, and writing
+# a Cover Letter (generating and revising share it)
+type Step = Literal["extraction", "evaluation", "cover_letter"]
+
+STEPS: tuple[Step, ...] = ("extraction", "evaluation", "cover_letter")
+
+
+@dataclass(frozen=True)
+class ModelChoice:
+    """What a run calls: a Provider's model, and its effort level in the Provider's own
+    names; None leaves the effort to the Provider's default."""
+
+    provider: Provider
+    model: str
+    effort: str | None
 
 
 @dataclass(frozen=True)
@@ -37,9 +57,11 @@ class Failure:
 
 @dataclass(frozen=True)
 class Outcome[T]:
-    """What one LLM call produced, and with what model and prompt version."""
+    """What one LLM call produced, and with what Provider, model and prompt version; the
+    model is the id the Provider reports back."""
 
     result: T | Failure
+    provider: Provider
     model: str
     prompt_version: str
 
@@ -58,8 +80,8 @@ class Llm(Protocol):
         ...
 
 
-# An `Llm` calling the Provider with the given API key
-type Connect = Callable[[Provider, str], Llm]
+# An `Llm` calling the model choice with the given API key
+type Connect = Callable[[ModelChoice, str], Llm]
 
 
 @dataclass(frozen=True)

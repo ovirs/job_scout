@@ -70,12 +70,15 @@ function recordPage(hash: string): { owner: NavPage; page: ReactNode } | null {
   return null
 }
 
-/** Until a Provider is set up, every route shows the setup screen and nothing else. */
+/** Until a Provider and a default model for every step are set up, every route shows the setup
+ * screen and nothing else. */
 export default function App() {
   const setup = useQuery(getSetupOptions())
   if (setup.isPending) return <Loading />
   if (setup.isError) return <p role="alert">Could not reach the app. Reload to try again.</p>
-  if (!setup.data.has_provider) return <SetupScreen />
+  if (!setup.data.has_provider || !setup.data.has_defaults) {
+    return <SetupScreen hasProvider={setup.data.has_provider} />
+  }
   return <Shell />
 }
 

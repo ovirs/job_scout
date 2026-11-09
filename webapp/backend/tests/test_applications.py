@@ -10,7 +10,7 @@ from job_scout import db, queue
 from job_scout.applications import domain as applications
 from job_scout.config import Settings
 from job_scout.job_postings.models import JobPosting
-from job_scout.llm.fake import FakeLlm
+from job_scout.llm.fake import FakeLlm, FakeModelLister
 
 RunTasks = Callable[[], Awaitable[None]]
 QueuedTasks = Callable[[], Awaitable[list[str]]]
@@ -142,6 +142,7 @@ async def edit_posting_text(
             await applications.update_text(
                 session,
                 task_queue,
+                FakeModelLister(),
                 found,
                 title=text.get("title", found.title),
                 location_text=text.get("location_text", found.location_text),

@@ -1,5 +1,5 @@
-"""The browser smoke test: set up a Provider on an empty database, then paste, confirm and
-save, through the React app.
+"""The browser smoke test: set up a Provider and a default model on an empty database,
+then paste, confirm and save, through the React app.
 
 It checks the wiring from the frontend to the database; the API tests cover the
 behaviour. The browser fixtures are in conftest.py.
@@ -31,6 +31,12 @@ async def test_set_up_then_paste_confirm_and_save_a_manual_entry(
     await expect(page.get_by_role("button", name="Add posting", exact=True)).to_be_hidden()
     await page.get_by_label("Anthropic API key").fill("sk-ant-browser-0000000000")
     await page.get_by_role("button", name="Save key").click()
+    await expect(page.get_by_role("heading", name="Choose a default model")).to_be_visible()
+    await expect(page.get_by_role("combobox", name="Model")).to_have_value(
+        "anthropic/claude-opus-5-5"
+    )
+    await page.get_by_label("Effort").select_option("high")
+    await page.get_by_role("button", name="Use for every step").click()
     await expect(page.get_by_role("heading", name="Deal Breakers")).to_be_visible()
 
     await page.get_by_role("button", name="Add posting", exact=True).click()
@@ -51,4 +57,7 @@ async def test_set_up_then_paste_confirm_and_save_a_manual_entry(
     await expect(page.get_by_role("heading", name="Staff Data Engineer")).to_be_visible()
     async with httpx.AsyncClient(base_url=api_url) as client:
         stored = (await client.get("/api/job-postings")).json()
+        defaults = (await client.get("/api/settings/defaults")).json()
     assert [(p["title"], p["company"]) for p in stored] == [("Staff Data Engineer", "Acme")]
+    high = {"provider": "anthropic", "model": "claude-opus-5-5", "effort": "high"}
+    assert [default["choice"] for default in defaults] == [high, high, high]
