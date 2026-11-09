@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+import httpx2
 from anthropic.types import ModelInfo
 
 from job_scout.llm import anthropic_models, gemini_models, openai_models
-from job_scout.llm.interface import ListedModel
+from job_scout.llm.interface import KeyRefused, ListedModel
 
 LISTINGS = Path(__file__).parent / "listings"
 
@@ -66,21 +67,19 @@ def test_openai_keeps_chat_families_and_flags_dated_snapshots() -> None:
     }
 
 
-def test_gemini_keeps_text_models_that_generate_content_and_flags_dated_or_versioned_names() -> (
-    None
-):
-    listing = [
-        gemini_models.GeminiModel(
-            name=entry["name"],
-            display_name=entry["displayName"],
-            generation_methods=tuple(entry["supportedGenerationMethods"]),
-            thinking=entry.get("thinking", False),
-        )
-        for entry in saved_listing("google")["models"]
-    ]
+def google_serving(status: int, body: Any) -> httpx2.AsyncClient:
+    """An HTTP client on which Google answers every request with `body`."""
+    return httpx2.AsyncClient(
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(status, json=body))
+    )
 
-    kept = gemini_models.text_models(listing)
 
+async def test_gemini_lists_text_models_that_generate_content_and_flags_pinned_names() -> None:
+    kept = await gemini_models.list_models(
+        "a-key", http=google_serving(200, saved_listing("google"))
+    )
+
+    assert isinstance(kept, list)
     assert [(model.id, model.display_name, model.snapshot) for model in kept] == [
         ("gemini-3-pro-preview", "Gemini 3 Pro Preview", False),
         ("gemini-2.5-pro", "Gemini 2.5 Pro", False),
@@ -93,3 +92,17 @@ def test_gemini_keeps_text_models_that_generate_content_and_flags_dated_or_versi
     efforts = {model.id: model.efforts for model in kept}
     assert efforts["gemini-3-pro-preview"] == ("minimal", "low", "medium", "high")
     assert efforts["gemini-2.0-flash"] == ()
+
+
+async def test_gemini_refuses_a_key_with_googles_reason() -> None:
+    refusal = {
+        "error": {
+            "code": 400,
+            "message": "API key not valid. Please pass a valid API key.",
+            "status": "INVALID_ARGUMENT",
+        }
+    }
+
+    refused = await gemini_models.list_models("a-typo", http=google_serving(400, refusal))
+
+    assert refused == KeyRefused("API key not valid. Please pass a valid API key.")

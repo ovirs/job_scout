@@ -81,7 +81,7 @@ async def test_only_a_provider_with_an_adapter_can_be_set_up(
     assert {name: entry["available"] for name, entry in listed.items()} == {
         "anthropic": True,
         "openai": False,
-        "google": False,
+        "google": True,
     }
     assert refused.status_code == 409
     assert refused.json()["detail"] == "OpenAI is not available yet"

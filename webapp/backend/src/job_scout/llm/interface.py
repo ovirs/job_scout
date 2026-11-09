@@ -3,8 +3,8 @@
 An `Llm` calls one model choice (Provider, model and effort) with one API key. Each
 method takes a step's inputs and returns an `Outcome`: the validated result, or a
 typed `Failure`, with the Provider, model and prompt version that produced it. It
-never raises for a failed call. `AnthropicLlm` is the real adapter; `FakeLlm`
-replaces it in tests.
+never raises for a failed call. Each Provider's adapter (`AnthropicLlm`,
+`GeminiLlm`) is a real one; `FakeLlm` replaces them in tests.
 """
 
 from __future__ import annotations

@@ -7,7 +7,7 @@ Adding a Provider (ADR-0005) means writing its adapter and adding it to `ADAPTER
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
-from job_scout.llm import anthropic_adapter, anthropic_models
+from job_scout.llm import anthropic_adapter, anthropic_models, gemini_adapter, gemini_models
 from job_scout.llm.interface import KeyRefused, ListedModel, Llm, ModelChoice, Provider
 
 
@@ -23,6 +23,7 @@ class Adapter:
 # A Provider is available, and can be set up, once it is here
 ADAPTERS: dict[Provider, Adapter] = {
     "anthropic": Adapter(anthropic_adapter.AnthropicLlm, anthropic_models.list_models),
+    "google": Adapter(gemini_adapter.GeminiLlm, gemini_models.list_models),
 }
 
 
