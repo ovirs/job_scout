@@ -7,10 +7,12 @@ from job_scout.evaluations.domain import CheckedFlag
 from job_scout.evaluations.models import Evaluation
 from job_scout.evaluations.prompt import Recommendation, Verdict
 from job_scout.job_postings.models import JobPosting
+from job_scout.llm.interface import Provider
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.llm_runs.models import RunStatus
-from job_scout.llm_runs.schemas import LlmRunFailureRead
+from job_scout.llm_runs.schemas import LlmRunFailureRead, model_choice_read
 from job_scout.posting_text import EvidenceMatch
+from job_scout.settings.schemas import ModelChoiceBody
 from job_scout.user_inputs.schemas import version_number
 
 
@@ -33,7 +35,10 @@ class EvaluationRead(BaseModel):
     started_at: datetime | None
     finished_at: datetime | None
 
-    # What it was made with, once it ran
+    # The model choice it was queued with, null when it had none to take
+    model_choice: ModelChoiceBody | None
+    # What it was made with, once it ran: the Provider that answered and the model it reported
+    provider: Provider | None
     model: str | None
     prompt_version: str | None
     career_profile_version_id: int | None
@@ -80,6 +85,8 @@ class EvaluationRead(BaseModel):
             created_at=run.created_at,
             started_at=run.started_at,
             finished_at=run.finished_at,
+            model_choice=model_choice_read(run),
+            provider=run.provider,
             model=run.model,
             prompt_version=run.prompt_version,
             career_profile_version_id=run.career_profile_version_id,

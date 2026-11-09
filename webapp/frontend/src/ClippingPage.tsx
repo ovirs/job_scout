@@ -14,12 +14,15 @@ import {
 import type { ClippingConfirm, ClippingRead } from './api/types.gen'
 import { Badge } from './Badge'
 import { ExtractedFacts, WORKPLACE_TYPES } from './ExtractedFacts'
+import { ModelPicker, useRunChoice } from './ModelPicker'
+import { refusal } from './refusal'
 import { Loading, Working } from './Waiting'
 
 /** The single paste box: submits a Clipping and opens it while the app reads it. */
 export function NewClippingForm() {
   const [pastedText, setPastedText] = useState('')
   const [url, setUrl] = useState('')
+  const run = useRunChoice('extraction')
   const submit = useMutation({
     ...submitClippingMutation(),
     onSuccess: (clipping) => {
@@ -29,7 +32,9 @@ export function NewClippingForm() {
 
   function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    submit.mutate({ body: { pasted_text: pastedText, url: url.trim() || null } })
+    submit.mutate({
+      body: { pasted_text: pastedText, url: url.trim() || null, model_choice: run.choice },
+    })
   }
 
   return (
@@ -48,6 +53,7 @@ export function NewClippingForm() {
         Link to the posting (optional, kept for reference and never opened by the app)
         <input type="url" value={url} onChange={(event) => setUrl(event.target.value)} />
       </label>
+      <ModelPicker run={run} />
       <button
         type="submit"
         disabled={submit.isPending || pastedText.trim() === ''}
@@ -55,7 +61,9 @@ export function NewClippingForm() {
       >
         {submit.isPending ? 'Sending…' : 'Read it'}
       </button>
-      {submit.isError && <p role="alert">Could not send the pasted text. Try again.</p>}
+      {submit.isError && (
+        <p role="alert">{refusal(submit.error) ?? 'Could not send the pasted text. Try again.'}</p>
+      )}
     </form>
   )
 }
@@ -104,6 +112,8 @@ function ClippingStatus({ clipping }: { clipping: ClippingRead }) {
 
 function ExtractionFailed({ clipping }: { clipping: ClippingRead }) {
   const queryClient = useQueryClient()
+  // A retry repeats the reading that failed, unless another model is picked
+  const run = useRunChoice('extraction', clipping.model_choice)
   const retry = useMutation({
     ...retryClippingMutation(),
     onSuccess: (retried) =>
@@ -116,15 +126,25 @@ function ExtractionFailed({ clipping }: { clipping: ClippingRead }) {
       <p role="alert">
         {clipping.stuck ? 'Reading it got stuck and never finished.' : clipping.failure?.reason}
       </p>
-      <button
-        type="button"
-        disabled={retry.isPending}
-        aria-busy={retry.isPending}
-        onClick={() => retry.mutate({ path: { clipping_id: clipping.id } })}
-      >
-        {retry.isPending ? 'Retrying…' : 'Try again'}
-      </button>
-      {retry.isError && <p role="alert">Could not retry. Try again.</p>}
+      <ModelPicker run={run} />
+      <div className="actions">
+        <button
+          type="button"
+          disabled={retry.isPending}
+          aria-busy={retry.isPending}
+          onClick={() =>
+            retry.mutate({
+              path: { clipping_id: clipping.id },
+              body: { model_choice: run.choice },
+            })
+          }
+        >
+          {retry.isPending ? 'Retrying…' : 'Try again'}
+        </button>
+      </div>
+      {retry.isError && (
+        <p role="alert">{refusal(retry.error) ?? 'Could not retry. Try again.'}</p>
+      )}
     </section>
   )
 }

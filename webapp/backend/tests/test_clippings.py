@@ -53,6 +53,7 @@ async def a_clipping(
             owner_id=LOCAL_USER_ID,
             pasted_text=PASTED_TEXT,
             url=None,
+            choice=None,
         )
     if status != "queued":
         await run_queued_tasks()
@@ -79,6 +80,7 @@ async def test_only_a_failed_or_stuck_clipping_can_be_retried(
                 FakeModelLister(),
                 owner_id=LOCAL_USER_ID,
                 clipping_id=clipping_id,
+                choice=None,
             )
 
     assert (await read(runtime, clipping_id)).status == status
@@ -99,6 +101,7 @@ async def test_a_clipping_stuck_being_read_can_be_retried(
             FakeModelLister(),
             owner_id=LOCAL_USER_ID,
             clipping_id=clipping_id,
+            choice=None,
         )
     await run_queued_tasks()
 
@@ -134,6 +137,7 @@ async def test_a_done_or_failed_clipping_can_be_abandoned_and_is_kept(
                 FakeModelLister(),
                 owner_id=LOCAL_USER_ID,
                 clipping_id=clipping_id,
+                choice=None,
             )
 
 

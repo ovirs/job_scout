@@ -135,6 +135,19 @@ SET_UP = Depends(require_set_up)
 
 
 @contextmanager
+def run_choice_refusals() -> Iterator[None]:
+    """For any route that starts an LLM run with the user's model choice: a 422 when the
+    choice given cannot be used, and a 409 when none is given and the one the run would
+    take instead cannot be."""
+    try:
+        yield
+    except settings.NotUsable as refusal:
+        raise HTTPException(status_code=422, detail=str(refusal)) from None
+    except settings.NoUsableChoice as refusal:
+        raise HTTPException(status_code=409, detail=str(refusal)) from None
+
+
+@contextmanager
 def _refusals() -> Iterator[None]:
     """Map the Settings package's errors to HTTP."""
     try:

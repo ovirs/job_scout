@@ -10,21 +10,24 @@ from job_scout.cover_letters.models import (
     EvaluationCase,
 )
 from job_scout.fields import NonBlank
+from job_scout.llm.interface import Provider
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.llm_runs.models import RunStatus
-from job_scout.llm_runs.schemas import LlmRunFailureRead
+from job_scout.llm_runs.schemas import LlmRunFailureRead, LlmRunStart, model_choice_read
+from job_scout.settings.schemas import ModelChoiceBody
 from job_scout.user_inputs.schemas import version_number
 
 
-class CoverLetterGenerate(BaseModel):
+class CoverLetterGenerate(LlmRunStart):
     """A request for a new draft. `evaluation_case` is the case of the posting's Evaluation
-    the user was told of and agreed to; a request naming another case is refused."""
+    the user was told of and agreed to; a request naming another case is refused. Generating
+    and revising share the Cover Letter step's default."""
 
     evaluation_case: EvaluationCase
     instruction: NonBlank | None = None  # what to stress, the language to write in
 
 
-class CoverLetterRevise(BaseModel):
+class CoverLetterRevise(LlmRunStart):
     """A request to revise the latest draft, hand edits included, as `instruction` says,
     from the same inputs as generating; `evaluation_case` as for generating."""
 
@@ -48,8 +51,11 @@ class CoverLetterDraftRead(BaseModel):
     unsupported_requirements: list[str]  # what the posting asks for that the profile lacks
     created_at: datetime
 
-    # What an LLM draft was made with
+    # What an LLM draft was made with: the Provider that answered, the model it reported,
+    # and the effort it was asked for (null also for the Provider's default)
+    provider: Provider | None
     model: str | None
+    effort: str | None
     prompt_version: str | None
     career_profile_version_id: int | None
     career_profile_version_number: int | None
@@ -68,7 +74,9 @@ class CoverLetterDraftRead(BaseModel):
             instruction=draft.instruction,
             unsupported_requirements=draft.unsupported_requirements,
             created_at=draft.created_at,
+            provider=draft.provider,
             model=draft.model,
+            effort=draft.effort,
             prompt_version=draft.prompt_version,
             career_profile_version_id=draft.career_profile_version_id,
             career_profile_version_number=version_number(draft.career_profile_version),
@@ -87,6 +95,7 @@ class CoverLetterGenerationRead(BaseModel):
     instruction: str | None
     evaluation_case: EvaluationCase
     revised_draft_id: int | None  # the draft a revision in words revises; null for generating
+    model_choice: ModelChoiceBody | None  # what it was queued with
     failure: LlmRunFailureRead | None  # why it made no draft
     created_at: datetime
     finished_at: datetime | None
@@ -101,6 +110,7 @@ class CoverLetterGenerationRead(BaseModel):
             instruction=generation.instruction,
             evaluation_case=generation.evaluation_case,
             revised_draft_id=generation.revised_draft_id,
+            model_choice=model_choice_read(generation),
             failure=LlmRunFailureRead.of(generation),
             created_at=generation.created_at,
             finished_at=generation.finished_at,

@@ -42,6 +42,12 @@ async def test_set_up_then_paste_confirm_and_save_a_manual_entry(
     await page.get_by_role("button", name="Add posting", exact=True).click()
     overlay = page.get_by_role("dialog", name="Add a job posting")
     await overlay.get_by_label("Paste the whole page").fill(PASTED_TEXT)
+    # The model picker starts at the step's default; this one Clipping is read at low effort
+    await expect(overlay.get_by_role("combobox", name="Model")).to_have_value(
+        "anthropic/claude-opus-5-5"
+    )
+    await expect(overlay.get_by_label("Effort")).to_have_value("high")
+    await overlay.get_by_label("Effort").select_option("low")
     await overlay.get_by_role("button", name="Read it").click()
     await expect(overlay).to_be_hidden()
     await expect(page.get_by_role("status")).to_have_text("Reading the pasted text…")
@@ -58,6 +64,8 @@ async def test_set_up_then_paste_confirm_and_save_a_manual_entry(
     async with httpx.AsyncClient(base_url=api_url) as client:
         stored = (await client.get("/api/job-postings")).json()
         defaults = (await client.get("/api/settings/defaults")).json()
+        clipping = (await client.get("/api/clippings/1")).json()
     assert [(p["title"], p["company"]) for p in stored] == [("Staff Data Engineer", "Acme")]
     high = {"provider": "anthropic", "model": "claude-opus-5-5", "effort": "high"}
     assert [default["choice"] for default in defaults] == [high, high, high]
+    assert clipping["model_choice"] == {**high, "effort": "low"}

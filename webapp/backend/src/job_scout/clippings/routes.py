@@ -5,11 +5,12 @@ from fastapi import APIRouter, HTTPException
 
 from job_scout.clippings import domain as clippings
 from job_scout.clippings.schemas import ClippingConfirm, ClippingRead, ClippingSubmit
+from job_scout.llm_runs.schemas import LlmRunStart
 
 # A route may build its response from the posting view, above it (see the import contract)
 from job_scout.posting_view.schemas import JobPostingRead
 from job_scout.routing import Lister, Owner, Session, TaskQueue
-from job_scout.settings.routes import SET_UP
+from job_scout.settings.routes import SET_UP, run_choice_refusals
 
 router = APIRouter(prefix="/api")
 
@@ -18,11 +19,19 @@ router = APIRouter(prefix="/api")
 async def submit_clipping(
     body: ClippingSubmit, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
 ) -> ClippingRead:
-    """Store the pasted text as a Clipping and queue its extraction; poll it for the
-    result."""
-    clipping = await clippings.submit(
-        session, task_queue, lister, owner_id=owner, pasted_text=body.pasted_text, url=body.url
-    )
+    """Store the pasted text as a Clipping and queue its extraction, with the model choice
+    given or else the step's default; poll it for the result. Refused when that model
+    cannot be used."""
+    with run_choice_refusals():
+        clipping = await clippings.submit(
+            session,
+            task_queue,
+            lister,
+            owner_id=owner,
+            pasted_text=body.pasted_text,
+            url=body.url,
+            choice=body.choice(),
+        )
     return ClippingRead.of(clipping)
 
 
@@ -35,12 +44,24 @@ async def get_clipping(clipping_id: int, session: Session, owner: Owner) -> Clip
 
 @router.post("/clippings/{clipping_id}/retry", dependencies=[SET_UP])
 async def retry_clipping(
-    clipping_id: int, session: Session, task_queue: TaskQueue, lister: Lister, owner: Owner
+    clipping_id: int,
+    session: Session,
+    task_queue: TaskQueue,
+    lister: Lister,
+    owner: Owner,
+    body: LlmRunStart | None = None,
 ) -> ClippingRead:
-    """Queue the extraction of a failed Clipping again, or of one stuck being read."""
-    with _refusals():
+    """Queue the extraction of a failed Clipping again, or of one stuck being read, with the
+    model choice given or else the one it was read with. Refused when that model cannot be
+    used."""
+    with _refusals(), run_choice_refusals():
         clipping = await clippings.retry(
-            session, task_queue, lister, owner_id=owner, clipping_id=clipping_id
+            session,
+            task_queue,
+            lister,
+            owner_id=owner,
+            clipping_id=clipping_id,
+            choice=None if body is None else body.choice(),
         )
     return ClippingRead.of(clipping)
 

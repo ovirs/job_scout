@@ -14,6 +14,9 @@ import type {
 } from './api/types.gen'
 import { Badge, type Tone } from './Badge'
 import { type Highlight, type HighlightKind, quoteKey } from './Highlighted'
+import { modelLabel } from './ModelChoiceFields'
+import { ModelPicker, useRunChoice } from './ModelPicker'
+import { refusal } from './refusal'
 import { Working } from './Waiting'
 
 type Recommendation = NonNullable<EvaluationRead['recommendation']>
@@ -141,10 +144,13 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
     },
   })
   const underWay = (latest?.status === 'queued' || latest?.status === 'running') && !latest.stuck
+  const retrying = latest !== undefined && (latest.status === 'failed' || latest.stuck)
+  // A retry repeats the run that failed, unless another model is picked
+  const run = useRunChoice('evaluation', retrying ? latest.model_choice : null)
   const label =
     latest === undefined
       ? 'Evaluate'
-      : latest.status === 'failed' || latest.stuck
+      : retrying
         ? 'Try again'
         : 'Run the Evaluation again'
 
@@ -163,12 +169,18 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
           <p role="alert">{latest.failure?.reason}</p>
         </>
       )}
+      {!underWay && <ModelPicker run={run} />}
       <div className="actions">
         <button
           type="button"
           disabled={rerun.isPending || underWay}
           aria-busy={rerun.isPending}
-          onClick={() => rerun.mutate({ path: { job_posting_id: postingId } })}
+          onClick={() =>
+            rerun.mutate({
+              path: { job_posting_id: postingId },
+              body: { model_choice: run.choice },
+            })
+          }
         >
           {rerun.isPending ? 'Queuing…' : label}
         </button>
@@ -176,7 +188,9 @@ function LatestRun({ postingId, latest }: { postingId: number; latest: Evaluatio
           <span className="hint">Wait for this Evaluation to finish to run it again.</span>
         )}
       </div>
-      {rerun.isError && <p role="alert">Could not start the Evaluation. Try again.</p>}
+      {rerun.isError && (
+        <p role="alert">{refusal(rerun.error) ?? 'Could not start the Evaluation. Try again.'}</p>
+      )}
     </div>
   )
 }
@@ -345,6 +359,16 @@ function Quotes({
   )
 }
 
+/** The Provider, model and effort a run was made with: the model the Provider reported once
+ * it answered, else the one it was queued with. */
+function madeWith(run: EvaluationRead) {
+  const choice = run.model_choice
+  const provider = run.provider ?? choice?.provider
+  const model = run.model ?? choice?.model
+  if (!provider || !model) return '–'
+  return modelLabel(provider, model, choice?.effort ?? null)
+}
+
 /** Every run, the latest first, with what it was made with, so runs can be compared. */
 function History({ runs }: { runs: EvaluationRead[] }) {
   const version = (number: number | null) => (number === null ? 'none' : `v${number}`)
@@ -379,7 +403,7 @@ function History({ runs }: { runs: EvaluationRead[] }) {
                 {run.failure && <div className="hint">{run.failure.reason}</div>}
                 {run.outdated && <Badge tone="warn">Outdated</Badge>}
               </td>
-              <td>{run.model ?? '–'}</td>
+              <td>{madeWith(run)}</td>
               <td>{run.prompt_version ?? '–'}</td>
               {/* Recorded with the posting's text when it ran, which `outdated` is judged by */}
               {run.outdated === null ? (

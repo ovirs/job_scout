@@ -19,7 +19,7 @@ from job_scout.evaluations.tasks import EVALUATION
 from job_scout.job_postings import domain as job_postings
 from job_scout.job_postings.extraction import WorkplaceType
 from job_scout.job_postings.models import JobPosting
-from job_scout.llm.interface import ModelLister
+from job_scout.llm.interface import ModelChoice, ModelLister
 from job_scout.llm_runs import domain as llm_runs
 
 
@@ -39,10 +39,14 @@ async def submit(
     owner_id: uuid.UUID,
     pasted_text: str,
     url: str | None,
+    choice: ModelChoice | None,
 ) -> Clipping:
-    """Store the pasted text as a new Clipping and queue its extraction."""
+    """Store the pasted text as a new Clipping and queue its extraction, with the model
+    choice given or else the step's default. Raises `settings.NotUsable` or
+    `settings.NoUsableChoice`, storing nothing, when that cannot be used."""
     clipping = Clipping(owner_id=owner_id, pasted_text=pasted_text, url=url, status="queued")
     session.add(clipping)
+    await llm_runs.choose(session, lister, EXTRACTION, clipping, choice)
     await llm_runs.commit_and_enqueue(session, task_queue, lister, EXTRACTION, clipping)
     return clipping
 
@@ -66,9 +70,12 @@ async def retry(
     *,
     owner_id: uuid.UUID,
     clipping_id: int,
+    choice: ModelChoice | None,
 ) -> Clipping:
-    """Queue the extraction of a failed clipping, or of one stuck being read, again.
-    Raises `WrongStatus` for any other."""
+    """Queue the extraction of a failed clipping, or of one stuck being read, again, in
+    place: with the model choice given, or else the one it was read with. Raises
+    `WrongStatus` for any other, and `settings.NotUsable` or `settings.NoUsableChoice`,
+    changing nothing, when the choice cannot be used."""
     found = await clipping(session, owner_id=owner_id, clipping_id=clipping_id, for_update=True)
     try:
         llm_runs.requeue(found)
@@ -76,6 +83,7 @@ async def retry(
         raise WrongStatus(
             "Only a failed Clipping, or one stuck being read, can be retried"
         ) from None
+    await llm_runs.choose(session, lister, EXTRACTION, found, choice)
     await llm_runs.commit_and_enqueue(session, task_queue, lister, EXTRACTION, found)
     return found
 

@@ -397,9 +397,10 @@ export const listEvaluationsOptions = (options: Options<ListEvaluationsData>) =>
 /**
  * Rerun Evaluation
  *
- * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
- * are kept as history. Also the retry of one that failed. Refused while another is
- * under way, unless that one is stuck: it is then failed and replaced.
+ * Queue a new Evaluation of the posting, with the current user inputs and the model
+ * choice given, or else the step's default; earlier ones are kept as history. Also the
+ * retry of one that failed. Refused when that model cannot be used, and while another
+ * is under way, unless that one is stuck: it is then failed and replaced.
  */
 export const rerunEvaluationMutation = (options?: Partial<Options<RerunEvaluationData>>): UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> => {
     const mutationOptions: UseMutationOptions<RerunEvaluationResponse, RerunEvaluationError, Options<RerunEvaluationData>> = {
@@ -463,8 +464,9 @@ export const getCoverLetterOptions = (options: Options<GetCoverLetterData>) => q
  * Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
  * it. Also the retry of a failed one. Refused unless the Application is Preparing, while
  * there is no Career Profile, when `evaluation_case` is not the Evaluation's case now
- * (the user must confirm a missing or outdated one), and while another request is under
- * way, unless that one is stuck.
+ * (the user must confirm a missing or outdated one), while another request is under
+ * way, unless that one is stuck, and when the model choice given, or else the step's
+ * default, cannot be used.
  */
 export const generateCoverLetterMutation = (options?: Partial<Options<GenerateCoverLetterData>>): UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> => {
     const mutationOptions: UseMutationOptions<GenerateCoverLetterResponse, GenerateCoverLetterError, Options<GenerateCoverLetterData>> = {
@@ -564,8 +566,9 @@ export const deleteCoverLetterDraftMutation = (options?: Partial<Options<DeleteC
 /**
  * Submit Clipping
  *
- * Store the pasted text as a Clipping and queue its extraction; poll it for the
- * result.
+ * Store the pasted text as a Clipping and queue its extraction, with the model choice
+ * given or else the step's default; poll it for the result. Refused when that model
+ * cannot be used.
  */
 export const submitClippingMutation = (options?: Partial<Options<SubmitClippingData>>): UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> => {
     const mutationOptions: UseMutationOptions<SubmitClippingResponse, SubmitClippingError, Options<SubmitClippingData>> = {
@@ -602,7 +605,9 @@ export const getClippingOptions = (options: Options<GetClippingData>) => queryOp
 /**
  * Retry Clipping
  *
- * Queue the extraction of a failed Clipping again, or of one stuck being read.
+ * Queue the extraction of a failed Clipping again, or of one stuck being read, with the
+ * model choice given or else the one it was read with. Refused when that model cannot be
+ * used.
  */
 export const retryClippingMutation = (options?: Partial<Options<RetryClippingData>>): UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> => {
     const mutationOptions: UseMutationOptions<RetryClippingResponse, RetryClippingError, Options<RetryClippingData>> = {

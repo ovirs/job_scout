@@ -11,7 +11,7 @@ from job_scout.cover_letters.schemas import (
     CoverLetterRevise,
 )
 from job_scout.routing import Lister, Owner, Session, TaskQueue
-from job_scout.settings.routes import SET_UP
+from job_scout.settings.routes import SET_UP, run_choice_refusals
 
 router = APIRouter(prefix="/api")
 
@@ -42,9 +42,10 @@ async def generate_cover_letter(
     Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
     it. Also the retry of a failed one. Refused unless the Application is Preparing, while
     there is no Career Profile, when `evaluation_case` is not the Evaluation's case now
-    (the user must confirm a missing or outdated one), and while another request is under
-    way, unless that one is stuck."""
-    with _refusals():
+    (the user must confirm a missing or outdated one), while another request is under
+    way, unless that one is stuck, and when the model choice given, or else the step's
+    default, cannot be used."""
+    with _refusals(), run_choice_refusals():
         letter = await cover_letters.generate(
             session,
             task_queue,
@@ -53,6 +54,7 @@ async def generate_cover_letter(
             application_id=application_id,
             evaluation_case=body.evaluation_case,
             instruction=body.instruction,
+            choice=body.choice(),
         )
     return CoverLetterRead.of(letter)
 
@@ -73,7 +75,7 @@ async def revise_cover_letter(
     """Queue a revision in words of the latest draft, hand edits included: the LLM gets its
     text and the instruction with the same inputs as generating, and its answer is a new
     draft. Refused as generating is, and while there is no draft to revise."""
-    with _refusals():
+    with _refusals(), run_choice_refusals():
         letter = await cover_letters.revise(
             session,
             task_queue,
@@ -82,6 +84,7 @@ async def revise_cover_letter(
             application_id=application_id,
             evaluation_case=body.evaluation_case,
             instruction=body.instruction,
+            choice=body.choice(),
         )
     return CoverLetterRead.of(letter)
 

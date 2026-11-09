@@ -57,6 +57,7 @@ async def generate(
             application_id=application_id,
             evaluation_case=evaluation_case,
             instruction=instruction,
+            choice=None,
         )
 
 
@@ -75,6 +76,7 @@ async def revise(
             application_id=application_id,
             evaluation_case=evaluation_case,
             instruction=instruction,
+            choice=None,
         )
 
 

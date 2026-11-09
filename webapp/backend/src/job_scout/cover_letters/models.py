@@ -7,6 +7,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from job_scout.db import Base
+from job_scout.llm.interface import Provider
 from job_scout.llm_runs.models import LlmRun, RunStatus, failure_complete
 from job_scout.user_inputs.models import DocumentVersion
 
@@ -61,9 +62,9 @@ class CoverLetterDraft(Base):
     """One text of an Application's Cover Letter; the latest live draft is the letter.
 
     A draft is never changed afterwards. One the LLM wrote records what it was made with:
-    the model, the prompt and input versions, the Evaluation that supplied its flags (or
-    that none did) and the posting's content hash then. Restoring a draft copies all of
-    it into a new latest draft that points back to it. Deleting it only stamps
+    the Provider, model and effort, the prompt and input versions, the Evaluation that
+    supplied its flags (or that none did) and the posting's content hash then. Restoring a
+    draft copies all of it into a new latest draft that points back to it. Deleting it only stamps
     `deleted_at`. Its `created_at` and `deleted_at` are taken by the app, as the
     Application's `changed_at` is, since the letter sent is found by comparing them.
     """
@@ -81,8 +82,12 @@ class CoverLetterDraft(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
     deleted_at: Mapped[datetime | None]
 
-    # What an LLM draft was made with; null for a hand edit
+    # What an LLM draft was made with; null for a hand edit. The Provider that answered and
+    # the model it reported, and the effort its generation asked for (null also for the
+    # Provider's default)
+    provider: Mapped[Provider | None] = mapped_column(String)
     model: Mapped[str | None]
+    effort: Mapped[str | None]
     prompt_version: Mapped[str | None]
     career_profile_version_id: Mapped[int | None] = mapped_column(
         ForeignKey("document_versions.id")

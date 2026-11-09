@@ -7,8 +7,10 @@ from job_scout.clippings import domain as clippings
 from job_scout.clippings.models import Clipping, ClippingStatus
 from job_scout.fields import NonBlank
 from job_scout.job_postings.extraction import ExtractedFields, WorkplaceType
+from job_scout.llm.interface import Provider
 from job_scout.llm_runs import domain as llm_runs
-from job_scout.llm_runs.schemas import LlmRunFailureRead
+from job_scout.llm_runs.schemas import LlmRunFailureRead, LlmRunStart, model_choice_read
+from job_scout.settings.schemas import ModelChoiceBody
 
 
 class ClippingConfirm(BaseModel):
@@ -21,7 +23,7 @@ class ClippingConfirm(BaseModel):
     description: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as given
 
 
-class ClippingSubmit(BaseModel):
+class ClippingSubmit(LlmRunStart):
     pasted_text: Annotated[str, Field(min_length=1, pattern=r"\S")]  # stored as pasted
     url: NonBlank | None = None
 
@@ -44,6 +46,8 @@ class ClippingRead(BaseModel):
     created_at: datetime
     started_at: datetime | None  # when its extraction first started
     finished_at: datetime | None
+    model_choice: ModelChoiceBody | None  # what it was queued with; a retry keeps it
+    provider: Provider | None  # the Provider that answered, and the model it reported
     model: str | None
     prompt_version: str | None
     failure: LlmRunFailureRead | None
@@ -61,6 +65,8 @@ class ClippingRead(BaseModel):
             created_at=clipping.created_at,
             started_at=clipping.started_at,
             finished_at=clipping.finished_at,
+            model_choice=model_choice_read(clipping),
+            provider=clipping.provider,
             model=clipping.model,
             prompt_version=clipping.prompt_version,
             failure=LlmRunFailureRead.of(clipping),

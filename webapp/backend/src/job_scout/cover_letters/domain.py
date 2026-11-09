@@ -27,7 +27,7 @@ from job_scout.cover_letters.models import CoverLetterDraft, CoverLetterGenerati
 from job_scout.cover_letters.tasks import GENERATION
 from job_scout.evaluations import domain as evaluations
 from job_scout.evaluations.models import Evaluation
-from job_scout.llm.interface import ModelLister
+from job_scout.llm.interface import ModelChoice, ModelLister
 from job_scout.llm_runs import domain as llm_runs
 from job_scout.user_inputs import domain as user_inputs
 
@@ -121,16 +121,21 @@ async def generate(
     application_id: int,
     evaluation_case: EvaluationCase,
     instruction: str | None,
+    choice: ModelChoice | None,
 ) -> CoverLetter:
-    """Queue a new draft written by the LLM from scratch; also the retry of a failed one.
+    """Queue a new draft written by the LLM from scratch, with the model choice given or
+    else the step's default; also the retry of a failed one.
 
     Refused unless the Application is Preparing, while there is no Career Profile, when
     `evaluation_case` is not the Evaluation's case now (the user must confirm a missing
     or outdated one), and while another request is under way, unless that one is stuck:
-    it is then failed and replaced.
+    it is then failed and replaced. Raises `settings.NotUsable` or
+    `settings.NoUsableChoice` when the model choice cannot be used.
     """
     application = await _editable(session, owner_id, application_id)
-    await _queue(session, task_queue, lister, application, evaluation_case, instruction, None)
+    await _queue(
+        session, task_queue, lister, application, evaluation_case, instruction, None, choice
+    )
     return await _letter(session, application)
 
 
@@ -143,15 +148,18 @@ async def revise(
     application_id: int,
     evaluation_case: EvaluationCase,
     instruction: str,
+    choice: ModelChoice | None,
 ) -> CoverLetter:
     """Queue a revision in words of the latest draft, hand edits included: the LLM gets
-    its text and the instruction with the same inputs as generating. Refused as
-    generating is, and while there is no draft to revise."""
+    its text and the instruction with the same inputs as generating, and the same model
+    choice rules. Refused as generating is, and while there is no draft to revise."""
     application = await _editable(session, owner_id, application_id)
     latest = await _latest_draft(session, application)
     if latest is None:
         raise NothingToRevise("There is no draft to revise: generate or write one first")
-    await _queue(session, task_queue, lister, application, evaluation_case, instruction, latest)
+    await _queue(
+        session, task_queue, lister, application, evaluation_case, instruction, latest, choice
+    )
     return await _letter(session, application)
 
 
@@ -201,7 +209,9 @@ async def restore(
             text=draft.text,
             instruction=draft.instruction,
             unsupported_requirements=draft.unsupported_requirements,
+            provider=draft.provider,
             model=draft.model,
+            effort=draft.effort,
             prompt_version=draft.prompt_version,
             career_profile_version_id=draft.career_profile_version_id,
             writing_guide_version_id=draft.writing_guide_version_id,
@@ -260,8 +270,10 @@ async def _queue(
     evaluation_case: EvaluationCase,
     instruction: str | None,
     revised: CoverLetterDraft | None,
+    choice: ModelChoice | None,
 ) -> None:
-    """Queue a generation, a revision in words of `revised` when given."""
+    """Queue a generation, a revision in words of `revised` when given, with the model
+    choice given or else the step's default."""
     profile = await user_inputs.current_document(
         session, owner_id=application.owner_id, kind="career-profile"
     )
@@ -294,6 +306,7 @@ async def _queue(
         revised_draft=revised,
     )
     session.add(queued)
+    await llm_runs.choose(session, lister, GENERATION, queued, choice)
     await llm_runs.commit_and_enqueue(session, task_queue, lister, GENERATION, queued)
 
 

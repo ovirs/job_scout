@@ -11,6 +11,8 @@ import {
 } from './api/@tanstack/react-query.gen'
 import type { CoverLetterDraftRead, CoverLetterRead } from './api/types.gen'
 import { Badge } from './Badge'
+import { modelLabel } from './ModelChoiceFields'
+import { ModelPicker, useRunChoice } from './ModelPicker'
 import { refusal } from './refusal'
 import { Loading, Working } from './Waiting'
 
@@ -66,6 +68,13 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
   const restore = useMutation({ ...restoreCoverLetterDraftMutation(), ...handlers })
   const remove = useMutation({ ...deleteCoverLetterDraftMutation(), ...handlers })
   const [instruction, setInstruction] = useState('')
+  const last = letter.data?.generation
+  // A retry repeats the request that failed, unless another model is picked; generating and
+  // revising otherwise start from the Cover Letter step's default
+  const run = useRunChoice(
+    'cover_letter',
+    last && (last.status === 'failed' || last.stuck) ? last.model_choice : null,
+  )
 
   if (letter.isPending) return <Loading label="Loading the Cover Letter…" />
   if (letter.isError) return <p role="alert">Could not load the Cover Letter.</p>
@@ -91,14 +100,25 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
     if (!confirmed()) return
     generate.mutate({
       path,
-      body: { evaluation_case: evaluation.case, instruction: text.trim() || null },
+      body: {
+        evaluation_case: evaluation.case,
+        instruction: text.trim() || null,
+        model_choice: run.choice,
+      },
     })
   }
 
   /** Ask the LLM to revise the latest draft as `text` says. */
   function reviseDraft(text: string) {
     if (!confirmed()) return
-    revise.mutate({ path, body: { evaluation_case: evaluation.case, instruction: text.trim() } })
+    revise.mutate({
+      path,
+      body: {
+        evaluation_case: evaluation.case,
+        instruction: text.trim(),
+        model_choice: run.choice,
+      },
+    })
   }
 
   function removeDraft(id: number) {
@@ -143,6 +163,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
               Retry
             </button>
           )}
+          {editable && <span className="hint"> with the model chosen below</span>}
         </div>
       )}
       {editable ? (
@@ -160,6 +181,7 @@ export function CoverLetter({ applicationId }: { applicationId: number }) {
               onChange={(e) => setInstruction(e.target.value)}
             />
           </label>
+          <ModelPicker run={run} />
           <div className="actions">
             {draft && (
               <button
@@ -233,6 +255,9 @@ function Record({ draft }: { draft: CoverLetterDraftRead }) {
     <p className="hint">
       {ORIGINS[draft.origin]} {age(draft.created_at)}{' '}
       {draft.evaluation_case && CASE_NOTES[draft.evaluation_case]}
+      {draft.provider && draft.model && (
+        <> · {modelLabel(draft.provider, draft.model, draft.effort)}</>
+      )}
       {draft.instruction && <> · instructions: “{draft.instruction}”</>}
       {draft.restored_from_draft_id !== null && <> · restored</>}
     </p>
@@ -317,7 +342,7 @@ function Draft({
         )}
         {draft.model !== null && (
           <p className="hint">
-            {draft.model} · prompt {draft.prompt_version} · Career Profile v
+            Prompt {draft.prompt_version} · Career Profile v
             {draft.career_profile_version_number}
             {draft.writing_guide_version_number !== null
               ? ` · Writing Guide v${draft.writing_guide_version_number}`

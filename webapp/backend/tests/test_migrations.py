@@ -102,3 +102,29 @@ async def test_runs_stored_before_model_choices_are_filled_in_as_anthropic_runs(
     opus = "claude-opus-5-5"
     assert model_choices(settings, "clippings") == [("anthropic", opus, None, "anthropic", opus)]
     assert model_choices(settings, "evaluations") == [(None, None, None, None, None)]
+
+
+async def test_drafts_stored_before_their_provider_and_effort_take_their_generations(
+    client: httpx.AsyncClient, settings: Settings, fake_llm: FakeLlm, run_queued_tasks: RunTasks
+) -> None:
+    high = {"provider": "anthropic", "model": "claude-opus-5-5", "effort": "high"}
+    await client.put("/api/settings/defaults", json={"cover_letter": high})
+    application_id: int = (
+        await generated_application(client, fake_llm, run_queued_tasks, "Generated.")
+    )["id"]
+    generated = (await cover_letter(client, application_id))["draft"]
+    await save_draft(client, application_id, "By hand.")
+    await client.post(
+        f"/api/applications/{application_id}/cover-letter/drafts/{generated['id']}/restore"
+    )
+    before = await cover_letter(client, application_id)
+    migrations.downgrade(settings.database_url, "0017")
+
+    migrations.upgrade(settings.database_url)
+
+    assert await cover_letter(client, application_id) == before
+    assert [(d["provider"], d["effort"]) for d in before["drafts"]] == [
+        ("anthropic", "high"),  # restored
+        (None, None),  # by hand
+        ("anthropic", "high"),
+    ]

@@ -82,6 +82,12 @@ class NotUsable(Exception):
     """A run may not use the model choice; the message says why."""
 
 
+class NoUsableChoice(Exception):
+    """A run the user starts names no model choice, and the one it would take instead (the
+    one it was queued with before, or its step's default) cannot be used; the message says
+    why."""
+
+
 async def keys(session: AsyncSession, *, owner_id: uuid.UUID) -> dict[Provider, ProviderKey]:
     """The owner's keys, by Provider."""
     found = await session.scalars(select(ProviderKey).where(ProviderKey.owner_id == owner_id))
@@ -261,6 +267,50 @@ async def default(
     """The step's default, as a run takes it when queued."""
     found = await defaults(session, lister, owner_id=owner_id)
     return next(entry for entry in found if entry.step == step)
+
+
+async def run_choice(
+    session: AsyncSession,
+    lister: ModelLister,
+    *,
+    owner_id: uuid.UUID,
+    step: Step,
+    given: ModelChoice | None,
+    kept: ModelChoice | None,
+) -> ModelChoice:
+    """The model choice a run the user starts calls: the one the user gave; without one, the
+    one the run was queued with before (`kept`, for a run queued again in place); else the
+    step's default. Never fetches a listing.
+
+    Raises `NotUsable` when the choice given cannot be used, and `NoUsableChoice` when the
+    one taken without it cannot: the run is refused rather than failed at once, since the
+    user is there to choose another.
+    """
+    cached = await _models(session, lister, owner_id=owner_id, fetch="never")
+    if given is not None:
+        reason = _problem(cached, given)
+        if reason is not None:
+            raise NotUsable(reason)
+        return given
+    if kept is not None:
+        reason = _problem(cached, kept)
+        if reason is not None:
+            raise NoUsableChoice(
+                f"The model this run was queued with cannot be used: {reason}."
+                " Choose another for it"
+            )
+        return kept
+    default = (await _stored_defaults(session, owner_id=owner_id)).get(step)
+    if default is None:
+        raise NoUsableChoice("No default model is chosen for this step: choose one in Settings")
+    choice = _choice(default)
+    reason = _problem(cached, choice)
+    if reason is not None:
+        raise NoUsableChoice(
+            f"The default model for this step cannot be used: {reason}."
+            " Choose another in Settings, or for this run"
+        )
+    return choice
 
 
 async def save_defaults(

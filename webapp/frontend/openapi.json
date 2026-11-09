@@ -800,7 +800,7 @@
       },
       "post": {
         "summary": "Rerun Evaluation",
-        "description": "Queue a new Evaluation of the posting, with the current user inputs; earlier ones\nare kept as history. Also the retry of one that failed. Refused while another is\nunder way, unless that one is stuck: it is then failed and replaced.",
+        "description": "Queue a new Evaluation of the posting, with the current user inputs and the model\nchoice given, or else the step's default; earlier ones are kept as history. Also the\nretry of one that failed. Refused when that model cannot be used, and while another\nis under way, unless that one is stuck: it is then failed and replaced.",
         "operationId": "rerun_evaluation",
         "parameters": [
           {
@@ -813,6 +813,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/LlmRunStart"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "201": {
             "description": "Successful Response",
@@ -928,7 +945,7 @@
     "/api/applications/{application_id}/cover-letter/generations": {
       "post": {
         "summary": "Generate Cover Letter",
-        "description": "Queue a new draft written by the LLM from the posting, the Career Profile, the\nWriting Guide, the Evaluation's flags and the instruction; poll the Cover Letter for\nit. Also the retry of a failed one. Refused unless the Application is Preparing, while\nthere is no Career Profile, when `evaluation_case` is not the Evaluation's case now\n(the user must confirm a missing or outdated one), and while another request is under\nway, unless that one is stuck.",
+        "description": "Queue a new draft written by the LLM from the posting, the Career Profile, the\nWriting Guide, the Evaluation's flags and the instruction; poll the Cover Letter for\nit. Also the retry of a failed one. Refused unless the Application is Preparing, while\nthere is no Career Profile, when `evaluation_case` is not the Evaluation's case now\n(the user must confirm a missing or outdated one), while another request is under\nway, unless that one is stuck, and when the model choice given, or else the step's\ndefault, cannot be used.",
         "operationId": "generate_cover_letter",
         "parameters": [
           {
@@ -1176,7 +1193,7 @@
     "/api/clippings": {
       "post": {
         "summary": "Submit Clipping",
-        "description": "Store the pasted text as a Clipping and queue its extraction; poll it for the\nresult.",
+        "description": "Store the pasted text as a Clipping and queue its extraction, with the model choice\ngiven or else the step's default; poll it for the result. Refused when that model\ncannot be used.",
         "operationId": "submit_clipping",
         "requestBody": {
           "content": {
@@ -1254,7 +1271,7 @@
     "/api/clippings/{clipping_id}/retry": {
       "post": {
         "summary": "Retry Clipping",
-        "description": "Queue the extraction of a failed Clipping again, or of one stuck being read.",
+        "description": "Queue the extraction of a failed Clipping again, or of one stuck being read, with the\nmodel choice given or else the one it was read with. Refused when that model cannot be\nused.",
         "operationId": "retry_clipping",
         "parameters": [
           {
@@ -1267,6 +1284,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/LlmRunStart"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful Response",
@@ -2513,6 +2547,26 @@
             ],
             "title": "Finished At"
           },
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "model": {
             "anyOf": [
               {
@@ -2577,6 +2631,8 @@
           "created_at",
           "started_at",
           "finished_at",
+          "model_choice",
+          "provider",
           "model",
           "prompt_version",
           "failure",
@@ -2587,6 +2643,16 @@
       },
       "ClippingSubmit": {
         "properties": {
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "pasted_text": {
             "type": "string",
             "minLength": 1,
@@ -2654,6 +2720,16 @@
             "format": "date-time",
             "title": "Created At"
           },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "model": {
             "anyOf": [
               {
@@ -2664,6 +2740,17 @@
               }
             ],
             "title": "Model"
+          },
+          "effort": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effort"
           },
           "prompt_version": {
             "anyOf": [
@@ -2767,7 +2854,9 @@
           "instruction",
           "unsupported_requirements",
           "created_at",
+          "provider",
           "model",
+          "effort",
           "prompt_version",
           "career_profile_version_id",
           "career_profile_version_number",
@@ -2826,6 +2915,16 @@
       },
       "CoverLetterGenerate": {
         "properties": {
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "evaluation_case": {
             "type": "string",
             "enum": [
@@ -2853,7 +2952,7 @@
           "evaluation_case"
         ],
         "title": "CoverLetterGenerate",
-        "description": "A request for a new draft. `evaluation_case` is the case of the posting's Evaluation\nthe user was told of and agreed to; a request naming another case is refused."
+        "description": "A request for a new draft. `evaluation_case` is the case of the posting's Evaluation\nthe user was told of and agreed to; a request naming another case is refused. Generating\nand revising share the Cover Letter step's default."
       },
       "CoverLetterGenerationRead": {
         "properties": {
@@ -2906,6 +3005,16 @@
             ],
             "title": "Revised Draft Id"
           },
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "failure": {
             "anyOf": [
               {
@@ -2953,6 +3062,7 @@
           "instruction",
           "evaluation_case",
           "revised_draft_id",
+          "model_choice",
           "failure",
           "created_at",
           "finished_at",
@@ -3037,6 +3147,16 @@
       },
       "CoverLetterRevise": {
         "properties": {
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "evaluation_case": {
             "type": "string",
             "enum": [
@@ -3423,6 +3543,26 @@
             ],
             "title": "Finished At"
           },
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Provider"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "model": {
             "anyOf": [
               {
@@ -3626,6 +3766,8 @@
           "created_at",
           "started_at",
           "finished_at",
+          "model_choice",
+          "provider",
           "model",
           "prompt_version",
           "career_profile_version_id",
@@ -4003,6 +4145,23 @@
         ],
         "title": "LlmRunFailureRead",
         "description": "Why an LLM run failed."
+      },
+      "LlmRunStart": {
+        "properties": {
+          "model_choice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ModelChoiceBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "type": "object",
+        "title": "LlmRunStart",
+        "description": "The model choice of a run the user starts. Left out, the run takes the step's default\n(a Clipping retry, the one it was read with); refused when the model cannot be used."
       },
       "ModelChoiceBody": {
         "properties": {

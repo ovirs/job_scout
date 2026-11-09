@@ -180,11 +180,19 @@ export const listEvaluations = <ThrowOnError extends boolean = false>(options: O
 /**
  * Rerun Evaluation
  *
- * Queue a new Evaluation of the posting, with the current user inputs; earlier ones
- * are kept as history. Also the retry of one that failed. Refused while another is
- * under way, unless that one is stuck: it is then failed and replaced.
+ * Queue a new Evaluation of the posting, with the current user inputs and the model
+ * choice given, or else the step's default; earlier ones are kept as history. Also the
+ * retry of one that failed. Refused when that model cannot be used, and while another
+ * is under way, unless that one is stuck: it is then failed and replaced.
  */
-export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: Options<RerunEvaluationData, ThrowOnError>): RequestResult<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError> => (options.client ?? client).post<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError>({ url: '/api/job-postings/{job_posting_id}/evaluations', ...options });
+export const rerunEvaluation = <ThrowOnError extends boolean = false>(options: Options<RerunEvaluationData, ThrowOnError>): RequestResult<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError> => (options.client ?? client).post<RerunEvaluationResponses, RerunEvaluationErrors, ThrowOnError>({
+    url: '/api/job-postings/{job_posting_id}/evaluations',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Get Current Evaluation
@@ -208,8 +216,9 @@ export const getCoverLetter = <ThrowOnError extends boolean = false>(options: Op
  * Writing Guide, the Evaluation's flags and the instruction; poll the Cover Letter for
  * it. Also the retry of a failed one. Refused unless the Application is Preparing, while
  * there is no Career Profile, when `evaluation_case` is not the Evaluation's case now
- * (the user must confirm a missing or outdated one), and while another request is under
- * way, unless that one is stuck.
+ * (the user must confirm a missing or outdated one), while another request is under
+ * way, unless that one is stuck, and when the model choice given, or else the step's
+ * default, cannot be used.
  */
 export const generateCoverLetter = <ThrowOnError extends boolean = false>(options: Options<GenerateCoverLetterData, ThrowOnError>): RequestResult<GenerateCoverLetterResponses, GenerateCoverLetterErrors, ThrowOnError> => (options.client ?? client).post<GenerateCoverLetterResponses, GenerateCoverLetterErrors, ThrowOnError>({
     url: '/api/applications/{application_id}/cover-letter/generations',
@@ -270,8 +279,9 @@ export const deleteCoverLetterDraft = <ThrowOnError extends boolean = false>(opt
 /**
  * Submit Clipping
  *
- * Store the pasted text as a Clipping and queue its extraction; poll it for the
- * result.
+ * Store the pasted text as a Clipping and queue its extraction, with the model choice
+ * given or else the step's default; poll it for the result. Refused when that model
+ * cannot be used.
  */
 export const submitClipping = <ThrowOnError extends boolean = false>(options: Options<SubmitClippingData, ThrowOnError>): RequestResult<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError> => (options.client ?? client).post<SubmitClippingResponses, SubmitClippingErrors, ThrowOnError>({
     url: '/api/clippings',
@@ -290,9 +300,18 @@ export const getClipping = <ThrowOnError extends boolean = false>(options: Optio
 /**
  * Retry Clipping
  *
- * Queue the extraction of a failed Clipping again, or of one stuck being read.
+ * Queue the extraction of a failed Clipping again, or of one stuck being read, with the
+ * model choice given or else the one it was read with. Refused when that model cannot be
+ * used.
  */
-export const retryClipping = <ThrowOnError extends boolean = false>(options: Options<RetryClippingData, ThrowOnError>): RequestResult<RetryClippingResponses, RetryClippingErrors, ThrowOnError> => (options.client ?? client).post<RetryClippingResponses, RetryClippingErrors, ThrowOnError>({ url: '/api/clippings/{clipping_id}/retry', ...options });
+export const retryClipping = <ThrowOnError extends boolean = false>(options: Options<RetryClippingData, ThrowOnError>): RequestResult<RetryClippingResponses, RetryClippingErrors, ThrowOnError> => (options.client ?? client).post<RetryClippingResponses, RetryClippingErrors, ThrowOnError>({
+    url: '/api/clippings/{clipping_id}/retry',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Confirm Clipping

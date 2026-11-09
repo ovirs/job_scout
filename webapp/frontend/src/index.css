@@ -470,6 +470,14 @@ ul.panel {
   gap: 0.5rem;
 }
 
+/* The model, and its effort, a run the user starts is made with: one row beside its button */
+.model-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 0.5rem;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;

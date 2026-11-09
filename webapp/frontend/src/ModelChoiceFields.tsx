@@ -1,6 +1,17 @@
-import type { ModelChoiceBody, OfferedModelRead } from './api/types.gen'
+import type { ModelChoiceBody, OfferedModelRead, Provider } from './api/types.gen'
+
+export const PROVIDER_NAMES: Record<Provider, string> = {
+  anthropic: 'Anthropic',
+  openai: 'OpenAI',
+  google: 'Google',
+}
 
 const PROVIDER_DEFAULT = ''
+
+/** What a run was made with, as text: its Provider, model and effort. */
+export function modelLabel(provider: Provider, model: string, effort: string | null) {
+  return `${PROVIDER_NAMES[provider]} ${model}, ${effort ? `effort ${effort}` : 'default effort'}`
+}
 
 function key(provider: string, model: string) {
   return `${provider}/${model}`
@@ -30,8 +41,8 @@ export function validChoice(
   return first ? { provider: first.provider, model: first.id, effort: null } : null
 }
 
-/** A model, and its effort where the model has an effort control, from the models offered.
- * `value` must be a valid choice among them (see `validChoice`). */
+/** A model, by Provider, and its effort where the model has an effort control, from the models
+ * offered. `value` must be a valid choice among them (see `validChoice`). */
 export function ModelChoiceFields({
   models,
   value,
@@ -42,6 +53,7 @@ export function ModelChoiceFields({
   onChange: (choice: ModelChoiceBody) => void
 }) {
   const model = offeredModel(models, value)
+  const providers = [...new Set(models.map((m) => m.provider))]
 
   function chooseModel(chosen: string) {
     const found = models.find((m) => key(m.provider, m.id) === chosen)
@@ -56,10 +68,16 @@ export function ModelChoiceFields({
           value={key(value.provider, value.model)}
           onChange={(e) => chooseModel(e.target.value)}
         >
-          {models.map((m) => (
-            <option key={key(m.provider, m.id)} value={key(m.provider, m.id)}>
-              {m.display_name} ({m.id})
-            </option>
+          {providers.map((provider) => (
+            <optgroup key={provider} label={PROVIDER_NAMES[provider]}>
+              {models
+                .filter((m) => m.provider === provider)
+                .map((m) => (
+                  <option key={key(m.provider, m.id)} value={key(m.provider, m.id)}>
+                    {m.display_name} ({m.id})
+                  </option>
+                ))}
+            </optgroup>
           ))}
         </select>
       </label>

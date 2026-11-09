@@ -187,10 +187,10 @@ async def test_a_run_that_starts_on_its_own_with_an_unusable_default_fails_at_on
     clipping = await submit_and_extract(client, run_queued_tasks)
     await client.put("/api/settings/hidden-models/anthropic/claude-opus-5-5")
 
+    # The Evaluation queued on confirming a Clipping starts on its own
     confirmed = await client.post(f"/api/clippings/{clipping['id']}/confirm", json=ENVELOPE)
-    submitted = await client.post("/api/clippings", json={"pasted_text": PASTED_TEXT})
 
-    assert confirmed.status_code == submitted.status_code == 201
+    assert confirmed.status_code == 201
     assert await queued_tasks() == []  # never retried
     reason = (
         "The default model for this step cannot be used: Anthropic does not offer"
@@ -199,7 +199,5 @@ async def test_a_run_that_starts_on_its_own_with_an_unusable_default_fails_at_on
     posting = confirmed.json()
     assert posting["evaluation_status"] == "failed"
     assert posting["evaluation_failure"] == {"kind": "missing_input", "reason": reason}
-    assert submitted.json()["status"] == "failed"
-    assert submitted.json()["failure"] == {"kind": "missing_input", "reason": reason}
     await run_queued_tasks()
     assert len(fake_llm.connections) == 1  # only the first Clipping's extraction

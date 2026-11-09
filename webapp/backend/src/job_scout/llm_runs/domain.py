@@ -4,9 +4,12 @@ A feature stores a queued run in its own table (with the `LlmRun` columns) and h
 it here with its `LlmRunTask`, which only gathers the inputs, calls the LLM and records
 the result. This module owns the rest:
 
-- queueing: the run takes its step's default model choice, then is enqueued after the
-  commit that stores it; a run whose default cannot be used, or whose enqueue fails, is
-  failed at once, so the user can fix Settings or retry it;
+- queueing: a run the user starts takes the model choice they gave, or else the one it
+  was queued with before (a run queued again in place) or its step's default, and is
+  refused when that cannot be used; a run that starts on its own takes its step's
+  default. It is enqueued after the commit that stores it; a run that starts on its own
+  whose default cannot be used, or a run whose enqueue fails, is failed at once, so the
+  user can fix Settings or retry it;
 - the status, from queued to running to done or failed, and its timestamps;
 - attempts: a failed call, or an unexpected error, is retried on the queue, and only
   the last attempt's failure is stored; a call the Provider rejected as invalid is not
@@ -39,6 +42,7 @@ from job_scout.llm.interface import (
     Failure,
     FailureKind,
     Llm,
+    ModelChoice,
     ModelLister,
     Outcome,
     Provider,
@@ -148,15 +152,17 @@ async def commit_and_enqueue(
     task: AnyTask,
     *runs: LlmRun,
 ) -> None:
-    """Give each queued run its step's default model choice, commit the session, which
-    holds the runs, then put each on the queue.
+    """Give each queued run with no model choice its step's default, commit the session,
+    which holds the runs, then put each on the queue. A run the user started has its
+    choice already, from `choose`.
 
     A run whose default cannot be used is failed at once, pointing to Settings, and never
     queued: it never switches to another model. A run whose enqueue fails is failed with
     the reason, so the user can retry it rather than wait for it to count as stuck.
     """
     for run in runs:
-        await _choose_default(session, lister, task.step, run)
+        if run.requested is None:
+            await _choose_default(session, lister, task.step, run)
     await session.commit()
     for run in runs:
         if run.status != "queued":
@@ -167,6 +173,31 @@ async def commit_and_enqueue(
             logger.exception("Could not queue run %s of %s", run.id, task.task_name)
             _fail(run, "error", f"Could not queue the run: {error!r}")
             await session.commit()
+
+
+async def choose(
+    session: AsyncSession,
+    lister: ModelLister,
+    task: AnyTask,
+    run: LlmRun,
+    given: ModelChoice | None,
+) -> None:
+    """Store on a queued run the user started the model choice it calls, before
+    `commit_and_enqueue`: the one given; without one, the one it was queued with before,
+    for a run queued again in place; else its step's default.
+
+    Raises `settings.NotUsable` when the choice given cannot be used, and
+    `settings.NoUsableChoice` when the one taken without it cannot; the caller then
+    commits nothing.
+    """
+    run.requested = await provider_settings.run_choice(
+        session,
+        lister,
+        owner_id=run.owner_id,
+        step=task.step,
+        given=given,
+        kept=run.requested,
+    )
 
 
 async def _choose_default(

@@ -204,6 +204,8 @@ export type ClippingRead = {
      * Finished At
      */
     finished_at: string | null;
+    model_choice: ModelChoiceBody | null;
+    provider: Provider | null;
     /**
      * Model
      */
@@ -224,6 +226,7 @@ export type ClippingRead = {
  * ClippingSubmit
  */
 export type ClippingSubmit = {
+    model_choice?: ModelChoiceBody | null;
     /**
      * Pasted Text
      */
@@ -262,10 +265,15 @@ export type CoverLetterDraftRead = {
      * Created At
      */
     created_at: string;
+    provider: Provider | null;
     /**
      * Model
      */
     model: string | null;
+    /**
+     * Effort
+     */
+    effort: string | null;
     /**
      * Prompt Version
      */
@@ -331,9 +339,11 @@ export type CoverLetterEvaluationRead = {
  * CoverLetterGenerate
  *
  * A request for a new draft. `evaluation_case` is the case of the posting's Evaluation
- * the user was told of and agreed to; a request naming another case is refused.
+ * the user was told of and agreed to; a request naming another case is refused. Generating
+ * and revising share the Cover Letter step's default.
  */
 export type CoverLetterGenerate = {
+    model_choice?: ModelChoiceBody | null;
     /**
      * Evaluation Case
      */
@@ -372,6 +382,7 @@ export type CoverLetterGenerationRead = {
      * Revised Draft Id
      */
     revised_draft_id: number | null;
+    model_choice: ModelChoiceBody | null;
     failure: LlmRunFailureRead | null;
     /**
      * Created At
@@ -420,6 +431,7 @@ export type CoverLetterRead = {
  * from the same inputs as generating; `evaluation_case` as for generating.
  */
 export type CoverLetterRevise = {
+    model_choice?: ModelChoiceBody | null;
     /**
      * Evaluation Case
      */
@@ -640,6 +652,8 @@ export type EvaluationRead = {
      * Finished At
      */
     finished_at: string | null;
+    model_choice: ModelChoiceBody | null;
+    provider: Provider | null;
     /**
      * Model
      */
@@ -849,6 +863,16 @@ export type LlmRunFailureRead = {
      * Reason
      */
     reason: string;
+};
+
+/**
+ * LlmRunStart
+ *
+ * The model choice of a run the user starts. Left out, the run takes the step's default
+ * (a Clipping retry, the one it was read with); refused when the model cannot be used.
+ */
+export type LlmRunStart = {
+    model_choice?: ModelChoiceBody | null;
 };
 
 /**
@@ -1791,7 +1815,10 @@ export type ListEvaluationsResponses = {
 export type ListEvaluationsResponse = ListEvaluationsResponses[keyof ListEvaluationsResponses];
 
 export type RerunEvaluationData = {
-    body?: never;
+    /**
+     * Body
+     */
+    body?: LlmRunStart | null;
     path: {
         /**
          * Job Posting Id
@@ -2096,7 +2123,10 @@ export type GetClippingResponses = {
 export type GetClippingResponse = GetClippingResponses[keyof GetClippingResponses];
 
 export type RetryClippingData = {
-    body?: never;
+    /**
+     * Body
+     */
+    body?: LlmRunStart | null;
     path: {
         /**
          * Clipping Id
