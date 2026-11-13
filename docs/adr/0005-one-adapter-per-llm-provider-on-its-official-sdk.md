@@ -4,6 +4,6 @@ The app calls Anthropic, OpenAI and Google models through the existing `Llm` int
 
 ## Consequences
 
-- Each adapter turns the step's schema into its Provider's dialect, and every answer still goes through the same checks in code. A Provider that cannot express a schema gets a `malformed` failure, never a looser check.
+- Each adapter turns the step's schema into its Provider's dialect, and every answer still goes through the same checks in code. A Provider that cannot express a schema gets a `rejected` failure, never a looser check: the refusal is the same on every attempt, so the run fails at once without retrying.
 - Adding a Provider means writing an adapter and its model filtering rules. Nothing outside the LLM layer changes.
 - Effort levels are stored and shown under each Provider's own names. There is no shared effort scale.

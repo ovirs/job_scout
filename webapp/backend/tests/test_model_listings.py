@@ -46,10 +46,17 @@ def test_anthropic_keeps_active_models_with_structured_outputs_and_their_effort_
     ]
 
 
-def test_openai_keeps_chat_families_and_flags_dated_snapshots() -> None:
-    ids = [entry["id"] for entry in saved_listing("openai")["data"]]
+def serving(status: int, body: Any) -> httpx2.AsyncClient:
+    """An HTTP client on which a Provider answers every request with `body`."""
+    return httpx2.AsyncClient(
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(status, json=body))
+    )
 
-    kept = openai_models.text_models(ids)
+
+async def test_openai_keeps_chat_families_and_flags_dated_snapshots() -> None:
+    kept = await openai_models.list_models("a-key", http=serving(200, saved_listing("openai")))
+
+    assert isinstance(kept, list)
 
     assert [(model.id, model.snapshot) for model in kept] == [
         ("gpt-5.1", False),
@@ -63,21 +70,12 @@ def test_openai_keeps_chat_families_and_flags_dated_snapshots() -> None:
     ]
     assert {model.display_name for model in kept if model.id == "gpt-5"} == {"gpt-5"}
     assert {model.efforts for model in kept} == {
-        ("none", "minimal", "low", "medium", "high", "xhigh")
+        ("none", "minimal", "low", "medium", "high", "xhigh", "max")
     }
 
 
-def google_serving(status: int, body: Any) -> httpx2.AsyncClient:
-    """An HTTP client on which Google answers every request with `body`."""
-    return httpx2.AsyncClient(
-        transport=httpx2.MockTransport(lambda request: httpx2.Response(status, json=body))
-    )
-
-
 async def test_gemini_lists_text_models_that_generate_content_and_flags_pinned_names() -> None:
-    kept = await gemini_models.list_models(
-        "a-key", http=google_serving(200, saved_listing("google"))
-    )
+    kept = await gemini_models.list_models("a-key", http=serving(200, saved_listing("google")))
 
     assert isinstance(kept, list)
     assert [(model.id, model.display_name, model.snapshot) for model in kept] == [
@@ -103,6 +101,21 @@ async def test_gemini_refuses_a_key_with_googles_reason() -> None:
         }
     }
 
-    refused = await gemini_models.list_models("a-typo", http=google_serving(400, refusal))
+    refused = await gemini_models.list_models("a-typo", http=serving(400, refusal))
 
     assert refused == KeyRefused("API key not valid. Please pass a valid API key.")
+
+
+async def test_openai_refuses_a_key_with_openais_reason() -> None:
+    refusal = {
+        "error": {
+            "message": "Incorrect API key provided: sk-typo.",
+            "type": "invalid_request_error",
+            "param": None,
+            "code": "invalid_api_key",
+        }
+    }
+
+    refused = await openai_models.list_models("sk-typo", http=serving(401, refusal))
+
+    assert refused == KeyRefused("Incorrect API key provided: sk-typo.")

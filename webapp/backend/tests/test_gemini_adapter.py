@@ -2,6 +2,7 @@
 for, and how each answer or failure becomes a step's outcome. No real key is used."""
 
 import json
+import uuid
 from typing import Any
 
 import httpx2
@@ -46,6 +47,7 @@ async def write_letter(google: Any, effort: str | None = "low") -> Any:
     llm = GeminiLlm(
         ModelChoice(provider="google", model="gemini-2.5-pro", effort=effort),
         "a-key",
+        uuid.uuid4(),
         http=httpx2.AsyncClient(transport=httpx2.MockTransport(google)),
     )
     return await llm.write_cover_letter(PROMPT)

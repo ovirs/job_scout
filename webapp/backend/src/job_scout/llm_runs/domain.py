@@ -273,7 +273,7 @@ async def _attempt[R: LlmRun, I, T](
         if isinstance(api_key, Refusal):
             _refuse(run, api_key)
             return
-    outcome = await task.call(connect(choice, api_key), gathered)
+    outcome = await task.call(connect(choice, api_key, run.owner_id), gathered)
     result = outcome.result
     if isinstance(result, Failure) and result.kind not in NOT_RETRIED and not last_attempt:
         raise LlmCallFailed(result.reason)

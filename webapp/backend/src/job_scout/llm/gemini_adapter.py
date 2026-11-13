@@ -8,6 +8,8 @@ calls share the longest prefix. Tested against canned HTTP answers; prompt quali
 judged by reading results.
 """
 
+import uuid
+
 import httpx2
 from google import genai
 from google.genai import types
@@ -41,9 +43,15 @@ REFUSALS = frozenset(
 
 class GeminiLlm:
     def __init__(
-        self, choice: ModelChoice, api_key: str, *, http: httpx2.AsyncClient | None = None
+        self,
+        choice: ModelChoice,
+        api_key: str,
+        owner_id: uuid.UUID,
+        *,
+        http: httpx2.AsyncClient | None = None,
     ) -> None:
-        """`http` replaces the SDK's own HTTP client, as in tests."""
+        """`owner_id` is unused: Gemini's caching is implicit. `http` replaces the SDK's own
+        HTTP client, as in tests."""
         self._choice = choice
         self._api_key = api_key
         self._http = http

@@ -74,6 +74,8 @@ async def test_a_replaced_key_is_shown_masked_in_place_of_the_old_one(
 async def test_only_a_provider_with_an_adapter_can_be_set_up(
     client_without_provider: httpx.AsyncClient, fake_lister: FakeModelLister
 ) -> None:
+    # Every Provider has an adapter now: one without is stood in for
+    fake_lister.available = ("anthropic", "google")
     listed = await providers(client_without_provider)
 
     refused = await save_key(client_without_provider, "sk-proj-abcdefghijkl", provider="openai")

@@ -5,6 +5,7 @@ model choice and its owner's key. The listing of Anthropic's models is next to i
 Not covered by automated tests; prompt quality is judged by reading results.
 """
 
+import uuid
 from typing import Any, cast
 
 import anthropic
@@ -34,7 +35,8 @@ REJECTED = (
 
 
 class AnthropicLlm:
-    def __init__(self, choice: ModelChoice, api_key: str) -> None:
+    def __init__(self, choice: ModelChoice, api_key: str, owner_id: uuid.UUID) -> None:
+        """`owner_id` is unused: Anthropic's cache needs no key."""
         self._choice = choice
         self._api_key = api_key
 
