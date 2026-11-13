@@ -1,6 +1,7 @@
 """The fakes for tests: the LLM, with canned results or failures per step and a record of
 the inputs, and the model lister, with canned listings that can refuse a key."""
 
+import uuid
 from collections.abc import Awaitable, Callable
 
 from job_scout.clippings.extraction import ManualEntryExtraction
@@ -107,7 +108,7 @@ class FakeLlm:
             default=A_LETTER, prompt=COVER_LETTER
         )
 
-    def connect(self, choice: ModelChoice, api_key: str) -> "FakeConnection":
+    def connect(self, choice: ModelChoice, api_key: str, owner_id: uuid.UUID) -> "FakeConnection":
         self.connections.append((choice, api_key))
         return FakeConnection(self, choice)
 

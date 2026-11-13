@@ -4,11 +4,12 @@ An `Llm` calls one model choice (Provider, model and effort) with one API key. E
 method takes a step's inputs and returns an `Outcome`: the validated result, or a
 typed `Failure`, with the Provider, model and prompt version that produced it. It
 never raises for a failed call. Each Provider's adapter (`AnthropicLlm`,
-`GeminiLlm`) is a real one; `FakeLlm` replaces them in tests.
+`OpenAiLlm`, `GeminiLlm`) is a real one; `FakeLlm` replaces them in tests.
 """
 
 from __future__ import annotations
 
+import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal, Protocol
@@ -80,8 +81,8 @@ class Llm(Protocol):
         ...
 
 
-# An `Llm` calling the model choice with the given API key
-type Connect = Callable[[ModelChoice, str], Llm]
+# An `Llm` calling the model choice with the given API key, for the run's owner
+type Connect = Callable[[ModelChoice, str, uuid.UUID], Llm]
 
 
 @dataclass(frozen=True)

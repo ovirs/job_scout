@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.143.1",
     "google-genai>=3.0.0",
     "httpx2>=2.0.0",
+    "openai>=3.49.0",
     "procrastinate>=3.10.0",
     "psycopg[binary,pool]>=3.3.6",
     "pydantic>=2.14.1",
@@ -75,7 +76,7 @@ exhaustive = true
 exhaustive_ignores = ["alembic", "llm"]
 layers = [
     # Wiring: builds the app and the worker, and hands in the LLM
-    "app : worker : openapi : runtime : tables : llm.providers : llm.anthropic_adapter : llm.gemini_adapter : llm.fake",
+    "app : worker : openapi : runtime : tables : llm.providers : llm.anthropic_adapter : llm.openai_adapter : llm.gemini_adapter : llm.fake",
     "posting_view",
     "notes | cover_letters",
     "clippings | applications",
