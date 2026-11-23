@@ -40,7 +40,12 @@ FRONTEND = Path(__file__).parents[2] / "frontend"
 
 @pytest.fixture(scope="session")
 def postgres_server() -> Iterator[PostgresContainer]:
-    with PostgresContainer("postgres:17-alpine", driver=None) as server:
+    # A throwaway database needs no crash safety: skipping it makes each test's
+    # CREATE and DROP DATABASE much cheaper. Never use these settings outside tests.
+    container = PostgresContainer("postgres:17-alpine", driver=None).with_command(
+        "postgres -c fsync=off -c synchronous_commit=off -c full_page_writes=off"
+    )
+    with container as server:
         with psycopg.connect(server.get_connection_url(), autocommit=True) as conn:
             conn.execute(f"CREATE DATABASE {TEMPLATE_DATABASE}")
         migrations.upgrade(_database_url(server, TEMPLATE_DATABASE))
