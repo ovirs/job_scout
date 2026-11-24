@@ -2,6 +2,7 @@
 name = "job-scout"
 version = "0.1.0"
 description = "Job Scout webapp backend: HTTP API and background worker"
+license = "MIT"
 authors = [
     { name = "ovirs", email = "ovirs@users.noreply.github.com" }
 ]
